@@ -16,9 +16,14 @@
       "Bash(npm install:*)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(node:*)",
+      "Bash(start chrome --load-extension=. --new-window)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "F:\\f\\github"
+    ]
   }
 }

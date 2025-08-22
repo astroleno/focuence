@@ -12,23 +12,42 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #ffffff;
-            color: #374151;
+            font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #ffffff, #f8fdf8);
+            color: #2d4a2d;
             line-height: 1.5;
             margin: 0;
             padding: 0;
             width: 360px;
-            min-height: 500px;
+            height: 280px; /* 默认折叠高度 - 只显示主要按钮 */
             overflow: hidden;
+            transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .container {
             width: 100%;
-            height: 100vh;
+            height: 100%;
             background: #ffffff;
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+        
+        /* 折叠状态 - 默认 */
+        body.collapsed {
+            height: 280px;
+        }
+        
+        /* 展开状态 - 显示分组时 */
+        body.expanded {
+            height: auto;
+            min-height: 480px;
+            max-height: 600px;
+        }
+        
+        /* 完全展开状态 - 内容很多时 */
+        body.fully-expanded {
+            height: 700px;
         }
 
         /* 头部 */
@@ -36,16 +55,48 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 24px;
-            background: #1f2937;
+            padding: 24px 24px;
+            background: linear-gradient(135deg, #4a6741, #617247);
             color: white;
-            border-bottom: 1px solid #e5e7eb;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(97, 114, 71, 0.15);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .header h1 {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.3;
         }
 
         .settings-btn {
@@ -55,17 +106,20 @@
             font-size: 14px;
             cursor: pointer;
             padding: 6px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
+            border-radius: 6px;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
+            position: relative;
+            z-index: 1;
         }
 
         .settings-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
         }
 
         .settings-icon {
@@ -79,8 +133,9 @@
             display: flex;
             justify-content: space-between;
             padding: 16px 24px;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #ffffff, #fafdfb);
+            border-bottom: 1px solid rgba(97, 114, 71, 0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .stat-item {
@@ -89,16 +144,17 @@
         }
 
         .stat-value {
-            font-size: 18px;
-            font-weight: 600;
-            color: #111827;
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d4a2d;
             display: block;
         }
 
         .stat-label {
             font-size: 11px;
-            color: #6b7280;
+            color: #617247;
             margin-top: 2px;
+            font-weight: 500;
         }
 
         /* 功能按钮 */
@@ -109,36 +165,58 @@
             gap: 12px;
         }
 
+        .control-group {
+            background: linear-gradient(135deg, #ffffff, #fafdfb);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(97, 114, 71, 0.08), 0 1px 3px rgba(97, 114, 71, 0.06);
+            margin-bottom: 10px;
+            border: 1px solid rgba(97, 114, 71, 0.08);
+        }
+
         .action-btn {
             padding: 12px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             text-align: center;
             letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
         }
 
         .action-btn.primary {
-            background: #617247;
+            background: linear-gradient(135deg, #617247, #4a6741);
             color: white;
+            box-shadow: 0 2px 8px rgba(97, 114, 71, 0.2);
         }
 
         .action-btn.primary:hover {
-            background: #4a5a36;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #6d7e53, #556b4c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(97, 114, 71, 0.3);
+        }
+
+        .action-btn.small {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .action-btn.secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
+            background: linear-gradient(135deg, #f8fdf8, #f0f5f0);
+            color: #2d4a2d;
+            border: 1px solid rgba(97, 114, 71, 0.15);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
         }
 
         .action-btn.secondary:hover {
-            background: #e5e7eb;
+            background: linear-gradient(135deg, #f0f5f0, #e6f2e6);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(97, 114, 71, 0.15);
         }
 
         .action-btn:disabled {
@@ -150,8 +228,30 @@
         /* 内容区域 */
         .content {
             flex: 1;
-            overflow-y: auto;
             padding: 0 24px 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        
+        /* 折叠状态下内容区域 - 完全隐藏 */
+        body.collapsed .content {
+            display: none;
+        }
+        
+        /* 展开状态下内容区域 */
+        body.expanded .content,
+        body.fully-expanded .content {
+            display: block;
+            overflow-y: auto;
+            max-height: none;
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 加载状态时的内容区域 */
+        body.loading .content {
+            opacity: 0.6;
         }
 
         /* 分组结果 */
@@ -174,6 +274,17 @@
             border-radius: 6px;
             margin-bottom: 8px;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        /* 分组数量较少时的优化显示 */
+        .groups.few-groups .group {
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(97, 114, 71, 0.08);
+        }
+        
+        .groups.many-groups .group {
+            margin-bottom: 6px;
         }
 
         .group-header {
@@ -308,22 +419,39 @@
             color: #9ca3af;
         }
 
-        /* 滚动条样式 */
+        /* 滚动条样式 - 更细更优雅 */
         ::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #f9fafb;
+            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 2px;
+            background: rgba(97, 114, 71, 0.3);
+            border-radius: 3px;
+            transition: background 0.3s ease;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
+            background: rgba(97, 114, 71, 0.5);
+        }
+        
+        /* 在紧凑模式下隐藏滚动条 */
+        .container.compact .content::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        
+        /* 只在需要时显示滚动条 */
+        .content {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(97, 114, 71, 0.3) transparent;
+        }
+        
+        .container.compact .content {
+            scrollbar-width: none;
         }
 
         /* 空状态 */
@@ -435,7 +563,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: linear-gradient(135deg, #ffffff, #fafdfb);
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(97, 114, 71, 0.08);
+            border: 1px solid rgba(97, 114, 71, 0.08);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
         
         /* 分组状态样式 */
@@ -476,7 +615,10 @@
     <div class="container">
         <!-- 头部 -->
         <div class="header">
-            <h1>Focuence智序</h1>
+            <div>
+                <h1>Focuence智序</h1>
+                <div class="subtitle">让专注 更有序</div>
+            </div>
             <button class="settings-btn" title="设置">
                 <svg class="settings-icon" viewBox="0 0 24 24">
                     <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
@@ -491,8 +633,8 @@
                 <div class="stat-label">标签页</div>
             </div>
             <div class="stat-item">
-                <span class="stat-value" id="attentionScore">0.0</span>
-                <div class="stat-label">注意力</div>
+                <span class="stat-value" id="activeTabs">0</span>
+                <div class="stat-label">活跃</div>
             </div>
         </div>
         
@@ -500,11 +642,11 @@
         <div class="actions">
             <button class="action-btn primary" id="aiGroupingBtn">
                 智能分组
-                <span class="loading" id="aiLoading"></span>
+                <span class="loading" id="aiLoading" style="display: none;"></span>
             </button>
             <button class="action-btn secondary" id="cleaningBtn">
                 清理建议
-                <span class="loading" id="cleanLoading"></span>
+                <span class="loading" id="cleanLoading" style="display: none;"></span>
             </button>
         </div>
         
@@ -517,15 +659,13 @@
             <div class="groups" id="groupsSection" style="display: none;">
                 <div class="section-header">
                     <div class="section-title">分组结果</div>
-                    <div>
+                    <div class="header-actions">
+                        <button class="action-btn primary small" id="createAllGroupsBtn">全部分组</button>
+                        <button class="back-btn" id="regroupBtn">再次分组</button>
                         <button class="back-btn" id="groupsBackBtn">返回</button>
-                        <button class="back-btn" id="regroupBtn" style="margin-left: 8px;">再次分组</button>
                     </div>
                 </div>
                 <div id="groupsContainer"></div>
-                <div style="padding: 12px 0 8px 0; text-align: center;">
-                    <button class="action-btn primary" id="createAllGroupsBtn" style="width: 100%;">全部分组</button>
-                </div>
             </div>
             
             <!-- 清理建议 -->
