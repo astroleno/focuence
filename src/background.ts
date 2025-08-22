@@ -1,4 +1,4 @@
-import { TabInfo, ChromeMessage, InteractionEvent } from './types';
+import { TabInfo, ChromeMessage, InteractionEvent, Workspace } from './types';
 import { AttentionGraph } from './lib/attention-graph';
 import { StorageManager } from './lib/storage';
 import { AIGrouper } from './lib/ai-grouper';
@@ -210,6 +210,35 @@ class BackgroundService {
           case 'DELETE_GROUP':
             console.log('处理DELETE_GROUP请求');
             await this.deleteGroup(message.payload.groupId);
+            sendResponse({ success: true });
+            break;
+            
+          case 'SAVE_WORKSPACE':
+            console.log('处理SAVE_WORKSPACE请求');
+            await this.storageManager.saveWorkspace(message.payload.workspace);
+            sendResponse({ success: true });
+            break;
+            
+          case 'GET_WORKSPACES':
+            console.log('处理GET_WORKSPACES请求');
+            const workspaces = await this.storageManager.getAllWorkspaces();
+            sendResponse({ success: true, data: workspaces });
+            break;
+            
+          case 'LOAD_WORKSPACE':
+            console.log('处理LOAD_WORKSPACE请求');
+            const workspace = await this.storageManager.getWorkspace(message.payload.workspaceId);
+            if (workspace) {
+              await this.applyWorkspace(workspace);
+              sendResponse({ success: true, data: workspace });
+            } else {
+              sendResponse({ success: false, error: '工作区不存在' });
+            }
+            break;
+            
+          case 'DELETE_WORKSPACE':
+            console.log('处理DELETE_WORKSPACE请求');
+            await this.storageManager.deleteWorkspace(message.payload.workspaceId);
             sendResponse({ success: true });
             break;
             
@@ -542,6 +571,56 @@ class BackgroundService {
 
     const updatedGroups = groups.filter(g => g.id !== groupId);
     await this.storageManager.saveGroups(updatedGroups);
+  }
+
+  /**
+   * 应用工作区
+   */
+  private async applyWorkspace(workspace: Workspace) {
+    console.log('应用工作区:', workspace.name);
+    
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabGroups) {
+      return;
+    }
+
+    // 获取当前活跃窗口
+    const currentWindow = await chrome.windows.getCurrent({ populate: false });
+    const lastFocusedWindow = await chrome.windows.getLastFocused({ populate: false });
+    const targetWindowId = lastFocusedWindow?.id || currentWindow?.id;
+
+    // 清除当前窗口的所有分组
+    try {
+      const currentGroups = await chrome.tabGroups.query({ windowId: targetWindowId });
+      for (const group of currentGroups) {
+        await chrome.tabGroups.ungroup(group.id);
+      }
+    } catch (error) {
+      console.error('清除当前分组失败:', error);
+    }
+
+    // 应用工作区分组
+    for (const group of workspace.groups) {
+      if (group.tabIds && group.tabIds.length > 1) {
+        try {
+          // 验证所有标签页都在当前窗口
+          const tabs = await chrome.tabs.query({ windowId: targetWindowId });
+          const targetWindowTabIds = tabs.map(tab => tab.id);
+          const validTabIds = group.tabIds.filter(id => targetWindowTabIds.includes(id));
+          
+          if (validTabIds.length > 1) {
+            const groupId = await chrome.tabs.group({ tabIds: validTabIds });
+            await chrome.tabGroups.update(groupId, { 
+              title: group.name,
+              color: this.getGroupColor(group.name)
+            });
+          }
+        } catch (error) {
+          console.error('应用工作区分组失败:', error);
+        }
+      }
+    }
+
+    console.log('工作区应用完成:', workspace.name);
   }
 
   /**

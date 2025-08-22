@@ -361,6 +361,129 @@ export const Popup: React.FC = () => {
   };
 
   /**
+   * 保存工作区
+   */
+  const handleSaveWorkspace = async () => {
+    const name = window.prompt('请输入工作区名称：', `工作区_${new Date().toLocaleDateString()}`);
+    if (!name) return;
+
+    try {
+      const workspace: Workspace = {
+        id: `workspace_${Date.now()}`,
+        name: name,
+        description: `保存于${new Date().toLocaleString()}`,
+        groups: groups,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isTemplate: false,
+        tags: [],
+        metadata: {
+          totalTabs: tabs.length,
+          avgAttentionScore: parseFloat(stats.avgAttention) / 100,
+          workflowType: 'custom'
+        }
+      };
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'SAVE_WORKSPACE',
+        payload: { workspace }
+      });
+
+      if (!response || !response.success) {
+        setError('保存工作区失败');
+        return;
+      }
+
+      setInsights(`工作区"${name}"已保存`);
+      await loadWorkspaces();
+    } catch (err) {
+      console.error('保存工作区失败:', err);
+      setError('保存工作区时出错');
+    }
+  };
+
+  /**
+   * 显示工作区列表
+   */
+  const handleShowWorkspaceList = async () => {
+    await loadWorkspaces();
+    setShowWorkspaceList(!showWorkspaceList);
+  };
+
+  /**
+   * 加载工作区列表
+   */
+  const loadWorkspaces = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'GET_WORKSPACES'
+      });
+
+      if (!response || !response.success) {
+        setError('获取工作区列表失败');
+        return;
+      }
+
+      setWorkspaces(response.data || []);
+    } catch (err) {
+      console.error('获取工作区列表失败:', err);
+      setError('获取工作区列表时出错');
+    }
+  };
+
+  /**
+   * 加载工作区
+   */
+  const handleLoadWorkspace = async (workspaceId: string) => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'LOAD_WORKSPACE',
+        payload: { workspaceId }
+      });
+
+      if (!response || !response.success) {
+        setError('加载工作区失败');
+        return;
+      }
+
+      setInsights(`已加载工作区"${response.data.name}"`);
+      setShowWorkspaceList(false);
+      await loadTabs();
+      await loadGroups();
+    } catch (err) {
+      console.error('加载工作区失败:', err);
+      setError('加载工作区时出错');
+    }
+  };
+
+  /**
+   * 删除工作区
+   */
+  const handleDeleteWorkspace = async (workspaceId: string, workspaceName: string) => {
+    if (!window.confirm(`确定要删除工作区"${workspaceName}"吗？`)) {
+      return;
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'DELETE_WORKSPACE',
+        payload: { workspaceId }
+      });
+
+      if (!response || !response.success) {
+        setError('删除工作区失败');
+        return;
+      }
+
+      setInsights(`已删除工作区"${workspaceName}"`);
+      await loadWorkspaces();
+    } catch (err) {
+      console.error('删除工作区失败:', err);
+      setError('删除工作区时出错');
+    }
+  };
+
+  /**
    * 计算总体统计 (memoized)
    */
   const stats = useMemo(() => ({
@@ -413,6 +536,22 @@ export const Popup: React.FC = () => {
           disabled={loading || tabs.length === 0}
         >
           清理建议
+        </button>
+        <button 
+          className="btn" 
+          onClick={handleSaveWorkspace}
+          disabled={loading || groups.length === 0}
+          title="保存当前分组为工作区"
+        >
+          保存工作区
+        </button>
+        <button 
+          className="btn" 
+          onClick={handleShowWorkspaceList}
+          disabled={loading}
+          title="管理工作区"
+        >
+          工作区管理
         </button>
         <button 
           className="btn" 
@@ -527,6 +666,110 @@ export const Popup: React.FC = () => {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 工作区管理 */}
+      {showWorkspaceList && (
+        <div className="workspace-list" style={{ 
+          margin: '12px 20px',
+          padding: '12px',
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '6px'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '12px'
+          }}>
+            <div style={{ fontWeight: 'bold', color: '#0369a1' }}>
+              工作区管理 ({workspaces.length})
+            </div>
+            <button
+              style={{
+                background: '#0284c7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                fontSize: '11px',
+                cursor: 'pointer'
+              }}
+              onClick={() => setShowWorkspaceList(false)}
+            >
+              关闭
+            </button>
+          </div>
+          
+          {workspaces.length === 0 ? (
+            <div style={{ 
+              padding: '20px', 
+              textAlign: 'center', 
+              color: '#64748b',
+              fontSize: '13px'
+            }}>
+              暂无保存的工作区<br/>
+              <span style={{ fontSize: '11px' }}>
+                点击"保存工作区"按钮保存当前分组状态
+              </span>
+            </div>
+          ) : (
+            workspaces.map((workspace) => (
+              <div key={workspace.id} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '8px',
+                padding: '8px',
+                backgroundColor: 'white',
+                borderRadius: '4px',
+                fontSize: '12px',
+                border: '1px solid #e0f2fe'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '500', color: '#0c4a6e' }}>
+                    {workspace.name}
+                  </div>
+                  <div style={{ color: '#64748b', fontSize: '11px' }}>
+                    {workspace.groups.length}个分组 · {workspace.metadata.totalTabs}个标签页 · {new Date(workspace.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    style={{
+                      background: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '3px',
+                      padding: '3px 6px',
+                      fontSize: '10px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => handleLoadWorkspace(workspace.id)}
+                    title="加载工作区"
+                  >
+                    加载
+                  </button>
+                  <button
+                    style={{
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '3px',
+                      padding: '3px 6px',
+                      fontSize: '10px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => handleDeleteWorkspace(workspace.id, workspace.name)}
+                    title="删除工作区"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
