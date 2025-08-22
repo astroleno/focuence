@@ -9,7 +9,14 @@
       "Bash(npm --version)",
       "Bash(npx vite:*)",
       "Bash(node_modules.binvite build)",
-      "Bash(\"./node_modules/.bin/vite.cmd\" build)"
+      "Bash(\"./node_modules/.bin/vite.cmd\" build)",
+      "Bash(mkdir:*)",
+      "Bash(curl:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []
