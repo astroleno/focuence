@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(rm:*)",
+      "Bash(where npm)",
+      "Bash(npm --version)",
+      "Bash(npx vite:*)",
+      "Bash(node_modules.binvite build)",
+      "Bash(\"./node_modules/.bin/vite.cmd\" build)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
