@@ -7,7 +7,11 @@
     "storage",
     "activeTab",
     "tabs",
-    "tabGroups"
+    "tabGroups",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://yunwu.zeabur.app/*"
   ],
   "action": {
     "default_popup": "popup/index.html",
@@ -16,6 +20,29 @@
   "options_page": "options/index.html",
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "smart_grouping": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "智能分组标签页"
+    },
+    "cleaning_suggestions": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "显示清理建议"
+    },
+    "toggle_popup": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "打开/关闭扩展面板"
+    }
   },
   "icons": {
     "16": "icons/icon-16.png",

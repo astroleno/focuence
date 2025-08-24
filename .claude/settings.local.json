@@ -18,7 +18,9 @@
       "Bash(ls:*)",
       "Bash(mv:*)",
       "Bash(node:*)",
-      "Bash(start chrome --load-extension=. --new-window)"
+      "Bash(start chrome --load-extension=. --new-window)",
+      "Bash(grep:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": [],
