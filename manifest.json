@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Focuence 智序 · 本机版",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "minimum_chrome_version": "120",
   "description": "快速分组、任务侧栏和一周回顾。浏览记录与模型推理均留在本机。",
   "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen", "sidePanel"],

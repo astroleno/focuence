@@ -1,0 +1,552 @@
+{
+  "version": "2.1.1",
+  "provenance": "Synthetic fixtures, isolated Chrome for Testing; HTTP demo transport for deterministic UI boundaries, native extension for popup/sidePanel/save/open/restore smoke checks. No daily browser profile or real user history.",
+  "checks": [
+    {
+      "name": "current popup and sidebar composition",
+      "passed": true
+    },
+    {
+      "name": "popup saving keeps its footer visible at both heights",
+      "passed": true
+    },
+    {
+      "name": "long notes keep continue and collapse controls visible, preserving keyboard focus and full text",
+      "passed": true
+    },
+    {
+      "name": "window scope remains independent from a prior page selection",
+      "passed": true
+    },
+    {
+      "name": "31-page selection is corrected in the same dialog without losing its draft",
+      "passed": true
+    },
+    {
+      "name": "both save surfaces deduplicate addresses before counting the 30-page limit",
+      "passed": true
+    },
+    {
+      "name": "cancel and Escape from delete confirmation retain the actual editor draft and caret",
+      "passed": true
+    },
+    {
+      "name": "failed range switching shows no stale records while loading and restores the loaded date",
+      "passed": true
+    },
+    {
+      "name": "an older failed refresh cannot overwrite a newer range response",
+      "passed": true
+    },
+    {
+      "name": "keyboard filters retain focus and zero matching records have a clear reset action",
+      "passed": true
+    },
+    {
+      "name": "map handoff preserves the selected incoming edge and exact date",
+      "passed": true,
+      "detail": {
+        "topic": "视觉创作",
+        "from": "本地模型",
+        "to": "视觉创作"
+      }
+    },
+    {
+      "name": "partial and expired maps explain omissions and do not advertise unavailable line clicks",
+      "passed": true
+    },
+    {
+      "name": "popup model work leaves recent tasks and saving available",
+      "passed": true
+    },
+    {
+      "name": "popup page landing opens only that page and whitespace names show a correction",
+      "passed": true
+    },
+    {
+      "name": "native extension popup, grouping, saving, sidePanel and restore use real Chrome APIs",
+      "passed": true,
+      "detail": {
+        "nativePopup": true,
+        "nativeSidePanel": true,
+        "savedPages": 4,
+        "repeatedRestoreDidNotDuplicate": true
+      }
+    }
+  ],
+  "screens": [
+    {
+      "name": "popup-groups-520",
+      "width": 400,
+      "height": 520,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-tasks-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 467.78125,
+        "bottom": 492.96875
+      },
+      "dialogSubmit": null,
+      "noteLength": 24,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-tasks-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 467.78125,
+        "bottom": 492.96875
+      },
+      "dialogSubmit": null,
+      "noteLength": 24,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-pages-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-path-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-save-520",
+      "width": 400,
+      "height": 520,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-save-600",
+      "width": 400,
+      "height": 600,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-long-400-520",
+      "width": 400,
+      "height": 520,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 250.1875,
+        "bottom": 284.1875
+      },
+      "nextTask": {
+        "top": 431.25,
+        "bottom": 453.75
+      },
+      "dialogSubmit": null,
+      "noteLength": 61,
+      "noteToggle": {
+        "top": 296.1875,
+        "bottom": 324.1875
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-long-400-600",
+      "width": 400,
+      "height": 600,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 250.1875,
+        "bottom": 284.1875
+      },
+      "nextTask": {
+        "top": 431.25,
+        "bottom": 453.75
+      },
+      "dialogSubmit": null,
+      "noteLength": 61,
+      "noteToggle": {
+        "top": 296.1875,
+        "bottom": 324.1875
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-long-320-720",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 496.171875,
+        "bottom": 521.359375
+      },
+      "dialogSubmit": null,
+      "noteLength": 61,
+      "noteToggle": {
+        "top": 359,
+        "bottom": 387
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-note-expanded-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 4324.96875,
+        "bottom": 4350.15625
+      },
+      "dialogSubmit": null,
+      "noteLength": 3000,
+      "noteToggle": {
+        "top": 359,
+        "bottom": 387
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-long-360-765",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 496.171875,
+        "bottom": 521.359375
+      },
+      "dialogSubmit": null,
+      "noteLength": 61,
+      "noteToggle": {
+        "top": 359,
+        "bottom": 387
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-save-window-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 467.78125,
+        "bottom": 492.96875
+      },
+      "dialogSubmit": {
+        "top": 610,
+        "bottom": 647
+      },
+      "noteLength": 24,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-save-31-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 467.78125,
+        "bottom": 492.96875
+      },
+      "dialogSubmit": {
+        "top": 622.25,
+        "bottom": 659.25
+      },
+      "noteLength": 24,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-save-30-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 467.78125,
+        "bottom": 492.96875
+      },
+      "dialogSubmit": {
+        "top": 610,
+        "bottom": 647
+      },
+      "noteLength": 24,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-editor-retained-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 311.5,
+        "bottom": 343.5
+      },
+      "nextTask": {
+        "top": 496.171875,
+        "bottom": 521.359375
+      },
+      "dialogSubmit": {
+        "top": 629,
+        "bottom": 666
+      },
+      "noteLength": 61,
+      "noteToggle": {
+        "top": 359,
+        "bottom": 387
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-range-failed-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-path-yesterday-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-filter-empty-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-selected-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "full-map-context-1280",
+      "width": 1280,
+      "height": 900,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-more-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-isolated-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-expired-320",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-analysis-pending-520",
+      "width": 400,
+      "height": 520,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-native-groups",
+      "width": 400,
+      "height": 520,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "popup-native-recent",
+      "width": 400,
+      "height": 503,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 224.1875,
+        "bottom": 258.1875
+      },
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 31,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-native-tasks",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": {
+        "top": 287.5,
+        "bottom": 319.5
+      },
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 31,
+      "noteToggle": {
+        "top": 0,
+        "bottom": 0
+      },
+      "bodyFont": "14px"
+    }
+  ],
+  "errors": [],
+  "status": "passed"
+}

@@ -25,10 +25,21 @@ export function localNeighborhood(topology, tag, selectedEdge = '', limit = 2) {
     if (selected && !chosen.includes(selected) && limit > 0) chosen.splice(Math.max(0, chosen.length - 1), 1, selected);
     return chosen;
   };
+  const before = take(topology.edges.filter(edge => edge.to === tag));
+  const after = take(topology.edges.filter(edge => edge.from === tag));
+  const relatedCount = topology.edges.filter(edge => edge.from === tag || edge.to === tag).length;
   return {
     node: topology.nodes.find(node => node.tag === tag),
-    before: take(topology.edges.filter(edge => edge.to === tag)),
-    after: take(topology.edges.filter(edge => edge.from === tag)),
-    relatedCount: topology.edges.filter(edge => edge.from === tag || edge.to === tag).length
+    before, after, relatedCount,
+    hiddenCount: Math.max(0, relatedCount - before.length - after.length)
   };
+}
+
+export function resolveMapContext(entries, edges, tag = '', selectedEdge = '') {
+  const selected = entries.find(entry => entry.tag === tag);
+  const edge = edges.find(edge => edge.from + '\u0000' + edge.to === selectedEdge);
+  const fallback = entries.find(entry => edges.some(edge => edge.from === entry.tag || edge.to === entry.tag)) || entries[0];
+  const topic = selected?.tag || edge?.from || fallback?.tag || '';
+  const relation = edge && (edge.from === topic || edge.to === topic) ? selectedEdge : '';
+  return {topic, relation, invalidTopic: Boolean(tag && !selected), invalidRelation: Boolean(selectedEdge && !relation)};
 }

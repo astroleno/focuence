@@ -89,7 +89,7 @@ export function createDemoTransport() {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.1.0', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.1.1', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       trackingState: { status: settings.tracking ? 'active' : 'paused', activeTabId: tabs.find(tab => tab.active)?.id, lastUpdatedAt: Date.now() }

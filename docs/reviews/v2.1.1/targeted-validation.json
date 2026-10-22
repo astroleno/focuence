@@ -1,0 +1,76 @@
+{
+  "version": "2.1.1",
+  "provenance": "Synthetic fixtures, isolated Chrome for Testing; HTTP demo transport for deterministic UI boundaries, native extension for popup/sidePanel/save/open/restore smoke checks. No daily browser profile or real user history.",
+  "checks": [
+    {
+      "name": "failed range switching shows no stale records while loading and restores the loaded date",
+      "passed": true
+    },
+    {
+      "name": "an older failed refresh cannot overwrite a newer range response",
+      "passed": true
+    },
+    {
+      "name": "map handoff preserves the selected incoming edge and exact date",
+      "passed": true,
+      "detail": {
+        "topic": "视觉创作",
+        "from": "本地模型",
+        "to": "视觉创作",
+        "reopenedEarlierContext": true
+      }
+    }
+  ],
+  "screens": [
+    {
+      "name": "panel-range-failed-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-path-yesterday-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "panel-map-selected-360",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    },
+    {
+      "name": "full-map-context-1280",
+      "width": 1280,
+      "height": 900,
+      "horizontalOverflow": false,
+      "firstContinue": null,
+      "nextTask": null,
+      "dialogSubmit": null,
+      "noteLength": 0,
+      "noteToggle": null,
+      "bodyFont": "14px"
+    }
+  ],
+  "errors": [],
+  "status": "passed"
+}

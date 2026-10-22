@@ -1,5 +1,15 @@
 import { normalizeUrl } from './text.js';
 
+/** Match saved page identity before presenting counts or selecting members. */
+export function uniqueTaskPages(pages = []) {
+  const unique = new Map();
+  for (const page of pages) {
+    const url = normalizeUrl(page.url);
+    if (url && !unique.has(url)) unique.set(url, {...page, url});
+  }
+  return [...unique.values()];
+}
+
 /** A restore plan is based on live URLs, not a stale count from a saved task. */
 export function planTaskRestore(task, tabs = [], segments = []) {
   const unique = new Map();

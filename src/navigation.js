@@ -1,9 +1,17 @@
-export async function openWorkspace({ view = 'review', windowId, range = 'week', demo = false } = {}) {
-  if (demo) { location.href = '../app/index.html?demo=1&range=' + range + '#' + view; return; }
-  const base = chrome.runtime.getURL('app/index.html');
+export function workspaceURL(base, {view = 'review', windowId, range = 'week', demo = false, topic, from, to} = {}) {
   const query = new URLSearchParams({ range });
+  if (demo) query.set('demo', '1');
   if (Number.isInteger(windowId)) query.set('windowId', windowId);
-  const url = base + '?' + query + '#' + view;
+  if (topic) query.set('topic', topic);
+  if (from && to) { query.set('from', from); query.set('to', to); }
+  return base + '?' + query + '#' + view;
+}
+
+export async function openWorkspace(options = {}) {
+  const {windowId, demo = false} = options;
+  if (demo) { location.href = workspaceURL('../app/index.html', options); return; }
+  const base = chrome.runtime.getURL('app/index.html');
+  const url = workspaceURL(base, options);
   const tabs = await chrome.tabs.query(Number.isInteger(windowId) ? { windowId } : {});
   const existing = tabs.find(tab => tab.url?.startsWith(base));
   if (existing) {

@@ -1,6 +1,8 @@
 import { el, svgEl, icon, duration } from '../src/ui.js';
 import { openWorkspace, openSidePanel } from '../src/navigation.js';
-import { mapTopology, localNeighborhood } from '../src/map-layout.js';
+import { mapTopology, localNeighborhood, resolveMapContext } from '../src/map-layout.js';
+import { uniqueTaskPages } from '../src/tasks.js';
+import { taskNotes } from '../src/task-notes.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -33,7 +35,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.1.0',
+    version: value?.version || '2.1.1',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
     undoAvailable: Boolean(value?.undoAvailable),
     timelineTruncated: Boolean(value?.timelineTruncated),
@@ -52,8 +54,10 @@ const ui = {
   range: ['today', 'yesterday', 'week'].includes(params.get('range')) ? params.get('range') : isPanel ? 'today' : 'week',
   state: null, error: '', busy: new Set(), selected: new Set(), applied: new Set(),
   queries: {pages: '', tasks: ''}, pageFilter: 'all', sort: 'recent',
-  timelineStatus: 'all', timelineLimit: 60, timelineTag: '', selectedTag: '',
-  selectedEdge: '', mapScope: 'related', canUndo: false, settingsDraft: null, settingsDirty: false, lastRefresh: 0
+  timelineStatus: 'all', timelineLimit: 60, timelineTag: '', selectedTag: params.get('topic') || '',
+  selectedEdge: params.get('from') && params.get('to') ? params.get('from') + '\u0000' + params.get('to') : '',
+  mapScope: 'related', mapNotice: '', expandedNotes: new Set(), pendingRange: null, failedRange: null, refreshAfterRange: false,
+  canUndo: false, settingsDraft: null, settingsDirty: false, lastRefresh: 0
 };
 if (ui.view === 'review') ui.range = 'week';
 let windowId = Number(params.get('windowId')) || undefined;
@@ -95,23 +99,41 @@ async function operation(id, callback) {
   finally { ui.busy.delete(id); render(); }
 }
 let refreshEpoch = 0;
-async function refresh({quiet = false} = {}) {
+async function refresh({quiet = false, range = ui.range, rangeTransition = false} = {}) {
+  if (busy('range') && !rangeTransition) { ui.refreshAfterRange = true; return false; }
   const epoch = ++refreshEpoch;
   try {
-    const value = await request('GET_STATE', {windowId, range: ui.range});
+    const value = await request('GET_STATE', {windowId, range});
     if (epoch !== refreshEpoch) return false;
     if (Number.isInteger(value.windowId)) windowId = value.windowId;
-    ui.state = normalizeState(value); ui.error = ''; ui.lastRefresh = Date.now();
+    ui.state = normalizeState(value); ui.range = range; ui.failedRange = null; ui.error = ''; ui.lastRefresh = Date.now();
     ui.canUndo = ui.state.undoAvailable;
     ui.selected = new Set([...ui.selected].filter((id) => ui.state.tabs.some((tab) => tab.id === id)));
     if (!ui.settingsDirty) ui.settingsDraft = {...ui.state.settings, excludedDomains: [...ui.state.settings.excludedDomains]};
     render();
     return true;
   } catch (error) {
-    ui.error = error.message;
+    if (epoch !== refreshEpoch) return false;
+    ui.failedRange = range;
+    ui.error = range !== ui.range && ui.state ? '未能读取' + rangeName(range) + '，当前仍显示' + rangeName(ui.range) + '的数据。' + error.message : error.message;
     if (!quiet && ui.state) toast(error.message, true);
     render(); return false;
   }
+}
+function rangeName(range) { return {today: '今天', yesterday: '昨天', week: '最近 7 天'}[range] || '所选范围'; }
+async function chooseRange(range) {
+  if (busy('range')) return;
+  const focusId = document.activeElement?.id;
+  ui.pendingRange = range; ui.timelineLimit = 60;
+  await operation('range', async () => {
+    try { await refresh({quiet: true, range, rangeTransition: true}); }
+    finally { ui.pendingRange = null; }
+  });
+  if (ui.refreshAfterRange) { ui.refreshAfterRange = false; await refresh({quiet: true}); }
+  if (document.activeElement === document.body && ['timeline-range', 'map-range'].includes(focusId)) document.getElementById(focusId)?.focus({preventScroll: true});
+}
+function rangeLoading() {
+  return el('div', {class: 'loading-shell', role: 'status'}, el('div', {class: 'spinner'}), '正在读取' + rangeName(ui.pendingRange) + '的记录…');
 }
 function modelBar() {
   const model = ui.state.model;
@@ -141,6 +163,7 @@ function buildShell() {
       el('p', {class: 'sr-only', id: 'panel-current'}, '正在读取当前窗口…'),
       el('span', {id: 'breadcrumb', class: 'sr-only'}),
       el('main', {class: 'main', id: 'main', tabindex: '-1'}));
+    app.append(el('p', {id: 'results-status', class: 'sr-only', role: 'status'}));
     return;
   }
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
@@ -154,7 +177,7 @@ function buildShell() {
       el('label', {class: 'mobile-navigation'}, el('span', {class: 'sr-only'}, '切换功能'), el('select', {id: 'workspace-view', 'aria-label': '切换功能'}, Object.entries(viewNames).map(([key, label]) => el('option', {value: key}, label)))),
       el('div', {class: 'topbar-actions'}, el('span', {class: 'local-status', id: 'top-status'}), button('打开侧栏', 'open-panel', {}, 'small', 'layers'), iconButton('刷新当前数据', 'refresh', 'refresh'))),
     el('main', {class: 'main', id: 'main', tabindex: '-1'}));
-  app.replaceChildren(sidebar, workspace);
+  app.replaceChildren(sidebar, workspace, el('p', {id: 'results-status', class: 'sr-only', role: 'status'}));
 }
 function renderNavigation() {
   const count = ui.state?.tasks.length || 0;
@@ -188,6 +211,10 @@ function statStrip() {
 }
 function searchBox(view, placeholder) {
   return el('div', {class: 'search-box'}, icon('search'), el('input', {id: view + '-search', type: 'search', 'data-search': view, placeholder, 'aria-label': placeholder, value: ui.queries[view]}));
+}
+function announceResults() {
+  const region = document.getElementById('results-status');
+  region.textContent = ui.view === 'timeline' ? '当前筛选显示 ' + visibleSegments().length + ' 条记录' : '当前筛选显示 ' + filteredTabs().length + ' 个页面';
 }
 function isProtected(tab) { return Boolean(tab.pinned || Number(tab.groupId) >= 0); }
 function filteredTabs() {
@@ -250,14 +277,14 @@ function renderPages() {
   const filters = [['all', '全部 ' + ui.state.tabs.length], ['ungrouped', '待整理 ' + ungrouped], ['protected', '已保护 ' + (ui.state.tabs.length - ungrouped)]];
   return [
     heading('当前页面', '整理此刻的页面，留住下次继续的线索。', [
-      button(selectedCount ? '保存所选 · ' + selectedCount : '保存当前窗口 · ' + ui.state.tabs.length + ' 页', 'save-selection', {disabled: ui.state.tabs.length === 0}, '', 'save'),
+      button(selectedCount ? '保存所选 · ' + selectedCount : '保存窗口 · ' + ui.state.tabs.length + ' 页', selectedCount ? 'save-selection' : 'save-window', {id: 'pages-save-task', disabled: ui.state.tabs.length === 0}, '', 'save'),
       button(busy('rules') ? '正在整理…' : '生成分组建议', 'propose', {disabled: busy('rules') || busy('semantic') || ui.state.tabs.length < 2}, ui.state.groups.length ? '' : 'primary', 'layers')
     ]),
     !isPanel && statStrip(),
     el('div', {class: 'two-column'},
       el('section', {'aria-label': '当前窗口页面'},
         el('div', {class: 'section-heading'}, el('h2', {}, '打开的页面', el('small', {}, '当前窗口')), el('span', {}, dateLabel(Date.now()))),
-        el('div', {class: 'list-tools'}, searchBox('pages', '搜索标题、站点或主题'), el('div', {class: 'filter-row'}, filters.map(([filter, label]) => el('button', {type: 'button', class: 'filter-button' + (ui.pageFilter === filter ? ' active' : ''), 'data-action': 'page-filter', 'data-filter': filter, 'aria-pressed': ui.pageFilter === filter}, label)))),
+        el('div', {class: 'list-tools'}, searchBox('pages', '搜索标题、站点或主题'), el('div', {class: 'filter-row'}, filters.map(([filter, label]) => el('button', {id: 'page-filter-' + filter, type: 'button', class: 'filter-button' + (ui.pageFilter === filter ? ' active' : ''), 'data-action': 'page-filter', 'data-filter': filter, 'aria-pressed': ui.pageFilter === filter}, label)))),
         el('div', {class: 'select-toolbar'},
           el('label', {class: 'checkbox-label'}, el('input', {type: 'checkbox', id: 'select-all', checked: allSelected, disabled: !tabs.length, 'aria-label': '选择当前列表全部页面'}), selectedCount ? '已选 ' + selectedCount + ' 页' : '选择页面'),
           el('span', {class: 'spacer'}),
@@ -271,9 +298,8 @@ function taskCard(task, {featured = false} = {}) {
   const pages = task.pages || [], preview = task.restorePreview || {reused: 0, willOpen: pages.length};
   return el('article', {class: 'task-card' + (featured ? ' featured' : '')},
     el('div', {class: 'task-card-head'},
-      el('button', {id: 'task-name-' + task.id, class: 'task-name', type: 'button', 'data-action': 'edit-task', 'data-id': task.id}, task.name),
+      el('h3', {class: 'task-name'}, task.name),
       iconButton('编辑 ' + task.name, 'edit-task', 'edit', {'data-id': task.id})),
-    task.notes ? el('p', {class: 'task-note'}, task.notes) : button('添加下一步', 'edit-task', {'data-id': task.id}, 'text-button'),
     task.resumePage && el('div', {class: 'resume-context'}, icon('page'),
       el('button', {type: 'button', class: 'resume-page-link', title: task.resumePage.title || task.resumePage.url, 'data-action': 'open-page', 'data-url': task.resumePage.url}, task.resumePage.title || domainOf(task.resumePage.url))),
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
@@ -282,14 +308,15 @@ function taskCard(task, {featured = false} = {}) {
     el('div', {class: 'task-footer'},
       el('div', {class: 'task-count'}, el('span', {}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
         el('span', {class: 'task-date'}, dateLabel(task.lastActivityAt || task.updatedAt || task.createdAt))),
-      button(busy('restore-' + task.id) ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id, disabled: busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')));
+      button(busy('restore-' + task.id) ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id, disabled: busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
+    task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加下一步', 'edit-task', {'data-id': task.id}, 'text-button'));
 }
 function renderTasks() {
   const query = ui.queries.tasks.trim().toLocaleLowerCase();
   const tasks = ui.state.tasks.filter(task => !query || [task.name, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
   return [
     heading(isPanel ? '任务' : '任务工作台', '保存下一步，回到正在做的事。', [
-      button(isPanel ? '保存窗口' : '保存当前窗口', 'save-selection', {disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
+      button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
     el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), el('span', {class: 'subtle-label'}, ui.state.tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
       emptyState(query ? '没有找到这个任务' : '保存一件正在做的事', query ? '试试任务名、备注或页面标题。' : '选择相关页面，再写下一步。回来时就能继续。', query ? null : 'nav-pages', '去选择页面', false, 'folder'),
@@ -299,9 +326,10 @@ function renderTasks() {
 }
 function rangeControl(id) {
   return el('select', {id, class: 'standard-select', 'aria-label': '时间范围', 'data-range-control': 'true', disabled: busy('range')},
-    [['today', '今天'], ['yesterday', '昨天'], ['week', '最近 7 天']].map(([value, label]) => el('option', {value, selected: ui.range === value}, label)));
+    [['today', '今天'], ['yesterday', '昨天'], ['week', '最近 7 天']].map(([value, label]) => el('option', {value, selected: (ui.pendingRange || ui.range) === value}, label)));
 }
 function renderReview() {
+  if (ui.pendingRange) return [heading('一周回顾', '回看最近 7 天的浏览路径。'), rangeLoading()];
   const attention = ui.state.attention;
   const summary = attention.summary || {}, daily = attention.daily || [];
   const maximum = Math.max(1, ...daily.map(day => day.foregroundMs));
@@ -386,6 +414,8 @@ function tagBars(entries) {
     el('div', {class: 'bar-track'}, el('div', {class: 'bar-value', style: {width: entry.foregroundMs / maximum * 100 + '%'}}))));
 }
 function renderTimeline() {
+  const header = heading('访问路径', '回到当时看过的页面。', [rangeControl('timeline-range'), iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush') || busy('range')})]);
+  if (ui.pendingRange) return [header, rangeLoading()];
   const segments = visibleSegments();
   const displayed = segments.slice(0, ui.timelineLimit);
   const timeline = [];
@@ -397,14 +427,19 @@ function renderTimeline() {
   }
   const summary = !['all', 'active'].includes(ui.timelineStatus) ? [] : ui.timelineTag
     ? ui.state.attention.nodes.filter(entry => entry.tag === ui.timelineTag) : ui.state.attention.nodes;
+  const empty = ui.state.segments.length && (ui.timelineTag || ui.timelineStatus !== 'all')
+    ? emptyState('没有符合筛选的记录', '这个范围内有其他记录，可以清除主题和状态筛选后查看。', 'clear-timeline-filters', '查看全部记录', false, 'clock')
+    : !ui.state.settings.tracking
+      ? emptyState('浏览记录已暂停', isPanel ? '点击顶部的恢复按钮，或在这里恢复记录。已有任务仍可继续。' : '恢复后会继续记录前台浏览，已有历史仍会保留。', 'toggle-tracking', '恢复记录', false, 'clock')
+      : emptyState('这段时间还没有记录', '正常浏览网页后，返回这里刷新。暂离与未知时段会单独显示。', null, null, false, 'clock');
   return [
-    heading('访问路径', '回到当时看过的页面。', [rangeControl('timeline-range'), iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush')})]),
+    header,
     ui.state.timelineTruncated && el('p', {class: 'panel-intro'}, '这里展示所选范围内最新 2,000 条记录，图表使用该范围的完整记录。更早的历史可在设置中导出。'),
     el('div', {class: 'timeline-tools'},
-      el('div', {class: 'filter-row'}, [['all', '全部记录'], ['active', '前台'], ['idle', '暂离'], ['unknown', '未知']].map(([value, label]) => el('button', {type: 'button', class: 'filter-button' + (ui.timelineStatus === value ? ' active' : ''), 'data-action': 'timeline-status', 'data-status': value, 'aria-pressed': ui.timelineStatus === value}, label)))),
+      el('div', {class: 'filter-row'}, [['all', '全部记录'], ['active', '前台'], ['idle', '暂离'], ['unknown', '未知']].map(([value, label]) => el('button', {id: 'timeline-filter-' + value, type: 'button', class: 'filter-button' + (ui.timelineStatus === value ? ' active' : ''), 'data-action': 'timeline-status', 'data-status': value, 'aria-pressed': ui.timelineStatus === value}, label)))),
     ui.timelineTag && el('div', {class: 'selected-tag-banner'}, '正在回看：' + ui.timelineTag, iconButton('取消主题筛选', 'clear-timeline-tag', 'close')),
     el('div', {class: 'timeline-layout'},
-      el('section', {'aria-label': '浏览访问时间线'}, timeline.length ? timeline : emptyState('这段时间还没有记录', ui.state.settings.tracking ? '正常浏览网页后，返回这里刷新。暂离与未知时段会单独显示。' : '浏览记录已暂停，可以在左栏或设置中恢复。', null, null, false, 'clock'),
+      el('section', {'aria-label': '浏览访问时间线'}, timeline.length ? timeline : empty,
         segments.length > displayed.length && button('再显示 60 条', 'timeline-more', {}, 'full')),
       el('aside', {class: 'insight-aside'}, el('h3', {}, '这段时间，停留在哪里'), summary.length ? tagBars(summary) : el('p', {class: 'subtle-label'}, '有前台记录后显示主题分布。'),
         el('p', {class: 'insight-note'}, '前台时长不等于实际注意力。', el('br'), '同一页面的时长在多个主题之间分摊，避免重复累计。')))
@@ -440,7 +475,7 @@ function lightGraph(topology) {
   const neighbors = (edges, before) => el('div', {class: 'local-flow-row', style: {'--neighbor-count': edges.length}}, edges.map(edge => {
     const tag = before ? edge.from : edge.to, node = topology.nodes.find(item => item.tag === tag);
     return el('div', {class: 'neighbor-node'}, mapNode(node, before ? 'before' : 'after'),
-      el('button', {id: 'map-edge-' + encodeURIComponent(JSON.stringify([edge.from, edge.to])), type: 'button', class: 'neighbor-edge edge-control' + (ui.selectedEdge === edge.from + '\u0000' + edge.to ? ' selected' : ''), 'aria-pressed': ui.selectedEdge === edge.from + '\u0000' + edge.to, 'data-action': 'select-edge', 'data-from': edge.from, 'data-to': edge.to, 'aria-label': edge.from + ' 到 ' + edge.to + '，观察到 ' + edge.count + ' 次切换'}, edge.count + ' 次'));
+      el('button', {id: 'map-edge-' + encodeURIComponent(JSON.stringify([edge.from, edge.to])), type: 'button', class: 'neighbor-edge edge-control' + (ui.selectedEdge === edge.from + '\u0000' + edge.to ? ' selected' : ''), 'aria-pressed': ui.selectedEdge === edge.from + '\u0000' + edge.to, 'data-action': 'select-edge', 'data-from': edge.from, 'data-to': edge.to, 'aria-label': '查看' + edge.from + ' 到 ' + edge.to + '的 ' + edge.count + ' 次切换'}, edge.count + ' 次', icon('chevron')));
   }));
   return el('div', {class: 'local-map', role: 'group', 'aria-label': '选中主题的前后访问关系，箭头向下'},
     el('label', {class: 'map-topic-choice'}, el('span', {}, '查看主题'), el('select', {id: 'map-topic-choice', class: 'standard-select'}, topology.nodes.map(node => el('option', {value: node.tag, selected: node.tag === ui.selectedTag}, node.tag)))),
@@ -448,7 +483,7 @@ function lightGraph(topology) {
     el('div', {class: 'local-center'}, mapNode(local.node, 'center')),
     local.after.length > 0 && el('div', {class: 'local-after'}, branchConnector(local.after.length, false), el('p', {class: 'flow-label'}, '接着访问'), neighbors(local.after, false)),
     local.relatedCount === 0 && el('p', {class: 'map-footnote'}, '这个主题还没有有效的前后切换记录。'),
-    local.relatedCount > 4 && el('p', {class: 'map-footnote'}, '展示最常见的前后关系，完整地图包含其余关系。'));
+    local.hiddenCount > 0 && el('div', {class: 'map-more'}, el('p', {class: 'map-footnote'}, '另有 ' + local.hiddenCount + ' 条关系未展开。'), button('查看完整地图', 'open-full-map', {}, 'small subtle', 'external')));
 }
 function graph(entries, edges) {
   const topology = mapTopology(entries, edges);
@@ -513,7 +548,7 @@ function mapDetail(entries, edges) {
         el('button', {type: 'button', 'data-action': 'open-page', 'data-url': example.fromUrl}, example.fromTitle || domainOf(example.fromUrl)),
         icon('arrow'),
         el('button', {type: 'button', 'data-action': 'open-page', 'data-url': example.toUrl}, example.toTitle || domainOf(example.toUrl))))))
-      : el('p', {class: 'panel-intro'}, '点选次数或连线，查看发生在何时、哪些页面。'),
+      : edges.some(item => item.from === selected.tag || item.to === selected.tag) && el('p', {class: 'panel-intro'}, isPanel ? '点选次数按钮，查看发生在何时、哪些页面。' : '点选次数或连线，查看发生在何时、哪些页面。'),
     button('在路径中回看', 'tag-timeline', {'data-tag': selected.tag}, 'small subtle', 'clock'));
 }
 function transitionTable(edges) {
@@ -525,11 +560,16 @@ function transitionTable(edges) {
       el('td', {}, edge.count + ' 次'), el('td', {}, Math.round(edge.probability * 100) + '%' + (edge.count < 5 ? ' · 样本较少' : '')))))));
 }
 function renderMap() {
+  const header = heading(isPanel ? '主题地图' : '注意力地图', '从真实访问的先后关系，回到当时的页面。', [rangeControl('map-range'), isPanel ? iconButton('展开完整地图', 'open-full-map', 'external', {disabled: busy('range')}) : iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush') || busy('range')})]);
+  if (ui.pendingRange) return [header, rangeLoading()];
   const {entries, edges} = mapData();
-  if (!entries.some(entry => entry.tag === ui.selectedTag)) ui.selectedTag = entries.find(entry => edges.some(edge => edge.from === entry.tag || edge.to === entry.tag))?.tag || entries[0]?.tag || '';
+  const context = resolveMapContext(entries, edges, ui.selectedTag, ui.selectedEdge);
+  if (context.invalidTopic || context.invalidRelation) ui.mapNotice = !entries.length ? '这个范围内没有所选对象的记录，可以更换时间范围。' : context.invalidTopic ? '所选主题在这个范围内没有记录，已显示可用主题。' : '所选关系在这个范围内没有记录，已保留当前主题。';
+  ui.selectedTag = context.topic; ui.selectedEdge = context.relation;
   const relatedCount = edges.filter(edge => edge.from === ui.selectedTag || edge.to === ui.selectedTag).length;
   return [
-    heading(isPanel ? '主题地图' : '注意力地图', '从真实访问的先后关系，回到当时的页面。', [rangeControl('map-range'), isPanel ? iconButton('展开完整地图', 'open-full-map', 'external') : iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush')})]),
+    header,
+    ui.mapNotice && el('p', {class: 'map-context-notice', role: 'status'}, ui.mapNotice),
     el('p', {class: 'map-summary'}, entries.length + ' 个主题 · ' + edges.length + ' 条已观察关系'),
     !isPanel && edges.length > 0 && el('div', {class: 'map-visibility'},
       el('div', {class: 'filter-row', 'aria-label': '地图显示范围'}, [['related', '选中主题'], ['all', '全部关系']].map(([scope, label]) => el('button', {id: 'map-scope-' + scope, type: 'button', class: 'filter-button' + (ui.mapScope === scope ? ' active' : ''), 'data-action': 'map-scope', 'data-scope': scope, 'aria-pressed': ui.mapScope === scope}, label))),
@@ -584,7 +624,7 @@ function render() {
   const mapScroll = main.querySelector('.graph-scroll')?.scrollTop;
   const content = [];
   if (isDemo) content.push(el('div', {class: 'demo-banner'}, icon('info'), el('p', {}, '示例数据，仅用于演示')));
-  if (ui.error) content.push(el('div', {class: 'alert', role: 'alert'}, el('p', {}, ui.error), button('重新连接', 'refresh', {}, 'small', 'refresh')));
+  if (ui.error) content.push(el('div', {class: 'alert', role: 'alert'}, el('p', {}, ui.error), button(ui.failedRange && ui.failedRange !== ui.range ? '重试' + rangeName(ui.failedRange) : '重新连接', 'refresh', {}, 'small', 'refresh')));
   if (!ui.state) {
     if (!ui.error) content.push(el('div', {class: 'loading-shell'}, el('div', {class: 'spinner'}), '正在读取本机浏览空间…'));
     else content.push(emptyState('暂时无法读取浏览空间', '确认扩展已经安装并启用，然后重试。', null, null));
@@ -594,8 +634,20 @@ function render() {
   }
   mapResizeObserver?.disconnect();
   main.replaceChildren(...content.filter(item => item !== null && item !== undefined && item !== false));
+  if (ui.state && !ui.pendingRange) {
+    const url = new URL(location.href);
+    url.hash = ui.view; url.searchParams.set('range', ui.range);
+    if (ui.selectedTag) url.searchParams.set('topic', ui.selectedTag); else url.searchParams.delete('topic');
+    const [from, to] = ui.selectedEdge.split('\u0000');
+    if (from && to) { url.searchParams.set('from', from); url.searchParams.set('to', to); }
+    else { url.searchParams.delete('from'); url.searchParams.delete('to'); }
+    // Keep a reused workspace URL truthful so reopening an earlier map selection
+    // cannot be mistaken for navigation to the already displayed object.
+    if (url.href !== location.href) history.replaceState(null, '', url.href);
+  }
   if (mapScroll != null && main.querySelector('.graph-scroll')) main.querySelector('.graph-scroll').scrollTop = mapScroll;
-  document.getElementById('app').setAttribute('aria-busy', String(!ui.state && !ui.error));
+  document.getElementById('app').setAttribute('aria-busy', String(Boolean(ui.pendingRange) || (!ui.state && !ui.error)));
+  main.setAttribute('aria-busy', String(Boolean(ui.pendingRange)));
   if (focusId && document.getElementById(focusId)) {
     const target = document.getElementById(focusId);
     target.focus({preventScroll: true});
@@ -607,11 +659,31 @@ function render() {
 function navigate(view) {
   if (!Object.hasOwn(viewNames, view)) return;
   ui.view = view;
-  if (view === 'review') ui.range = 'week';
-  location.hash = view; render(); refresh({quiet: true});
+  location.hash = view;
+  if (view === 'review' && ui.range !== 'week') chooseRange('week');
+  else { render(); refresh({quiet: true}); }
+}
+let dialogCancelHandler = null, dialogBusy = false, taskEditor = null, dialogReturnFocusId = '';
+function closeDialog() {
+  if (dialogBusy) return;
+  if (dialogCancelHandler) dialogCancelHandler();
+  else document.getElementById('dialog').close();
+}
+function lockDialog() {
+  dialogBusy = true;
+  const controls = [...document.getElementById('dialog').querySelectorAll('button,input,textarea')].map(element => [element, element.disabled]);
+  for (const [element] of controls) element.disabled = true;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true; dialogBusy = false;
+    for (const [element, disabled] of controls) element.disabled = disabled;
+  };
 }
 function dialogFrame(title, description) {
   const dialog = document.getElementById('dialog');
+  if (!dialog.open) dialogReturnFocusId = document.activeElement?.id || '';
+  dialogCancelHandler = null;
   dialog.replaceChildren(el('div', {class: 'dialog-head'},
     el('div', {}, el('h2', {id: 'dialog-title'}, title), description && el('p', {}, description)),
     iconButton('关闭对话框', 'close-dialog', 'close')));
@@ -627,49 +699,100 @@ function showDialogError(body, message) {
   body.querySelector('.dialog-error')?.remove();
   body.prepend(el('p', {class: 'dialog-error', role: 'alert'}, message));
 }
-function taskDialog({task = null, group = null} = {}) {
-  const tabs = ui.state.tabs.filter((tab) => !ui.selected.size || ui.selected.has(tab.id));
-  const taskPages = task?.pages || group?.pages || tabs;
+function taskDialog({task = null, group = null, scope = 'window'} = {}) {
+  const tabs = scope === 'selection' ? ui.state.tabs.filter(tab => ui.selected.has(tab.id)) : ui.state.tabs;
+  const sourcePages = task?.pages || group?.pages || tabs;
+  const taskPages = uniqueTaskPages(sourcePages);
   if (!task && !taskPages.length) return toast('先选择要保存的页面。', true);
-  const {dialog, body} = dialogFrame(task ? '编辑任务' : '为这组页面留个位置', task ? '改个名字，或留下下一次继续的线索。' : taskPages.length + ' 个页面将保留为一个任务。');
-  const form = el('form', {id: 'task-form'},
+  const source = group ? '当前分组' : scope === 'selection' ? '所选页面' : '当前窗口';
+  const {dialog, body} = dialogFrame(task ? '编辑任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
+  const memberList = task
+    ? el('ul', {class: 'dialog-pages'}, taskPages.map(page => el('li', {}, icon('page'), el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url, title: page.title || page.url}, page.title || domainOf(page.url)))))
+    : el('div', {class: 'task-member-picker'},
+      el('div', {class: 'selection-tools'}, el('span', {id: 'task-members-count', role: 'status'}), el('button', {id: 'task-select-all', type: 'button', class: 'note-toggle'}, '清空选择')),
+      el('div', {class: 'dialog-pages selectable-pages', role: 'group', 'aria-label': '选择要保存的页面'}, taskPages.map((page, index) => el('label', {class: 'task-member'},
+        el('input', {id: 'task-member-' + index, type: 'checkbox', 'data-task-member': index, checked: true}), el('span', {title: page.title || page.url}, page.title || domainOf(page.url))))),
+      el('p', {id: 'task-members-error', class: 'member-validation', role: 'status'}));
+  const form = el('form', {id: 'task-form', novalidate: ''},
     field('task-name', '任务名称', task?.name || group?.name || '', false, {required: true, maxlength: 80, placeholder: '例如：周末路线 / 一个新想法'}),
     field('task-notes', '接下来想做什么？', task?.notes || '', true, {maxlength: 3000, placeholder: '记下一点上下文，下一次就容易继续。'}),
-    taskPages.length > 0 && el('ul', {class: 'dialog-pages'}, taskPages.map((page) => el('li', {}, icon('page'), el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url, title: page.title || page.url}, page.title || domainOf(page.url))))),
+    memberList,
     el('div', {class: 'dialog-actions'}, task && button('删除任务', 'delete-task', {'data-id': task.id}, 'danger subtle'), el('span', {class: 'spacer'}), button('取消', 'close-dialog'), el('button', {type: 'submit', class: 'btn primary'}, icon('save'), task ? '保存修改' : '保存任务')));
   body.append(form);
+  taskEditor = {form, lastField: form.querySelector('#task-name')};
+  form.addEventListener('focusin', event => {
+    if (event.target.matches('input[type="text"],textarea')) taskEditor.lastField = event.target;
+  });
+  const selectedPages = () => task ? taskPages : [...form.querySelectorAll('[data-task-member]:checked')].map(input => taskPages[Number(input.dataset.taskMember)]);
+  const updateMembers = () => {
+    if (task) return;
+    const count = selectedPages().length;
+    form.querySelector('#task-members-count').textContent = '已选 ' + count + ' / ' + taskPages.length + ' 页';
+    form.querySelector('#task-select-all').textContent = count ? '清空选择' : '全选';
+    form.querySelector('#task-members-error').textContent = count > 30 ? '最多保存 30 页，请取消至少 ' + (count - 30) + ' 页。' : count ? '' : '请选择至少一个页面。';
+    form.querySelector('[type="submit"]').disabled = count === 0 || count > 30;
+  };
+  form.addEventListener('change', updateMembers);
+  form.querySelector('#task-select-all')?.addEventListener('click', () => {
+    const checked = selectedPages().length === 0;
+    for (const input of form.querySelectorAll('[data-task-member]')) input.checked = checked;
+    updateMembers();
+  });
+  updateMembers();
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (dialogBusy) return;
     const name = form.querySelector('#task-name').value.trim();
     const notes = form.querySelector('#task-notes').value.trim();
-    if (!name) return showDialogError(body, '请给任务起一个名字。');
-    const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
+    if (!name) { showDialogError(body, '请给任务起一个名字。'); form.querySelector('#task-name').focus(); return; }
+    const pages = selectedPages();
+    if (!task && (pages.length === 0 || pages.length > 30)) { updateMembers(); return; }
+    const submit = form.querySelector('[type="submit"]'), label = task ? '保存修改' : '保存任务';
+    const unlock = lockDialog(); submit.replaceChildren(icon('save'), '正在保存…');
     try {
       if (task) await request('UPDATE_TASK', {id: task.id, name, notes});
-      else await request('SAVE_TASK', {windowId, name, notes, ...(group ? {group} : {tabIds: tabs.map((tab) => tab.id)})});
-      dialog.close(); await refresh({quiet: true}); toast(task ? '任务已更新。' : '任务已保存，下次可以从这里继续。');
-    } catch (error) { showDialogError(body, error.message); submit.disabled = false; }
+      else await request('SAVE_TASK', {windowId, name, notes, ...(group ? {group: {...group, pages}} : {tabIds: pages.map(page => page.id)})});
+      await refresh({quiet: true}); unlock(); dialog.close(); toast(task ? '任务已更新。' : '任务已保存，下次可以从这里继续。');
+    } catch (error) { showDialogError(body, error.message); }
+    finally { unlock(); submit.replaceChildren(icon('save'), label); updateMembers(); }
   });
-  setTimeout(() => form.querySelector('#task-name').focus(), 30);
+  form.querySelector('#task-name').focus();
 }
-function confirmDialog(title, description, label, callback, requireWord = false) {
+function confirmDialog(title, description, label, callback, requireWord = false, onCancel = null) {
   const {dialog, body} = dialogFrame(title);
+  dialogCancelHandler = onCancel;
   const form = el('form', {}, el('p', {class: 'dialog-description'}, description),
     requireWord && field('confirm-word', '输入“清除”确认', '', false, {autocomplete: 'off', required: true}),
-    el('div', {class: 'dialog-actions'}, button('取消', 'close-dialog'), el('button', {type: 'submit', class: 'btn danger'}, label)));
+    el('div', {class: 'dialog-actions'}, button(onCancel ? '取消删除' : '取消', 'close-dialog'), el('button', {type: 'submit', class: 'btn danger'}, label)));
   body.append(form);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (dialogBusy) return;
     if (requireWord && form.querySelector('#confirm-word').value.trim() !== '清除') return showDialogError(body, '请输入“清除”以确认。');
-    const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
-    try { await callback(); dialog.close(); await refresh({quiet: true}); }
-    catch (error) { showDialogError(body, error.message); submit.disabled = false; }
+    const unlock = lockDialog();
+    try { await callback(); await refresh({quiet: true}); unlock(); dialog.close(); }
+    catch (error) { showDialogError(body, error.message); }
+    finally { unlock(); }
   });
+}
+function confirmTaskDeletion(task) {
+  const dialog = document.getElementById('dialog');
+  const nodes = [...dialog.childNodes], editor = taskEditor, scroll = dialog.scrollTop;
+  const field = editor?.lastField || document.activeElement;
+  const selection = field && 'selectionStart' in field ? [field.selectionStart, field.selectionEnd] : null;
+  const pages = dialog.querySelector('.dialog-pages'), pageScroll = pages?.scrollTop || 0;
+  const restoreEditor = () => {
+    dialog.replaceChildren(...nodes); dialogCancelHandler = null; taskEditor = editor; dialog.scrollTop = scroll;
+    if (pages) pages.scrollTop = pageScroll;
+    field?.focus({preventScroll: true});
+    if (selection) field.setSelectionRange(...selection);
+  };
+  confirmDialog('删除这个任务？', '“' + task.name + '”的保存页面和备注将被删除。浏览器中打开的页面不受影响。', '删除任务', async () => { await request('DELETE_TASK', {id: task.id}); toast('任务已删除。'); }, false, restoreEditor);
 }
 async function pollModel(callback) {
   let running = false;
   const timer = setInterval(async () => {
-    if (running) return;
+    if (running || busy('range')) return;
     running = true;
     try { await refresh({quiet: true}); } finally { running = false; }
   }, 1400);
@@ -728,12 +851,15 @@ async function handleAction(action, target) {
     case 'review-map': navigate('map'); break;
     case 'review-tasks': navigate('tasks'); break;
     case 'open-workspace': await openWorkspace({view: 'review', windowId, demo: isDemo}); break;
-    case 'open-full-map': await openWorkspace({view: 'map', range: ui.range, windowId, demo: isDemo}); break;
+    case 'open-full-map': {
+      const [from, to] = ui.selectedEdge.split('\u0000');
+      await openWorkspace({view: 'map', range: ui.range, windowId, demo: isDemo, topic: ui.selectedTag, from, to}); break;
+    }
     case 'open-panel': await openSidePanel({windowId, demo: isDemo}); break;
     case 'nav-pages': navigate('pages'); break;
-    case 'refresh': await operation('refresh', () => refresh()); break;
+    case 'refresh': if (ui.failedRange) await chooseRange(ui.failedRange); else await operation('refresh', () => refresh()); break;
     case 'flush-refresh': await operation('flush', async () => { await request('FLUSH_ACTIVITY'); await refresh(); }); break;
-    case 'page-filter': ui.pageFilter = target.dataset.filter; render(); break;
+    case 'page-filter': ui.pageFilter = target.dataset.filter; render(); announceResults(); break;
     case 'propose': await propose(false); break;
     case 'semantic': await propose(true); break;
     case 'focus-tab':
@@ -744,7 +870,8 @@ async function handleAction(action, target) {
       await request('OPEN_PAGE', {url: target.dataset.url, windowId});
       if (isDemo) toast('示例：真实模式会打开这个页面。');
       break;
-    case 'save-selection': taskDialog(); break;
+    case 'save-window': taskDialog({scope: 'window'}); break;
+    case 'save-selection': taskDialog({scope: 'selection'}); break;
     case 'save-group': {
       const group = ui.state.groups.find((item) => String(item.id) === id);
       if (group) taskDialog({group}); break;
@@ -765,9 +892,12 @@ async function handleAction(action, target) {
     case 'edit-task': { const task = ui.state.tasks.find((item) => String(item.id) === id); if (task) taskDialog({task}); break; }
     case 'delete-task': {
       const task = ui.state.tasks.find((item) => String(item.id) === id);
-      if (task) confirmDialog('删除这个任务？', '“' + task.name + '”的保存页面和备注将被删除。浏览器中打开的页面不受影响。', '删除任务', async () => { await request('DELETE_TASK', {id}); toast('任务已删除。'); });
+      if (task && !dialogBusy) confirmTaskDeletion(task);
       break;
     }
+    case 'toggle-task-note':
+      if (ui.expandedNotes.has(id)) ui.expandedNotes.delete(id); else ui.expandedNotes.add(id);
+      render(); break;
     case 'restore-task':
       await operation('restore-' + id, async () => {
         const result = await request('RESTORE_TASK', {id, windowId}); await refresh({quiet: true});
@@ -781,14 +911,15 @@ async function handleAction(action, target) {
         if (ui.settingsDraft) ui.settingsDraft.tracking = tracking;
         await refresh({quiet: true}); toast(tracking ? '已恢复浏览记录。' : '已暂停浏览记录。');
       }); break;
-    case 'timeline-status': ui.timelineStatus = target.dataset.status; ui.timelineLimit = 60; render(); break;
+    case 'timeline-status': ui.timelineStatus = target.dataset.status; ui.timelineLimit = 60; render(); announceResults(); break;
     case 'timeline-more': ui.timelineLimit += 60; render(); break;
     case 'timeline-tag': ui.timelineTag = target.dataset.tag; ui.timelineLimit = 60; if (ui.view === 'review') navigate('timeline'); else render(); break;
-    case 'clear-timeline-tag': ui.timelineTag = ''; render(); break;
+    case 'clear-timeline-tag': ui.timelineTag = ''; render(); document.getElementById('timeline-filter-' + ui.timelineStatus)?.focus(); announceResults(); break;
+    case 'clear-timeline-filters': ui.timelineTag = ''; ui.timelineStatus = 'all'; ui.timelineLimit = 60; render(); document.getElementById('timeline-filter-all')?.focus(); announceResults(); break;
     case 'tag-timeline': ui.timelineTag = target.dataset.tag; ui.timelineStatus = 'all'; navigate('timeline'); break;
-    case 'select-tag': ui.selectedTag = target.dataset.tag; ui.selectedEdge = ''; render(); break;
+    case 'select-tag': ui.selectedTag = target.dataset.tag; ui.selectedEdge = ''; ui.mapNotice = ''; render(); break;
     case 'map-scope': ui.mapScope = target.dataset.scope; render(); break;
-    case 'select-edge': if (!isPanel) ui.selectedTag = target.dataset.from; ui.selectedEdge = target.dataset.from + '\u0000' + target.dataset.to; render(); break;
+    case 'select-edge': if (!isPanel) ui.selectedTag = target.dataset.from; ui.selectedEdge = target.dataset.from + '\u0000' + target.dataset.to; ui.mapNotice = ''; render(); break;
     case 'save-settings':
       captureSettings();
       await operation('settings', async () => {
@@ -810,7 +941,7 @@ async function handleAction(action, target) {
         await request('CLEAR_ALL'); ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false; toast('全部本机数据已清除。');
       }, true);
       break;
-    case 'close-dialog': document.getElementById('dialog').close(); break;
+    case 'close-dialog': closeDialog(); break;
   }
 }
 document.addEventListener('click', (event) => {
@@ -838,9 +969,9 @@ document.addEventListener('change', (event) => {
     for (const tab of filteredTabs()) { if (target.checked) ui.selected.add(tab.id); else ui.selected.delete(tab.id); }
     render();
   } else if (target.id === 'workspace-view') { navigate(target.value); }
-  else if (target.id === 'map-topic-choice') { ui.selectedTag = target.value; ui.selectedEdge = ''; render(); }
+  else if (target.id === 'map-topic-choice') { ui.selectedTag = target.value; ui.selectedEdge = ''; ui.mapNotice = ''; render(); }
   else if (target.id === 'page-sort') { ui.sort = target.value; render(); }
-  else if (target.dataset.rangeControl) { ui.range = target.value; ui.timelineLimit = 60; operation('range', () => refresh({quiet: true})); }
+  else if (target.dataset.rangeControl) { chooseRange(target.value); }
   else if (target.id.startsWith('setting-')) captureSettings();
 });
 window.addEventListener('hashchange', () => {
@@ -867,5 +998,13 @@ if (isPanel && !isDemo && globalThis.chrome?.tabs) {
   const heartbeat = setInterval(schedule, 15000);
   window.addEventListener('pagehide', () => { clearTimeout(refreshTimer); clearInterval(heartbeat); });
 }
+document.getElementById('dialog').addEventListener('cancel', event => {
+  if (dialogBusy || dialogCancelHandler) { event.preventDefault(); closeDialog(); }
+});
+document.getElementById('dialog').addEventListener('close', () => {
+  dialogCancelHandler = null; taskEditor = null;
+  const target = document.getElementById(dialogReturnFocusId) || document.getElementById('main');
+  target?.focus({preventScroll: true});
+});
 buildShell(); render();
 await refresh({quiet: true});

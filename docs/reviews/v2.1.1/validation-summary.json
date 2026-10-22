@@ -1,0 +1,49 @@
+{
+  "version": "2.1.1",
+  "reviewedBaseline": "b2f9de815437dfec114e5ba8ff56f5e93fb195cf",
+  "reviewSource": "Second independent Taste and Impeccable reviews; implementation regression checks by the main agent, not a new independent review.",
+  "unitTests": {
+    "passed": 61,
+    "failed": 0,
+    "skipped": 0
+  },
+  "build": "passed",
+  "fullConfirmation": {
+    "passedGroups": 15,
+    "screenshots": 29,
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  "targetedChecks": {
+    "passedGroups": 3,
+    "newScreenshots": 0,
+    "reopenedEarlierMapContext": true,
+    "errors": []
+  },
+  "nativeExtension": {
+    "browser": "Chrome for Testing 156.0.8078.47",
+    "platform": "macOS arm64",
+    "isolatedProfile": true,
+    "savedPages": 4,
+    "popupAndNativeSidePanel": true,
+    "groupApplyAndUndo": true,
+    "restoreAndNoDuplicateOnRepeat": true
+  },
+  "data": "Synthetic fixture pages only. Deterministic UI boundaries use the production UI with an in-memory demo transport; native smoke checks use real Chrome APIs. No daily browser history or profile read.",
+  "limits": [
+    "No new model latency benchmark",
+    "No Windows or Edge run",
+    "No long-term real browsing or peak-memory measurement",
+    "No fresh independent review score"
+  ],
+  "packageCreated": false,
+  "curatedScreenshots": [
+    "popup-native-recent.png",
+    "panel-native-tasks.png",
+    "panel-long-320-720.png",
+    "panel-pages-320.png",
+    "panel-save-30-320.png",
+    "panel-map-360.png",
+    "full-map-context-1280.png"
+  ]
+}
