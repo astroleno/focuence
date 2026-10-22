@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "status": "development-baseline",
+  "importDate": "2026-10-22",
+  "source": "user-provided shared conversation attachments",
+  "baseRepository": "https://github.com/astroleno/focuence",
+  "baseCommit": "240eaba9c1b5517b0c3fc96973c195b44042ef32",
+  "archiveDeclaredSourceCommit": "7ccc3d5a2c7f43929e2733ee8e5d83de09baea8f",
+  "artifacts": [
+    {
+      "name": "Focuence-2.0.0-source.zip",
+      "bytes": 188457,
+      "sha256": "1b40a1f5a970ad73edd6ab497304261c4dd3f9dce51ad4a05fc1c1e7c079c276",
+      "verifiedInternalFiles": 44
+    },
+    {
+      "name": "Focuence-2.0.0-offline.zip",
+      "bytes": 24683042,
+      "sha256": "22bde5f7a1ef4067b82b554073478c99774890d0b34c7f4b9edba255d1060ed9",
+      "verifiedInternalFiles": 47
+    }
+  ],
+  "matchingCommonSourceFiles": 34,
+  "verifiedPinnedModelFiles": 7,
+  "modelRevision": "75c43b069aac4d136ba6bc1122f995fedcfd2781",
+  "integrationChanges": [
+    "Ignore generated runtime assets, root ZIP archives and artifact-only checksum metadata",
+    "Clarify baseline status, known defects and validation provenance in README",
+    "Add baseline, product and UI/UX review documents with demo screenshots"
+  ]
+}

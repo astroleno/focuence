@@ -1,55 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Focuence智序",
-  "version": "1.0.0",
-  "description": "智能标签页管理工具，通过AI增强的注意力算法和智能分组技术，帮助用户高效管理浏览器标签页",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs",
-    "tabGroups",
-    "notifications"
-  ],
-  "host_permissions": [
-    "https://yunwu.zeabur.app/*"
-  ],
-  "action": {
-    "default_popup": "popup/index.html",
-    "default_title": "Focuence智序"
-  },
-  "options_page": "options/index.html",
-  "background": {
-    "service_worker": "background.js"
-  },
+  "name": "Focuence 智序 · 本机版",
+  "version": "2.0.0",
+  "minimum_chrome_version": "120",
+  "description": "本机语义分组、任务恢复和注意力时间线。浏览记录与模型推理均留在本机。",
+  "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen"],
+  "action": { "default_popup": "popup/index.html", "default_title": "Focuence 智序" },
+  "options_page": "app/index.html",
+  "background": { "service_worker": "background.js", "type": "module" },
   "commands": {
-    "smart_grouping": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+G",
-        "mac": "Command+Shift+G"
-      },
-      "description": "智能分组标签页"
-    },
-    "cleaning_suggestions": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+C",
-        "mac": "Command+Shift+C"
-      },
-      "description": "显示清理建议"
-    },
-    "toggle_popup": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+F",
-        "mac": "Command+Shift+F"
-      },
-      "description": "打开/关闭扩展面板"
+    "open_workspace": {
+      "suggested_key": { "default": "Ctrl+Shift+F", "mac": "Command+Shift+F" },
+      "description": "打开 Focuence 工作台"
     }
   },
-  "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  },
+  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self'; worker-src 'self'"
   }
 }

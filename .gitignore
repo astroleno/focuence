@@ -1,5 +1,9 @@
 node_modules/
+models/
+vendor/
 dist/
+inference/worker.bundle.js
+inference/worker.bundle.js.map
 *.log
 .DS_Store
 .env
@@ -8,3 +12,8 @@ dist/
 .idea/
 *.swp
 *.swo
+
+# Release artifacts are built from tracked source and model-lock.json.
+/Focuence-*.zip
+/build-info.json
+/FILE_SHA256SUMS.txt
