@@ -1,100 +1,252 @@
+import { el, icon, duration } from '../src/ui.js';
+import { openWorkspace, openSidePanel } from '../src/navigation.js';
+
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
-let state = null;
-let windowId;
-let transport;
-let working = false;
-const element = (id) => document.getElementById(id);
+const byId = id => document.getElementById(id);
+const ui = { state: null, view: 'groups', working: '', form: null, members: new Map(), didPropose: false };
+let windowId, transport;
+let fitFrame;
+function fitPopup() {
+  document.body.style.maxHeight = '600px';
+  cancelAnimationFrame(fitFrame);
+  fitFrame = requestAnimationFrame(() => {
+    fitFrame = requestAnimationFrame(() => {
+      if (document.body.scrollHeight > innerHeight) document.body.style.maxHeight = innerHeight + 'px';
+    });
+  });
+}
+window.addEventListener('resize', fitPopup);
 if (isDemo) {
-  const {createDemoTransport} = await import('../app/demo-data.js');
-  transport = createDemoTransport(); windowId = 1; element('demo-banner').hidden = false;
+  const { createDemoTransport } = await import('../app/demo-data.js');
+  transport = createDemoTransport(); windowId = 1;
 } else {
-  transport = (message) => {
-    if (!globalThis.chrome?.runtime?.sendMessage) throw new Error('请从浏览器的 Focuence 扩展图标打开此面板。');
-    return chrome.runtime.sendMessage(message);
-  };
-  if (globalThis.chrome?.windows?.getCurrent) {
-    try { windowId = (await chrome.windows.getCurrent()).id; } catch { /* Background can resolve the current window. */ }
-  }
+  transport = message => chrome.runtime.sendMessage(message);
+  try { windowId = (await chrome.windows.getCurrent()).id; } catch { /* The backend resolves the window. */ }
 }
 async function request(type, payload = {}) {
-  const response = await transport({target: 'background', type, ...payload});
-  if (!response?.ok) throw new Error(typeof response?.error === 'string' ? response.error : response?.error?.message || '操作没有完成，请稍后重试。');
+  const response = await transport({ target: 'background', type, windowId, ...payload });
+  if (!response?.ok) throw new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。');
   return response.data;
 }
-function showError(error) { element('error').textContent = error.message || String(error); element('error').hidden = false; }
-function duration(ms) {
-  const minutes = Math.floor(Math.max(0, Number(ms) || 0) / 60000);
-  if (!minutes) return Number(ms) > 0 ? '< 1 分钟' : '0 分钟';
-  if (minutes < 60) return minutes + ' 分钟';
-  return Math.floor(minutes / 60) + ' 小时 ' + minutes % 60 + ' 分';
+function feedback(message, error = false) {
+  byId('feedback').hidden = true; byId('error').hidden = true;
+  const region = byId(error ? 'error' : 'feedback');
+  region.textContent = message; region.hidden = !message;
+  fitPopup();
 }
-function domain(tab) { if (tab.domain) return tab.domain; try { return new URL(tab.url).hostname; } catch { return '页面'; } }
-function render() {
-  if (!state) return;
-  const tabs = Array.isArray(state.tabs) ? state.tabs : [];
-  const tracking = state.settings?.tracking !== false;
-  element('duration').textContent = duration(state.stats?.todayForegroundMs);
-  element('tab-count').replaceChildren(document.createTextNode(String(tabs.length)));
-  const countUnit = document.createElement('small'); countUnit.textContent = '页'; element('tab-count').append(countUnit);
-  element('toggle-tracking').textContent = tracking ? '暂停记录' : '恢复记录';
-  element('toggle-tracking').disabled = working;
-  element('status').classList.toggle('paused', !tracking);
-  const statusDot = document.createElement('i');
-  element('status').replaceChildren(statusDot, document.createTextNode(isDemo ? 'DEMO · 独立示例' : tracking ? 'LOCAL · 本机处理' : 'LOCAL · 记录已暂停'));
-  element('quick-group').disabled = working || tabs.filter((tab) => !tab.pinned && !(Number(tab.groupId) >= 0)).length < 2;
-  const list = element('tabs'); list.replaceChildren();
-  if (!tabs.length) {
-    const message = document.createElement('p'); message.className = 'empty'; message.textContent = '当前窗口还没有可整理的网页。'; list.append(message);
-  } else {
-    for (const [index, tab] of tabs.slice(0, 4).entries()) {
-      const row = document.createElement('button'); row.type = 'button'; row.className = 'tab-row'; row.title = '定位 ' + (tab.title || domain(tab));
-      const mark = document.createElement('span'); mark.className = 'domain-mark color-' + index % 4; mark.textContent = domain(tab).replace(/^www\./, '').slice(0, 2); mark.setAttribute('aria-hidden', 'true');
-      const info = document.createElement('span'); info.className = 'tab-info';
-      const title = document.createElement('strong'); title.textContent = tab.title || domain(tab);
-      const meta = document.createElement('small'); meta.textContent = domain(tab) + (tab.pinned ? ' · 已固定' : Number(tab.groupId) >= 0 ? ' · 已分组' : '');
-      info.append(title, meta);
-      const time = document.createElement('span'); time.className = 'tab-time'; time.textContent = duration(tab.foregroundMs);
-      row.append(mark, info, time);
-      row.addEventListener('click', async () => { try { await request('FOCUS_TAB', {tabId: tab.id}); if (isDemo) element('feedback').textContent = '示例：已定位这个页面。'; else window.close(); } catch (error) { showError(error); } });
-      list.append(row);
+function action(label, name, attributes = {}, primary = false, iconName) {
+  return el('button', {id: 'action-' + name + '-' + encodeURIComponent(attributes['data-id'] || attributes['data-view'] || ''), type: 'button', 'data-action': name, disabled: Boolean(ui.working), ...attributes, class: 'button' + (primary ? ' primary' : '') + (attributes.class ? ' ' + attributes.class : '')}, iconName && icon(iconName), label);
+}
+function groupMembers(group) {
+  if (!ui.members.has(group.id)) ui.members.set(group.id, new Set(group.tabIds));
+  return ui.members.get(group.id);
+}
+function selectedGroup(group) {
+  const selected = groupMembers(group);
+  const tabIds = group.tabIds.filter(id => selected.has(id));
+  const urls = new Set(ui.state.tabs.filter(tab => tabIds.includes(tab.id)).map(tab => tab.url));
+  return { ...group, tabIds, pages: group.pages.filter(page => urls.has(page.url)) };
+}
+function groupCard(group) {
+  const selected = groupMembers(group);
+  const tabs = group.tabIds.map(id => ui.state.tabs.find(tab => tab.id === id)).filter(Boolean);
+  return el('article', {class: 'proposal', 'data-group-id': group.id},
+    el('div', {class: 'section-heading'}, el('h3', {}, group.name), el('span', {class: 'secondary'}, selected.size + ' / ' + tabs.length + ' 页')),
+    el('div', {class: 'group-pages'}, tabs.map(tab => el('label', {class: 'page-option'},
+      el('input', {id: 'group-member-' + group.id + '-' + tab.id, type: 'checkbox', 'data-group-member': group.id, 'data-tab-id': tab.id, checked: selected.has(tab.id), disabled: Boolean(ui.working)}),
+      el('span', {title: tab.title || tab.url}, tab.title || tab.domain)))),
+    el('div', {class: 'proposal-actions'},
+      action('存为任务', 'save-group', {'data-id': group.id, disabled: Boolean(ui.working) || selected.size === 0}, false, 'save'),
+      action(ui.working === 'apply-' + group.id ? '正在应用…' : '应用分组', 'apply-group', {'data-id': group.id, disabled: Boolean(ui.working) || selected.size < 2}, true, 'check')));
+}
+function taskCard(task, index) {
+  const preview = task.restorePreview || {reused: 0, willOpen: task.pages.length};
+  return el('article', {class: 'recent-task'},
+    el('h3', {}, task.name),
+    task.notes && el('p', {class: 'task-note'}, task.notes),
+    task.resumePage && el('div', {class: 'resume-page'}, icon('page'), el('span', {title: task.resumePage.title}, task.resumePage.title || new URL(task.resumePage.url).hostname)),
+    task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
+    el('div', {class: 'task-actions'},
+      el('span', {class: 'secondary'}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
+      action(ui.working === 'restore-' + task.id ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id}, index === 0, 'arrow')));
+}
+function saveForm() {
+  const form = ui.form, count = form.selected.size;
+  return el('form', {id: 'save-task-form'},
+    el('div', {class: 'section-heading'}, el('h1', {}, '保存任务'), action('返回', 'cancel-save', {class: 'text-button'})),
+    el('p', {class: 'form-scope secondary'}, form.scope + ' · 已选 ' + count + ' 页'),
+    el('label', {class: 'field'}, el('span', {}, '任务名称'), el('input', {id: 'task-name', name: 'name', required: true, maxlength: 80, value: form.name, placeholder: '正在做的这件事', disabled: Boolean(ui.working)})),
+    el('label', {class: 'field'}, el('span', {}, '下一步'), el('textarea', {id: 'task-notes', name: 'notes', maxlength: 3000, rows: 2, placeholder: '下次回来，先做什么？', disabled: Boolean(ui.working)}, form.notes)),
+    el('div', {class: 'selection-heading'}, el('span', {}, '保存的页面'), action(count ? '清空选择' : '全选', 'toggle-save-all', {class: 'text-button'})),
+    el('div', {class: 'save-pages'}, form.tabs.map(tab => el('label', {class: 'page-option'},
+      el('input', {id: 'save-member-' + tab.id, type: 'checkbox', 'data-save-member': tab.id, checked: form.selected.has(tab.id), disabled: Boolean(ui.working)}),
+      el('span', {title: tab.title || tab.url}, tab.title || tab.domain)))),
+    count > 30 && el('p', {class: 'form-error'}, '每个任务最多保存 30 页，请缩小选择范围。'));
+}
+function renderSaveActions() {
+  const region = byId('save-actions');
+  region.hidden = !ui.form;
+  byId('popup-footer').hidden = Boolean(ui.form);
+  document.body.classList.toggle('saving', Boolean(ui.form));
+  if (!ui.form) { region.replaceChildren(); return; }
+  const count = ui.form.selected.size;
+  region.replaceChildren(
+    el('span', {class: count > 30 ? 'form-error' : 'secondary'}, count > 30 ? '最多保存 30 页' : count ? '已选 ' + count + ' 页' : '请选择页面'),
+    el('button', {id: 'save-task-submit', type: 'submit', form: 'save-task-form', class: 'button primary', disabled: Boolean(ui.working) || count === 0 || count > 30}, icon('save'), ui.working === 'save' ? '正在保存…' : '保存任务'));
+}
+function paint(...content) {
+  const focused = document.activeElement;
+  const id = focused?.id;
+  const selection = focused && 'selectionStart' in focused ? [focused.selectionStart, focused.selectionEnd] : null;
+  byId('popup-main').replaceChildren(...content);
+  fitPopup();
+  const replacement = id && byId(id);
+  if (replacement && !replacement.disabled) {
+    replacement.focus({ preventScroll: true });
+    if (selection && replacement.setSelectionRange && replacement.type !== 'checkbox') {
+      try { replacement.setSelectionRange(...selection); } catch { /* Not every input supports a text range. */ }
     }
   }
-  element('more').textContent = tabs.length > 4 ? '还有 ' + (tabs.length - 4) + ' 个页面，在工作台继续查看。' : tabs.length ? '点击页面可直接定位。' : '打开网页后，点击右上方刷新。';
+}
+function render() {
+  const state = ui.state;
+  byId('open-panel').disabled = !state;
+  byId('toggle-tracking').disabled = !state || Boolean(ui.working);
+  byId('workspace').disabled = Boolean(ui.working);
+  renderSaveActions();
+  if (!state) return;
+  byId('toggle-tracking').textContent = state.settings.tracking ? '暂停记录' : '恢复记录';
+  const main = byId('popup-main');
+  main.setAttribute('aria-busy', String(Boolean(ui.working)));
+  if (ui.form) { paint(saveForm()); return; }
+  const tabs = state.tabs || [];
+  const eligible = tabs.filter(tab => !tab.pinned && Number(tab.groupId) < 0);
+  const groups = state.groups || [];
+  const navigation = el('nav', { class: 'popup-tabs', 'aria-label': '快捷操作' },
+    [['groups', '整理页面'], ['tasks', '最近任务']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
+  const content = [isDemo && el('p', { class: 'demo-note' }, '示例模式 · 仅在本页内存中演示'), navigation];
+  if (ui.view === 'groups') {
+    content.push(el('div', { class: 'window-summary' }, el('div', {},
+      el('h1', {}, '整理当前窗口'), el('p', { class: 'secondary' }, tabs.length + ' 页打开 · ' + eligible.length + ' 页待整理')),
+      action(ui.working === 'propose' ? '正在整理…' : groups.length ? '重新整理' : '生成建议', 'propose', { disabled: Boolean(ui.working) || eligible.length < 2 }, !groups.length, 'layers')));
+    if (groups.length) content.push(el('section', { class: 'proposal-list', 'aria-label': '可直接应用的分组建议' }, groups.map(groupCard)));
+    else content.push(el('div', { class: 'empty' }, icon('layers'), el('p', {}, ui.didPropose ? '暂时没有需要合并的页面' : '先生成建议，再决定如何分组'),
+      el('p', { class: 'secondary' }, '已固定和已有分组的页面会受到保护。')));
+    content.push(el('div', { class: 'secondary-actions' },
+      action('保存窗口', 'save-window', { disabled: Boolean(ui.working) || !tabs.length }, false, 'save'),
+      action('撤销分组', 'undo', { disabled: Boolean(ui.working) || !state.undoAvailable })));
+    content.push(action(ui.working === 'semantic' ? '本地语义分析中…' : '需要更细的建议？使用本机模型', 'semantic', { class: 'text-button', disabled: Boolean(ui.working) || !state.settings.semantic || eligible.length < 2 }));
+  } else {
+    content.push(el('div', { class: 'section-heading' }, el('h1', {}, '从上次继续'), el('span', { class: 'secondary' }, state.tasks.length + ' 个任务')));
+    content.push(state.tasks.length ? el('section', { class: 'task-list', 'aria-label': '最近保存或访问的任务' }, state.tasks.slice(0, 3).map(taskCard)) :
+      el('div', { class: 'empty' }, icon('folder'), el('p', {}, '给正在做的事留个位置'), el('p', { class: 'secondary' }, '保存相关页面，再写一句下次要做什么。')));
+    content.push(action('保存当前窗口 · ' + tabs.length + ' 页', 'save-window', { class: 'button full', disabled: Boolean(ui.working) || !tabs.length }));
+  }
+  paint(...content.filter(item => item != null && item !== false));
 }
 async function refresh() {
-  element('error').hidden = true;
-  try { state = await request('GET_STATE', {windowId}); render(); }
-  catch (error) { showError(error); element('tabs').replaceChildren(); element('more').textContent = '可尝试重新加载扩展，再打开面板。'; }
+  ui.state = await request('GET_STATE', { range: 'today' });
+  render();
 }
-async function openWorkspace(view = 'pages') {
-  if (isDemo) { location.href = '../app/index.html?demo=1#' + view; return; }
-  const baseUrl = chrome.runtime.getURL('app/index.html');
-  const url = baseUrl + (windowId ? '?windowId=' + windowId : '') + '#' + view;
-  const allTabs = await chrome.tabs.query({});
-  const existing = allTabs.find((tab) => typeof tab.url === 'string' && tab.url.startsWith(baseUrl));
-  if (existing) {
-    await chrome.tabs.update(existing.id, {url, active: true});
-    await chrome.windows.update(existing.windowId, {focused: true});
-  } else await chrome.tabs.create({url, ...(windowId ? {windowId} : {})});
-  window.close();
+async function operation(key, callback) {
+  if (ui.working) return;
+  ui.working = key; feedback(''); render();
+  try { await callback(); } catch (error) { feedback(error.message, true); }
+  finally { ui.working = ''; render(); }
 }
-element('workspace').addEventListener('click', () => openWorkspace('tasks').catch(showError));
-element('settings').addEventListener('click', () => openWorkspace('settings').catch(showError));
-element('refresh').addEventListener('click', refresh);
-element('toggle-tracking').addEventListener('click', async () => {
-  if (!state || working) return;
-  working = true; render();
-  try { await request('UPDATE_SETTINGS', {patch: {tracking: !state.settings.tracking}}); await refresh(); }
-  catch (error) { showError(error); } finally { working = false; render(); }
+function startSave(group) {
+  const selected = group ? new Set(selectedGroup(group).tabIds) : new Set(ui.state.tabs.map(tab => tab.id));
+  const tabs = group ? ui.state.tabs.filter(tab => group.tabIds.includes(tab.id)) : ui.state.tabs;
+  ui.form = { name: group?.name || '', notes: '', scope: group ? '分组「' + group.name + '」' : '当前窗口', tabs, selected };
+  feedback(''); render(); byId('task-name').focus();
+}
+async function performAction(actionName, target) {
+  const id = target.dataset.id;
+  switch (actionName) {
+    case 'view': ui.view = target.dataset.view; feedback(''); render(); break;
+    case 'propose':
+    case 'semantic':
+      await operation(actionName, async () => {
+        let timer;
+        if (actionName === 'semantic') {
+          feedback('正在本机分析，也可以打开侧栏继续浏览。');
+          timer = setInterval(() => refresh().catch(() => {}), 1000);
+        }
+        try {
+          const result = await request('PROPOSE_GROUPS', { semantic: actionName === 'semantic' });
+          ui.didPropose = true; ui.members.clear(); await refresh();
+          if (actionName === 'semantic' && result.method !== 'semantic') feedback('本地语义暂不可用，已保留快速规则建议。可以继续应用，或稍后重试。', true);
+          else feedback(result.groups.length ? '建议已就绪，勾选页面后直接应用。' : '没有发现适合合并的页面。');
+        } finally { clearInterval(timer); }
+      }); break;
+    case 'apply-group': {
+      const group = ui.state.groups.find(item => item.id === id);
+      if (!group) throw new Error('建议已更新，请重新整理。');
+      const selected = selectedGroup(group);
+      await operation('apply-' + id, async () => {
+        await request('APPLY_GROUP', { group: selected }); await refresh();
+        feedback('已将 ' + selected.tabIds.length + ' 页放入「' + selected.name + '」，可以撤销。');
+      }); break;
+    }
+    case 'undo':
+      await operation('undo', async () => { const result = await request('UNDO_GROUP'); await refresh(); feedback(result.restored ? '已撤销最近一次分组。' : '没有可以撤销的分组。'); }); break;
+    case 'save-window': startSave(); break;
+    case 'save-group': startSave(ui.state.groups.find(item => item.id === id)); break;
+    case 'cancel-save': ui.form = null; feedback(''); render(); break;
+    case 'toggle-save-all': {
+      ui.form.selected = ui.form.selected.size ? new Set() : new Set(ui.form.tabs.map(tab => tab.id)); render(); break;
+    }
+    case 'restore-task':
+      await operation('restore-' + id, async () => {
+        const result = await request('RESTORE_TASK', { id }); await refresh();
+        const failed = result.failed?.length || 0;
+        feedback('复用 ' + result.reused + ' 页，新开 ' + result.opened + ' 页' + (failed ? '；' + failed + ' 页未恢复，可重试。' : '，已接回上次页面。'), failed > 0);
+      }); break;
+  }
+}
+document.addEventListener('click', event => {
+  const target = event.target.closest('[data-action]');
+  if (!target || target.disabled) return;
+  performAction(target.dataset.action, target).catch(error => feedback(error.message, true));
 });
-element('quick-group').addEventListener('click', async () => {
-  if (working) return;
-  working = true; element('quick-group').textContent = '正在整理…'; render();
-  try {
-    const result = await request('PROPOSE_GROUPS', {windowId, semantic: false});
-    element('feedback').textContent = '已找到 ' + (result?.groups?.length || 0) + ' 组建议，正在打开工作台。';
-    await openWorkspace('pages');
-  } catch (error) { showError(error); }
-  finally { working = false; element('quick-group').textContent = '快速整理'; render(); }
+document.addEventListener('input', event => {
+  if (!ui.form) return;
+  if (event.target.name === 'name') ui.form.name = event.target.value;
+  if (event.target.name === 'notes') ui.form.notes = event.target.value;
 });
-await refresh();
+document.addEventListener('change', event => {
+  const target = event.target;
+  if (target.dataset.groupMember) {
+    const group = ui.state.groups.find(item => item.id === target.dataset.groupMember);
+    const selected = groupMembers(group), id = Number(target.dataset.tabId);
+    if (target.checked) selected.add(id); else selected.delete(id);
+    render();
+  } else if (target.dataset.saveMember) {
+    const id = Number(target.dataset.saveMember);
+    if (target.checked) ui.form.selected.add(id); else ui.form.selected.delete(id);
+    render();
+  }
+});
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'save-task-form') return;
+  event.preventDefault();
+  const form = ui.form;
+  if (!form || !form.name.trim() || !form.selected.size || form.selected.size > 30) return;
+  operation('save', async () => {
+    const task = await request('SAVE_TASK', { name: form.name.trim(), notes: form.notes.trim(), tabIds: [...form.selected] });
+    ui.form = null; ui.view = 'tasks'; await refresh();
+    feedback('「' + task.name + '」已保存，共 ' + task.pages.length + ' 页。');
+  });
+});
+byId('open-panel').addEventListener('click', () => {
+  openSidePanel({ windowId, demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
+});
+byId('workspace').addEventListener('click', () => {
+  openWorkspace({ windowId, view: 'review', demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
+});
+byId('toggle-tracking').addEventListener('click', () => operation('tracking', async () => {
+  const tracking = !ui.state.settings.tracking;
+  await request('UPDATE_SETTINGS', { patch: { tracking } }); await refresh();
+  feedback(tracking ? '浏览记录已恢复。' : '浏览记录已暂停，已保存任务仍可继续。');
+}));
+try { await refresh(); } catch (error) { byId('popup-main').replaceChildren(el('p', {}, '暂时无法读取窗口，请刷新扩展后重试。')); feedback(error.message, true); }

@@ -141,7 +141,9 @@ export function projectIdentity(rawUrl) {
   const parts = decoded(url.pathname).split('/').filter(Boolean);
   const reserved = new Set(['search', 'explore', 'topics', 'settings', 'notifications', 'marketplace', 'login', 'signup', 'orgs', 'users', 'collections', 'features', 'pricing', 'about']);
   if (['github.com', 'codeberg.org', 'bitbucket.org', 'gitlab.com'].includes(host) && parts.length >= 2 && !reserved.has(parts[0].toLowerCase())) {
-    const segments = host === 'gitlab.com' && parts.includes('-') ? parts.slice(0, parts.indexOf('-')) : parts.slice(0, 2);
+    const segments = host === 'gitlab.com'
+      ? (parts.includes('-') ? parts.slice(0, parts.indexOf('-')) : parts)
+      : parts.slice(0, 2);
     const name = segments.join('/').replace(/\.git$/i, '');
     return { kind: 'repo', key: `repo:${host}/${name.toLowerCase()}`, name };
   }

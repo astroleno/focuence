@@ -297,3 +297,72 @@ export function computeAnalytics(options = {}) {
   });
   return { stats, transitions, suggestions };
 }
+
+/** Local calendar boundaries keep yesterday and seven-day views correct across DST. */
+export function calendarRange(key = 'week', now = Date.now()) {
+  const selected = ['today', 'yesterday', 'week'].includes(key) ? key : 'week';
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  if (selected === 'yesterday') start.setDate(start.getDate() - 1);
+  if (selected === 'week') start.setDate(start.getDate() - 6);
+  return {
+    key: selected, label: { today: '今天', yesterday: '昨天', week: '最近 7 天' }[selected],
+    startedAt: start.getTime(), endedAt: selected === 'yesterday' ? today.getTime() : now,
+  };
+}
+
+function clipToRange(segments, from, until) {
+  return segments.flatMap(segment => {
+    const startedAt = Math.max(from, segment.startedAt);
+    const endedAt = Math.min(until, segment.endedAt);
+    if (endedAt <= startedAt) return [];
+    const share = (endedAt - startedAt) / Math.max(1, segment.endedAt - segment.startedAt);
+    return [{ ...segment, startedAt, endedAt, foregroundMs: segment.foregroundMs * share }];
+  });
+}
+
+/** Nodes, edges and summaries always use the same records; only the UI list is capped. */
+export function computeReview({ segments = [], tasks = [], range = 'week', now = Date.now() } = {}) {
+  const bounds = calendarRange(range, now);
+  const scoped = clipToRange(mergeSegmentSnapshots(segments, now), bounds.startedAt, bounds.endedAt);
+  const observed = observedTransitions(scoped);
+  const stats = summarizeToday(scoped, tasks, observed, bounds.endedAt, bounds.startedAt);
+  const evidence = new Map();
+  for (const transition of observed) {
+    const from = primaryTag(transition.from), to = primaryTag(transition.to);
+    if (from === to) continue;
+    const key = JSON.stringify([from, to]);
+    const items = evidence.get(key) || [];
+    items.push({
+      fromTitle: transition.from.title || transition.from.url, fromUrl: transition.from.url,
+      toTitle: transition.to.title || transition.to.url, toUrl: transition.to.url,
+      at: transition.to.startedAt,
+    });
+    if (items.length > 3) items.shift();
+    evidence.set(key, items);
+  }
+  const daily = [];
+  const cursor = new Date(bounds.startedAt);
+  const dayCount = bounds.key === 'week' ? 7 : 1;
+  for (let index = 0; index < dayCount; index++) {
+    const from = cursor.getTime();
+    cursor.setDate(cursor.getDate() + 1);
+    const until = Math.min(cursor.getTime(), bounds.endedAt);
+    const records = clipToRange(scoped, from, until);
+    const day = summarizeToday(records, tasks, [], until, from);
+    daily.push({
+      startedAt: from, endedAt: until, foregroundMs: day.todayForegroundMs, pages: day.todayPages,
+      switches: observed.filter(item => item.to.startedAt >= from && item.to.startedAt < until).length,
+    });
+  }
+  return {
+    range: bounds, segments: scoped, nodes: stats.tags,
+    transitions: summarizeTransitions(observed).map(edge => ({ ...edge, examples: (evidence.get(JSON.stringify([edge.from, edge.to])) || []).reverse() })), daily,
+    summary: {
+      foregroundMs: stats.todayForegroundMs, pages: stats.todayPages, switches: stats.todaySwitches,
+      idleMs: stats.todayIdleMs, unknownMs: stats.todayUnknownMs,
+      activeDays: daily.filter(day => day.foregroundMs > 0).length,
+    },
+  };
+}

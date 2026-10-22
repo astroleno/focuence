@@ -12,8 +12,8 @@ OUT = ROOT / 'dist'
 VERSION = json.loads((ROOT / 'manifest.json').read_text())['version']
 BASE = f'Focuence-{VERSION}'
 STAMP = (2026, 10, 22, 0, 0, 0)
-COMMON_FILES = ['manifest.json', 'background.js', 'README.md', 'INSTALL.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md', 'model-lock.json']
-COMMON_DIRS = ['app', 'src', 'popup', 'icons', 'options', 'licenses', 'docs']
+COMMON_FILES = ['manifest.json', 'background.js', 'README.md', 'INSTALL.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md', 'PRODUCT.md', 'DESIGN.md', 'model-lock.json']
+COMMON_DIRS = ['app', 'panel', 'src', 'popup', 'icons', 'options', 'licenses', 'docs']
 
 def files_in(directory):
     path = ROOT / directory
@@ -42,10 +42,17 @@ def main():
     source.extend(ROOT / 'inference' / name for name in ['offscreen.html', 'offscreen.js', 'worker.js'])
     try:
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=normal'], cwd=ROOT, text=True).strip())
     except (subprocess.CalledProcessError, FileNotFoundError):
         commit = 'source-archive'
+        dirty = None
+    source_hash = hashlib.sha256()
+    for path in sorted(set(source), key=lambda item: item.relative_to(ROOT).as_posix()):
+        name = path.relative_to(ROOT).as_posix()
+        source_hash.update(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {name}\n'.encode())
     build_info = json.dumps({
         'version':VERSION,'releaseDate':'2026-10-22','sourceCommit':commit,
+        'sourceDirty':dirty,'sourceTreeSha256':source_hash.hexdigest(),
         'baseRepository':'https://github.com/astroleno/focuence',
         'baseCommit':'240eaba9c1b5517b0c3fc96973c195b44042ef32',
         'modelRepository':lock['repository'],'modelRevision':lock['revision'],

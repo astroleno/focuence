@@ -1,3 +1,6 @@
+import { computeAnalytics, computeReview } from '../src/analytics.js';
+import { taskViews } from '../src/tasks.js';
+
 // Explicit, memory-only preview. This module never reads or writes extension storage.
 // Loaded only when the workbench URL contains ?demo=1.
 export function createDemoTransport() {
@@ -82,42 +85,14 @@ export function createDemoTransport() {
     }).filter((group) => group.tabIds.length >= 2);
   }
   groups = makeGroups(false);
-  function analytics() {
-    const todays = segments.filter((segment) => segment.startedAt >= midnight && segment.status === 'active');
-    const tagMap = new Map();
-    for (const segment of todays) {
-      const tags = segment.tags.length ? segment.tags : ['未分类'];
-      for (const tag of tags) {
-        const entry = tagMap.get(tag) || {tag, foregroundMs: 0, visits: 0};
-        entry.foregroundMs += segment.foregroundMs / tags.length;
-        entry.visits++;
-        tagMap.set(tag, entry);
-      }
-    }
-    const transitions = [];
-    const chronological = segments.slice().sort((a, b) => a.startedAt - b.startedAt);
-    for (let i = 1; i < chronological.length; i++) {
-      const before = chronological[i - 1], after = chronological[i];
-      if (before.status !== 'active' || after.status !== 'active' || after.startedAt - before.endedAt > 30 * minute) continue;
-      const from = before.tags[0], to = after.tags[0];
-      if (!from || !to || from === to) continue;
-      let entry = transitions.find((edge) => edge.from === from && edge.to === to);
-      if (!entry) { entry = {from, to, count: 0, sessions: 1, probability: 0, lastSeen: after.startedAt}; transitions.push(entry); }
-      entry.count++;
-    }
-    transitions.forEach((edge) => {
-      edge.probability = edge.count / transitions.filter((other) => other.from === edge.from).reduce((sum, other) => sum + other.count, 0);
-    });
+  function state(range = 'week') {
+    const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
+    const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      stats: {todayForegroundMs: todays.reduce((sum, segment) => sum + segment.foregroundMs, 0), todayPages: new Set(todays.map((segment) => segment.pageId)).size, todaySwitches: Math.max(0, todays.length - 1), totalTasks: tasks.length, tags: [...tagMap.values()].sort((a, b) => b.foregroundMs - a.foregroundMs)},
-      transitions,
-      suggestions: []
-    };
-  }
-  function state() {
-    return {
-      version: '2.0.0', settings, tabs, tasks, segments, groups, model, undoAvailable: Boolean(lastApply), ...analytics(),
-      trackingState: {status: settings.tracking ? 'active' : 'paused', activeTabId: 101, lastUpdatedAt: now}
+      version: '2.1.0', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
+      groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
+      trackingState: { status: settings.tracking ? 'active' : 'paused', activeTabId: tabs.find(tab => tab.active)?.id, lastUpdatedAt: Date.now() }
     };
   }
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -125,7 +100,7 @@ export function createDemoTransport() {
     try {
       let result;
       switch (message.type) {
-        case 'GET_STATE': result = state(); break;
+        case 'GET_STATE': result = state(message.range); break;
         case 'PROPOSE_GROUPS':
           if (message.semantic) {
             model = {status: 'loading', name: model.name, progress: .45};
@@ -141,6 +116,7 @@ export function createDemoTransport() {
           if (eligible.length < 2) throw new Error('该建议里已没有至少两个可分组的页面。');
           lastApply = eligible.map((tab) => ({id: tab.id, groupId: tab.groupId}));
           eligible.forEach((tab) => { tab.groupId = 99; });
+          groups = makeGroups(false);
           result = {groupId: 99}; break;
         }
         case 'UNDO_GROUP':
@@ -150,6 +126,7 @@ export function createDemoTransport() {
         case 'SAVE_TASK': {
           const selectedPages = message.group ? message.group.pages.map((page) => ({pageId: page.id || page.pageId, title: page.title, url: page.url, tags: page.tags || []})) : tabs.filter((tab) => (message.tabIds || []).includes(tab.id)).map((tab) => ({pageId: tab.pageId, title: tab.title, url: tab.url, tags: tab.tags || []}));
           if (!selectedPages.length) throw new Error('请先选择要保存的页面。');
+          if (selectedPages.length > 30) throw new Error('每个任务最多保存 30 页。');
           const task = {id: 'demo-task-' + Date.now(), name: message.name, notes: message.notes || '', pages: selectedPages.slice(0, 30), color: message.group?.color || 'green', locked: true, createdAt: Date.now(), updatedAt: Date.now()};
           tasks.unshift(task); result = task; break;
         }
@@ -169,7 +146,10 @@ export function createDemoTransport() {
             if (tabs.some((tab) => tab.url === page.url)) reused++;
             else { tabs.push({id: nextTabId++, pageId: page.pageId, title: page.title, url: page.url, domain: new URL(page.url).hostname, tags: page.tags, foregroundMs: 0, pinned: false, groupId: -1, windowId: 1}); opened++; }
           }
-          result = {opened, reused}; break;
+          task.lastRestoredAt = Date.now();
+          const active = tabs.find(tab => task.pages.some(page => page.url === tab.url));
+          if (active) tabs.forEach(tab => { tab.active = tab.id === active.id; });
+          result = {opened, reused, failed: []}; break;
         }
         case 'FOCUS_TAB':
           if (!tabs.some((tab) => tab.id === message.tabId)) throw new Error('页面已关闭。');

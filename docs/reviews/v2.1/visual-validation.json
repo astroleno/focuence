@@ -1,0 +1,355 @@
+{
+  "status": "passed",
+  "fixtures": "synthetic data in isolated profiles",
+  "screens": [
+    {
+      "name": "popup-groups-demo",
+      "width": 400,
+      "height": 600,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "panel-tasks-demo",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstTask": {
+        "top": 222.5,
+        "bottom": 416.78125
+      },
+      "continueAction": {
+        "top": 362.28125,
+        "bottom": 394.28125
+      },
+      "nextTask": {
+        "top": 433.78125,
+        "bottom": 458.96875
+      },
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "panel-path-demo",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "panel-map-demo",
+      "width": 360,
+      "height": 765,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "panel-320-demo",
+      "width": 320,
+      "height": 720,
+      "horizontalOverflow": false,
+      "firstTask": {
+        "top": 222.5,
+        "bottom": 416.78125
+      },
+      "continueAction": {
+        "top": 362.28125,
+        "bottom": 394.28125
+      },
+      "nextTask": {
+        "top": 433.78125,
+        "bottom": 458.96875
+      },
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "weekly-desktop-demo",
+      "width": 1440,
+      "height": 960,
+      "horizontalOverflow": false,
+      "firstTask": {
+        "top": 374.1875,
+        "bottom": 562.578125
+      },
+      "continueAction": {
+        "top": 507.578125,
+        "bottom": 539.578125
+      },
+      "nextTask": {
+        "top": 582.578125,
+        "bottom": 610.21875
+      },
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "weekly-narrow-demo",
+      "width": 390,
+      "height": 844,
+      "horizontalOverflow": false,
+      "firstTask": {
+        "top": 947.296875,
+        "bottom": 1135.6875
+      },
+      "continueAction": {
+        "top": 1080.6875,
+        "bottom": 1112.6875
+      },
+      "nextTask": {
+        "top": 1155.6875,
+        "bottom": 1183.328125
+      },
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "full-map-demo",
+      "width": 1440,
+      "height": 960,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "full-map-narrow-demo",
+      "width": 390,
+      "height": 844,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "settings-demo",
+      "width": 1440,
+      "height": 960,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    },
+    {
+      "name": "pages-demo",
+      "width": 1440,
+      "height": 960,
+      "horizontalOverflow": false,
+      "firstTask": null,
+      "continueAction": null,
+      "nextTask": null,
+      "duplicateIds": [],
+      "bodyFont": "14px",
+      "errors": []
+    }
+  ],
+  "checks": [
+    {
+      "saveLayout": {
+        "height": 520,
+        "saveTop": 469.5,
+        "saveBottom": 507.5,
+        "scrollContainers": [
+          {
+            "class": "",
+            "id": "popup-main",
+            "overflow": "auto"
+          },
+          {
+            "class": "save-pages",
+            "id": "",
+            "overflow": "visible"
+          }
+        ],
+        "headerTop": 0
+      }
+    },
+    {
+      "saveLayout": {
+        "height": 600,
+        "saveTop": 549.5,
+        "saveBottom": 587.5,
+        "scrollContainers": [
+          {
+            "class": "",
+            "id": "popup-main",
+            "overflow": "auto"
+          },
+          {
+            "class": "save-pages",
+            "id": "",
+            "overflow": "visible"
+          }
+        ],
+        "headerTop": 0
+      }
+    },
+    "All 12 selected pages saved; empty selection cannot submit",
+    "Task editor Escape restores focus; delete is in editor; map Enter keeps focus and evidence; expanded range preserved"
+  ],
+  "stress": [
+    {
+      "count": 4,
+      "dense": false,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 1",
+        "Blender 材质、光照与渲染研究",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 3"
+      ],
+      "edgeCount": 2,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 1,
+      "errors": []
+    },
+    {
+      "count": 4,
+      "dense": true,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 3",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 1",
+        "Blender 材质、光照与渲染研究"
+      ],
+      "edgeCount": 12,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 6,
+      "errors": []
+    },
+    {
+      "count": 8,
+      "dense": false,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 5",
+        "跨页面资料研究与实际访问路径主题 4",
+        "跨页面资料研究与实际访问路径主题 3",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 1",
+        "Blender 材质、光照与渲染研究",
+        "跨页面资料研究与实际访问路径主题 6",
+        "跨页面资料研究与实际访问路径主题 7"
+      ],
+      "edgeCount": 6,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 1,
+      "errors": []
+    },
+    {
+      "count": 8,
+      "dense": true,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 4",
+        "跨页面资料研究与实际访问路径主题 5",
+        "跨页面资料研究与实际访问路径主题 6",
+        "跨页面资料研究与实际访问路径主题 7",
+        "Blender 材质、光照与渲染研究",
+        "跨页面资料研究与实际访问路径主题 1",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 3"
+      ],
+      "edgeCount": 56,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 14,
+      "errors": []
+    },
+    {
+      "count": 20,
+      "dense": false,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 17",
+        "跨页面资料研究与实际访问路径主题 16",
+        "跨页面资料研究与实际访问路径主题 15",
+        "跨页面资料研究与实际访问路径主题 14",
+        "跨页面资料研究与实际访问路径主题 13",
+        "跨页面资料研究与实际访问路径主题 12",
+        "跨页面资料研究与实际访问路径主题 11",
+        "跨页面资料研究与实际访问路径主题 10",
+        "跨页面资料研究与实际访问路径主题 9",
+        "跨页面资料研究与实际访问路径主题 8",
+        "跨页面资料研究与实际访问路径主题 7",
+        "跨页面资料研究与实际访问路径主题 6",
+        "跨页面资料研究与实际访问路径主题 5",
+        "跨页面资料研究与实际访问路径主题 4",
+        "跨页面资料研究与实际访问路径主题 3",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 1",
+        "Blender 材质、光照与渲染研究",
+        "跨页面资料研究与实际访问路径主题 18",
+        "跨页面资料研究与实际访问路径主题 19"
+      ],
+      "edgeCount": 18,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 2,
+      "errors": []
+    },
+    {
+      "count": 20,
+      "dense": true,
+      "labels": [
+        "跨页面资料研究与实际访问路径主题 1",
+        "跨页面资料研究与实际访问路径主题 15",
+        "跨页面资料研究与实际访问路径主题 8",
+        "跨页面资料研究与实际访问路径主题 11",
+        "跨页面资料研究与实际访问路径主题 18",
+        "跨页面资料研究与实际访问路径主题 4",
+        "跨页面资料研究与实际访问路径主题 16",
+        "跨页面资料研究与实际访问路径主题 2",
+        "跨页面资料研究与实际访问路径主题 9",
+        "跨页面资料研究与实际访问路径主题 14",
+        "跨页面资料研究与实际访问路径主题 7",
+        "Blender 材质、光照与渲染研究",
+        "跨页面资料研究与实际访问路径主题 12",
+        "跨页面资料研究与实际访问路径主题 19",
+        "跨页面资料研究与实际访问路径主题 5",
+        "跨页面资料研究与实际访问路径主题 10",
+        "跨页面资料研究与实际访问路径主题 17",
+        "跨页面资料研究与实际访问路径主题 3",
+        "跨页面资料研究与实际访问路径主题 13",
+        "跨页面资料研究与实际访问路径主题 6"
+      ],
+      "edgeCount": 380,
+      "overflow": false,
+      "clippedNames": 0,
+      "focusedEdgeCount": 38,
+      "errors": []
+    }
+  ],
+  "colors": {
+    "body": 14.389126423339746,
+    "auxiliary": 5.3866770877857,
+    "edge": 5.530226883126151
+  }
+}

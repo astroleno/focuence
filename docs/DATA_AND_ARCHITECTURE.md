@@ -1,6 +1,6 @@
 # Focuence 2.0：数据与实现说明
 
-版本：2.0.0
+版本：2.1.0
 
 更新日期：2026 年 10 月 22 日
 
@@ -27,11 +27,19 @@
 | [`src/store.js`](../src/store.js) | IndexedDB 读写、原子保存、保留期清理、导出与清除 |
 | [`src/analytics.js`](../src/analytics.js) | 今日统计、主标签有向转移、低样本回退与轻量建议 |
 | [`inference/worker.js`](../inference/worker.js) | 本地 BGE 向量推理，使用随包提供的 ONNX／WASM 文件 |
-| `app/`、`popup/` | 完整工作台和快捷入口，通过后台消息接口读取状态与提交操作 |
+| `app/`、`panel/`、`popup/` | 完整回顾页、原生侧栏和短操作弹窗，共享后台消息与同一份本机数据 |
+| [`src/tasks.js`](../src/tasks.js) | 去重恢复计划、继续页面、复用/新开预览及最近任务排序 |
+| [`src/ui.js`](../src/ui.js)、[`src/navigation.js`](../src/navigation.js) | 共享渲染和三层入口导航；侧栏在用户点击内直接调用原生 API |
 
 界面通过 `chrome.runtime.sendMessage({target:'background', type, ...payload})` 调用后台，结果统一为 `{ok:true,data}` 或 `{ok:false,error}`。读取当前浏览器上下文的函数本身不写历史；实际记录走活动队列，再由 `saveActivity` 在同一数据库事务中保存状态和片段。
 
 `GET_STATE` 会先在队列中对当前状态做一次核对，再读取统计。用于显示的临时片段预览不修改传入状态，并按 segment ID 覆盖已有快照；不会把预览当成一次新访问重复累计。
+
+2.1 的 `GET_STATE {windowId, range}` 支持 `today / yesterday / week`，返回 `attention {range, summary, nodes, daily}`。后台以完整选定范围计算节点、边和概况；最新 2,000 条限制只作用于列表。七天以本地日历计算，使用日期加减而不是固定 24 小时，覆盖夏令时边界。侧栏地图仅预览主要五个主题；完整地图和关系表包含全部主题与关系。
+
+任务保存兼容新增 `lastRestoredAt`、`lastActivePageId` 和 `lastRestoreResult {at, opened, reused, failedCount}`，数据库结构版本不变。恢复根据当前窗口的真实网址计算缺页，复用已打开页面；逐页失败不阻止其余页面恢复。结果先持久化再激活页面，使弹窗关闭后仍保留失败提示。继续页优先为任务中当前活动页面，其次为近七天内最近访问页，再退回已记住的恢复页或首个保存页。
+
+各入口与验收边界详见 [V2_EXTENSION_SURFACES.md](V2_EXTENSION_SURFACES.md)。
 
 ## 3. 本地分组：规则先可用，模型按需增强
 

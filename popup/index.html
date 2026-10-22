@@ -4,33 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Focuence 智序</title>
+  <title>Focuence · 接着做</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <header class="popup-header">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><strong>Focuence</strong><span>智序</span></div></div>
-    <button class="icon-button" id="settings" title="打开设置" aria-label="打开设置">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1Z"/></svg>
-    </button>
+    <a class="brand" href="#" aria-label="Focuence"><img src="../icons/icon-48.png" width="24" height="24" alt=""><strong>Focuence</strong></a>
+    <button type="button" id="open-panel" class="panel-link" disabled>打开侧栏 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3L10 14M10 5H4v15h15v-6"/></svg></button>
   </header>
-  <main>
-    <div id="demo-banner" class="demo-banner" hidden>示例模式 · 页面与时长为示例，不写入真实记录。</div>
-    <div class="status-line"><span id="status"><i></i>LOCAL · 本机处理</span><button id="toggle-tracking" disabled>暂停记录</button></div>
-    <section class="overview" aria-label="今日浏览概况">
-      <div><p>今日前台停留</p><strong id="duration">—</strong></div>
-      <div><p>当前页面</p><strong id="tab-count">—<small>页</small></strong></div>
-    </section>
-    <div id="error" class="error" role="alert" hidden></div>
-    <section class="pages-section" aria-label="当前窗口页面">
-      <div class="section-title"><h1>此刻，打开着</h1><button class="icon-button" id="refresh" title="刷新页面" aria-label="刷新页面"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5 7a8 8 0 0 1 13-2l2 3M4 16l2 3a8 8 0 0 0 13-2"/></svg></button></div>
-      <div id="tabs" class="tab-list"><p class="empty">正在读取当前页面…</p></div>
-      <p id="more" class="more"></p>
-    </section>
-    <div class="actions"><button id="quick-group" class="button secondary" disabled>快速整理</button><button id="workspace" class="button primary">打开任务工作台<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg></button></div>
-    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-  </main>
-  <footer><span class="privacy-dot"></span>记录与模型都在本机<span>前台时长 ≠ 实际注意力</span></footer>
+  <main id="popup-main" aria-busy="true"><p class="loading">正在读取当前窗口…</p></main>
+  <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+  <div id="error" class="error" role="alert" hidden></div>
+  <div id="save-actions" class="save-actions" hidden></div>
+  <footer id="popup-footer">
+    <button type="button" id="toggle-tracking" disabled>暂停记录</button>
+    <button type="button" id="workspace">完整回顾</button>
+  </footer>
 </body>
 </html>

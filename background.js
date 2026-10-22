@@ -1,10 +1,11 @@
 import { createActivityState, reduceActivity, previewActivity } from './src/activity.js';
 import { openStore } from './src/store.js';
-import { computeAnalytics } from './src/analytics.js';
+import { computeAnalytics, computeReview, calendarRange } from './src/analytics.js';
+import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
 import { proposeGroups } from './src/grouping.js';
 
-const VERSION = '2.0.0';
+const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
@@ -189,7 +190,7 @@ async function getState(message) {
   await queueActivity(recordCurrent);
   const now = Date.now(), windowId = await targetWindow(message.windowId);
   const [tabs, tasks, saved, pages] = await Promise.all([
-    eligibleTabs(windowId), store.getTasks(), store.listSegments({ since: now - 7 * 86400000 }), store.getPages(),
+    eligibleTabs(windowId), store.getTasks(), store.listSegments({ since: calendarRange('week', now).startedAt }), store.getPages(),
   ]);
   const segments = mergedSegments(saved, previewActivity(activity, now));
   const lastSegment = segments.at(-1);
@@ -210,7 +211,8 @@ async function getState(message) {
   for (const tab of tabs) Object.assign(tab, pageVisits.get(tab.pageId) || { foregroundMs: 0, lastSeen: 0 });
   const context = await currentContext();
   const idle = await chrome.idle.queryState(settings.idleSeconds);
-  return { version: VERSION, windowId, settings, tabs, tasks, segments: segments.slice(-2000), timelineTruncated: segments.length > 2000, undoAvailable: Boolean(lastUndo), groups: proposals.get(windowId) || [], ...analytics, model,
+  const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, now, range: message.range });
+  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups: proposals.get(windowId) || [], ...analytics, transitions, attention, model,
     trackingState: { status: !settings.tracking ? 'paused' : activity.warning ? 'unknown' : idle !== 'active' ? 'idle' : context ? 'active' : 'unfocused', activeTabId: context?.tabId, lastUpdatedAt: now, warning: activity.warning || null } };
 }
 
@@ -229,7 +231,12 @@ async function applyGroup(group) {
   await chrome.tabGroups.update(groupId, { title, color, collapsed: false });
   const fingerprint = windowFingerprint(await chrome.tabs.query({ windowId: valid[0].windowId }));
   lastUndo = { groupId, title, color, tabs: snapshot, windowId: valid[0].windowId, fingerprint };
-  proposals.delete(valid[0].windowId);
+  const used = new Set(valid.map(tab => tab.id));
+  const usedUrls = new Set(valid.map(tab => normalizeUrl(tab.url)));
+  proposals.set(valid[0].windowId, (proposals.get(valid[0].windowId) || []).flatMap(candidate => {
+    const tabIds = candidate.tabIds.filter(id => !used.has(id));
+    return tabIds.length < 2 ? [] : [{ ...candidate, tabIds, pages: candidate.pages.filter(page => !usedUrls.has(normalizeUrl(page.url))) }];
+  }));
   await persistSession();
   return { groupId };
 }
@@ -284,16 +291,29 @@ async function restoreTask(message) {
   if (!task) throw new Error('这个任务已经不存在');
   const windowId = await targetWindow(message.windowId);
   const existing = await chrome.tabs.query({ windowId });
+  const segments = await store.listSegments({ since: calendarRange('week').startedAt });
+  const plan = planTaskRestore(task, existing, segments);
   const urls = new Map(existing.map(tab => [normalizeUrl(tab.url), tab.id]));
   let opened = 0, reused = 0;
-  for (const page of task.pages.slice(0, 30)) {
-    const url = normalizeUrl(page.url);
-    if (!url) continue;
-    if (urls.has(url)) { reused++; continue; }
-    const tab = await chrome.tabs.create({ windowId, url, active: false });
-    urls.set(url, tab.id); opened++;
+  const failed = [], restored = [];
+  for (const page of plan.pages) {
+    if (urls.has(page.url)) { reused++; restored.push(page); continue; }
+    try {
+      const tab = await chrome.tabs.create({ windowId, url: page.url, active: false });
+      urls.set(page.url, tab.id); opened++; restored.push(page);
+    } catch (error) { failed.push({ pageId: page.pageId, title: page.title, error: error.message }); }
   }
-  return { opened, reused };
+  const resumePage = restored.find(page => page.url === plan.resumePage?.url) || restored[0];
+  task.lastRestoreResult = { at: Date.now(), opened, reused, failedCount: failed.length };
+  if (resumePage) {
+    task.lastRestoredAt = task.lastRestoreResult.at; task.lastActivePageId = resumePage.pageId;
+  }
+  await store.putTask(task);
+  if (resumePage) {
+    await chrome.windows.update(windowId, { focused: true });
+    await chrome.tabs.update(urls.get(resumePage.url), { active: true });
+  }
+  return { opened, reused, failed, activeTabId: resumePage ? urls.get(resumePage.url) : null };
 }
 
 async function updateSettings(patch = {}) {
@@ -366,7 +386,11 @@ async function handle(message) {
     }
     case 'OPEN_PAGE': {
       const url = normalizeUrl(message.url); if (!url) throw new Error('只能打开 HTTP(S) 网页');
-      await chrome.tabs.create({ windowId: await targetWindow(message.windowId), url }); return { opened: true };
+      const windowId = await targetWindow(message.windowId);
+      const tabs = await chrome.tabs.query({ windowId });
+      const existing = tabs.find(tab => normalizeUrl(tab.url) === url);
+      if (existing) { await chrome.tabs.update(existing.id, { active: true }); return { opened: false, reused: true }; }
+      await chrome.tabs.create({ windowId, url }); return { opened: true, reused: false };
     }
     case 'UPDATE_SETTINGS': return queueActivity(() => updateSettings(message.patch));
     case 'FLUSH_ACTIVITY': await queueActivity(recordCurrent); return { saved: true };
@@ -419,8 +443,11 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.runtime.onInstalled.addListener(reconcile);
 chrome.runtime.onStartup.addListener(reconcile);
 chrome.commands.onCommand.addListener(async command => {
-  if (command !== 'open_workspace') return;
+  if (command !== 'open_workspace' && command !== 'open_side_panel') return;
   const windowId = await targetWindow();
-  await chrome.tabs.create({ url: chrome.runtime.getURL(`app/index.html?windowId=${windowId}`), windowId });
+  if (command === 'open_side_panel' && chrome.sidePanel?.open) {
+    await chrome.sidePanel.open({ windowId }); return;
+  }
+  await chrome.tabs.create({ url: chrome.runtime.getURL(`app/index.html?windowId=${windowId}#review`), windowId });
 });
 init().catch(error => console.error('Focuence initialization:', error.message));

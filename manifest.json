@@ -1,14 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Focuence 智序 · 本机版",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "minimum_chrome_version": "120",
-  "description": "本机语义分组、任务恢复和注意力时间线。浏览记录与模型推理均留在本机。",
-  "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen"],
+  "description": "快速分组、任务侧栏和一周回顾。浏览记录与模型推理均留在本机。",
+  "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen", "sidePanel"],
   "action": { "default_popup": "popup/index.html", "default_title": "Focuence 智序" },
-  "options_page": "app/index.html",
+  "options_page": "options/index.html",
+  "side_panel": { "default_path": "panel/index.html" },
   "background": { "service_worker": "background.js", "type": "module" },
   "commands": {
+    "open_side_panel": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "打开 Focuence 侧栏"
+    },
     "open_workspace": {
       "suggested_key": { "default": "Ctrl+Shift+F", "mac": "Command+Shift+F" },
       "description": "打开 Focuence 工作台"

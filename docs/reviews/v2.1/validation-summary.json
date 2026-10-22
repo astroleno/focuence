@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "logicalTests": 54,
+  "build": "passed",
+  "visualScreens": 11,
+  "mapStressCases": 6,
+  "coreNativeChecks": "completed individually; see README for runner limits",
+  "export": "downloaded JSON validated by button DOM activation",
+  "newZipCreated": false,
+  "evidence": [
+    "visual-validation.json",
+    "export-validation.json"
+  ]
+}

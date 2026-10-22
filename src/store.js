@@ -86,6 +86,14 @@ function taskFrom(value) {
     locked: true,
     createdAt: finite(value.createdAt, now),
     updatedAt: finite(value.updatedAt, now),
+    lastRestoredAt: Math.max(0, finite(value.lastRestoredAt, 0)),
+    lastActivePageId: pages.some(page => page.pageId === value.lastActivePageId) ? value.lastActivePageId : null,
+    lastRestoreResult: value.lastRestoreResult && {
+      at: finite(value.lastRestoreResult.at),
+      opened: Math.min(30, Math.floor(finite(value.lastRestoreResult.opened))),
+      reused: Math.min(30, Math.floor(finite(value.lastRestoreResult.reused))),
+      failedCount: Math.min(30, Math.floor(finite(value.lastRestoreResult.failedCount))),
+    } || null,
     notes: String(value.notes || '').slice(0, 20_000),
     pages,
   };

@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/156.0.8078.47",
+    "revision": "@1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "jsVersion": "15.6.75.19"
+  },
+  "isolatedProfile": true,
+  "syntheticFixturePages": true,
+  "check": "Full-page export button DOM activation downloads a valid versioned JSON containing saved pages, notes and actual restore results",
+  "schemaVersion": 2,
+  "taskName": "继续端侧工作流",
+  "pageCount": 2,
+  "restoreResult": {
+    "at": 1792674721338,
+    "opened": 0,
+    "reused": 2,
+    "failedCount": 0
+  },
+  "uncaughtErrors": []
+}
