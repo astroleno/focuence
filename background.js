@@ -4,6 +4,7 @@ import { computeAnalytics, computeReview, calendarRange } from './src/analytics.
 import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
 import { proposeGroups } from './src/grouping.js';
+import { sealProposal, proposalIsCurrent, validateProposalSelection, STALE_PROPOSAL } from './src/proposals.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
@@ -13,14 +14,16 @@ let store, settings, activity, browserSessionId, initPromise;
 let activityQueue = Promise.resolve();
 let offscreenPromise = null;
 let semanticQueue = Promise.resolve();
+let groupQueue = Promise.resolve();
 let sessionWrites = Promise.resolve();
 let dataEpoch = 0;
 let model = { status: 'idle', name: MODEL_NAME, progress: 0 };
 let lastUndo = null;
 const proposals = new Map();
+const proposalNotices = new Map();
 
 function persistSession() {
-  const job = sessionWrites.then(() => chrome.storage.session.set({ focuenceUndo: lastUndo, focuenceProposals: [...proposals.entries()] }));
+  const job = sessionWrites.then(() => chrome.storage.session.set({ focuenceUndo: lastUndo, focuenceProposals: [...proposals.entries()], focuenceProposalNotices: [...proposalNotices.entries()] }));
   sessionWrites = job.catch(() => {});
   return job;
 }
@@ -73,11 +76,12 @@ async function init() {
   initPromise = (async () => {
     store = await openStore();
     settings = await store.getSettings();
-    const session = await chrome.storage.session.get(['focuenceBrowserSessionId', 'focuenceUndo', 'focuenceProposals']);
+    const session = await chrome.storage.session.get(['focuenceBrowserSessionId', 'focuenceUndo', 'focuenceProposals', 'focuenceProposalNotices']);
     browserSessionId = session.focuenceBrowserSessionId || crypto.randomUUID();
     if (!session.focuenceBrowserSessionId) await chrome.storage.session.set({ focuenceBrowserSessionId: browserSessionId });
     lastUndo = session.focuenceUndo || null;
     for (const [id, groups] of session.focuenceProposals || []) proposals.set(id, groups);
+    for (const [id, notice] of session.focuenceProposalNotices || []) proposalNotices.set(id, notice);
     activity = await store.getActivity();
     if (!activity) activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
     else if (activity.sessionId !== browserSessionId) await applyActivity({ type: 'restart', at: Date.now(), sessionId: browserSessionId });
@@ -106,7 +110,7 @@ async function eligibleTabs(windowId) {
   const tabs = await chrome.tabs.query({ windowId: id });
   return tabs.flatMap(tab => {
     const page = allowedPage(tab);
-    return page ? [{ id: tab.id, windowId: id, title: page.title, url: page.url, domain: page.domain, active: tab.active, pinned: tab.pinned, groupId: tab.groupId, index: tab.index, lastAccessed: tab.lastAccessed || 0, pageId: page.id, tags: page.tags, foregroundMs: 0 }] : [];
+    return page ? [{ id: tab.id, windowId: id, title: page.title, url: page.url, pendingUrl: tab.pendingUrl, domain: page.domain, active: tab.active, pinned: tab.pinned, groupId: tab.groupId, index: tab.index, lastAccessed: tab.lastAccessed || 0, pageId: page.id, tags: page.tags, foregroundMs: 0 }] : [];
   });
 }
 
@@ -175,15 +179,27 @@ async function propose(message, epoch = dataEpoch) {
   if (embeddings) for (const tab of freshTabs) {
     if (originalText.get(tab.pageId) !== stableHash(embeddingText(pageFromTab(tab)))) embeddings.delete(tab.pageId);
   }
-  const groups = proposeGroups(freshTabs, { embeddings, semantic: method === 'semantic', previousGroups: proposals.get(windowId) || [] });
+  const groups = proposeGroups(freshTabs.filter(tab => !tab.pendingUrl || normalizeUrl(tab.pendingUrl) === tab.url), { embeddings, semantic: method === 'semantic', previousGroups: proposals.get(windowId) || [] }).map(group => sealProposal(group, freshTabs));
   if (epoch !== dataEpoch) throw new Error('本机语义分析已取消');
   proposals.set(windowId, groups);
+  proposalNotices.delete(windowId);
   await persistSession();
   return { groups, elapsedMs: Math.round(performance.now() - started), method, model, ...metadata };
 }
 
 function mergedSegments(saved, preview) {
   return [...new Map([...saved, ...preview].map(segment => [segment.id, segment])).values()].sort((a, b) => a.startedAt - b.startedAt);
+}
+
+async function currentProposals(windowId, tabs) {
+  const cached = proposals.get(windowId) || [];
+  const current = cached.filter(group => proposalIsCurrent(group, tabs, windowId));
+  if (current.length !== cached.length) {
+    proposals.set(windowId, current);
+    proposalNotices.set(windowId, '页面已经变化，相关旧建议已撤回。请重新生成建议。');
+    await persistSession();
+  }
+  return current;
 }
 
 async function getState(message) {
@@ -212,33 +228,32 @@ async function getState(message) {
   const context = await currentContext();
   const idle = await chrome.idle.queryState(settings.idleSeconds);
   const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, now, range: message.range });
-  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups: proposals.get(windowId) || [], ...analytics, transitions, attention, model,
+  const groups = await currentProposals(windowId, tabs);
+  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups, proposalNotice: proposalNotices.get(windowId) || '', ...analytics, transitions, attention, model,
     trackingState: { status: !settings.tracking ? 'paused' : activity.warning ? 'unknown' : idle !== 'active' ? 'idle' : context ? 'active' : 'unfocused', activeTabId: context?.tabId, lastUpdatedAt: now, warning: activity.warning || null } };
 }
 
-async function applyGroup(group) {
-  if (!Array.isArray(group?.tabIds) || !group.tabIds.length) throw new Error('请先生成一个分组建议');
-  const tabs = (await Promise.all(group.tabIds.map(id => chrome.tabs.get(id).catch(() => null)))).filter(Boolean);
-  const valid = tabs.filter(tab => allowedPage(tab) && !tab.pinned && tab.groupId < 0);
-  if (valid.length < 2) throw new Error('至少需要两个仍未分组、未固定的页面；请刷新建议');
-  if (new Set(valid.map(tab => tab.windowId)).size !== 1) throw new Error('分组只能包含同一个窗口中的页面');
-  const proposedUrls = new Set((group.pages || []).map(page => normalizeUrl(page.url)));
-  if (proposedUrls.size && valid.some(tab => !proposedUrls.has(normalizeUrl(tab.url)))) throw new Error('部分页面内容已经改变，请重新生成建议');
+async function applyGroup(message) {
+  const windowId = await targetWindow(message.windowId);
+  const group = (proposals.get(windowId) || []).find(candidate => candidate.id === message.group?.id);
+  const tabs = await eligibleTabs(windowId);
+  let valid;
+  try { valid = validateProposalSelection(group, message.group, tabs, windowId); }
+  catch (error) { await currentProposals(windowId, tabs); throw error; }
+  // A concurrent regeneration supersedes the consent for this revision.
+  if (!(proposals.get(windowId) || []).some(candidate => candidate.revision === group.revision)) throw Object.assign(new Error(STALE_PROPOSAL), {code: 'STALE_PROPOSAL'});
   const snapshot = valid.map(tab => ({ id: tab.id, windowId: tab.windowId, index: tab.index }));
-  const groupId = await chrome.tabs.group({ tabIds: valid.map(tab => tab.id), createProperties: { windowId: valid[0].windowId } });
+  const groupId = await chrome.tabs.group({ tabIds: valid.map(tab => tab.id), createProperties: { windowId } });
   const title = String(group.name || 'Focuence 分组').trim().slice(0, 60);
   const color = COLORS.has(group.color) ? group.color : 'orange';
   await chrome.tabGroups.update(groupId, { title, color, collapsed: false });
-  const fingerprint = windowFingerprint(await chrome.tabs.query({ windowId: valid[0].windowId }));
-  lastUndo = { groupId, title, color, tabs: snapshot, windowId: valid[0].windowId, fingerprint };
+  const actual = await chrome.tabs.query({groupId});
+  const fingerprint = windowFingerprint(await chrome.tabs.query({ windowId }));
+  lastUndo = { groupId, title, color, tabs: snapshot, windowId, fingerprint };
   const used = new Set(valid.map(tab => tab.id));
-  const usedUrls = new Set(valid.map(tab => normalizeUrl(tab.url)));
-  proposals.set(valid[0].windowId, (proposals.get(valid[0].windowId) || []).flatMap(candidate => {
-    const tabIds = candidate.tabIds.filter(id => !used.has(id));
-    return tabIds.length < 2 ? [] : [{ ...candidate, tabIds, pages: candidate.pages.filter(page => !usedUrls.has(normalizeUrl(page.url))) }];
-  }));
+  proposals.set(windowId, (proposals.get(windowId) || []).filter(candidate => !candidate.tabIds.some(id => used.has(id))));
   await persistSession();
-  return { groupId };
+  return { groupId, tabIds: actual.map(tab => tab.id), count: actual.length, name: title };
 }
 
 function windowFingerprint(tabs) {
@@ -353,7 +368,7 @@ async function clearData(all) {
   activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
   if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
   else await store.saveActivity(activity);
-  proposals.clear(); lastUndo = null;
+  proposals.clear(); proposalNotices.clear(); lastUndo = null;
   await persistSession();
   return { cleared: true };
 }
@@ -368,8 +383,11 @@ async function handle(message) {
       const job = semanticQueue.then(() => propose(message, epoch));
       semanticQueue = job.catch(() => {}); return job;
     }
-    case 'APPLY_GROUP': return applyGroup(message.group);
-    case 'UNDO_GROUP': return undoGroup();
+    case 'APPLY_GROUP':
+    case 'UNDO_GROUP': {
+      const job = groupQueue.then(() => message.type === 'APPLY_GROUP' ? applyGroup(message) : undoGroup());
+      groupQueue = job.catch(() => {}); return job;
+    }
     case 'SAVE_TASK': return saveTask(message);
     case 'UPDATE_TASK': {
       const task = await store.getTask(message.id);
@@ -415,7 +433,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     model = { status: message.status, name: MODEL_NAME, progress: message.progress || 0, ...(message.error ? { error: message.error } : {}) };
     sendResponse({ ok: true, data: model }); return false;
   }
-  handle(message).then(data => sendResponse({ ok: true, data })).catch(error => sendResponse({ ok: false, error: error.message || String(error) }));
+  handle(message).then(data => sendResponse({ ok: true, data })).catch(error => sendResponse({ ok: false, error: error.message || String(error), code: error.code }));
   return true;
 });
 
@@ -425,7 +443,7 @@ chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.ti
 chrome.tabs.onRemoved.addListener(reconcile);
 chrome.tabs.onReplaced.addListener(reconcile);
 chrome.windows.onFocusChanged.addListener(reconcile);
-chrome.windows.onRemoved.addListener(id => { proposals.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); });
+chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); });
 chrome.idle.onStateChanged.addListener(state => queueActivity(async () => { await applyActivity({ type: 'idle', at: Date.now(), idleState: state }); await recordCurrent(); }).catch(() => {}));
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'focuence-model-idle') {

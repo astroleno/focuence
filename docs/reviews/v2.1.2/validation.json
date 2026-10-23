@@ -1,0 +1,291 @@
+{
+  "version": "2.1.2",
+  "date": "2026-10-23",
+  "baseline": "56a2869a7a192d18160194448b0ab2d009021c10",
+  "status": "passed",
+  "environment": "macOS arm64, isolated Chrome for Testing 156.0.8078.47, synthetic pages; demo transport for deterministic UI boundaries, real Chrome APIs for native checks. No personal browsing data.",
+  "unitTests": {
+    "passed": 71,
+    "new": 10
+  },
+  "build": "passed",
+  "uiChecks": [
+    {
+      "name": "sidebar generates visible suggestions, corrects all members and keeps list context",
+      "passed": true
+    },
+    {
+      "name": "popup actual count and visible feedback undo at both heights",
+      "passed": true
+    },
+    {
+      "name": "popup first read failure can recover without reopening or reloading the extension",
+      "passed": true
+    },
+    {
+      "name": "task members disclose all 30 pages while keeping continue above the list",
+      "passed": true
+    },
+    {
+      "name": "sorting evidence, paused state and timeline details remain visible",
+      "passed": true
+    },
+    {
+      "name": "current popup and sidebar composition",
+      "passed": true
+    },
+    {
+      "name": "popup saving keeps its footer visible at both heights",
+      "passed": true
+    },
+    {
+      "name": "long notes keep continue and collapse controls visible, preserving keyboard focus and full text",
+      "passed": true
+    },
+    {
+      "name": "window scope remains independent from a prior page selection",
+      "passed": true
+    },
+    {
+      "name": "31-page selection is corrected in the same dialog without losing its draft",
+      "passed": true
+    },
+    {
+      "name": "both save surfaces deduplicate addresses before counting the 30-page limit",
+      "passed": true
+    },
+    {
+      "name": "cancel and Escape from delete confirmation retain the actual editor draft and caret",
+      "passed": true
+    },
+    {
+      "name": "failed range switching shows no stale records while loading and restores the loaded date",
+      "passed": true
+    },
+    {
+      "name": "an older failed refresh cannot overwrite a newer range response",
+      "passed": true
+    },
+    {
+      "name": "keyboard filters retain focus and zero matching records have a clear reset action",
+      "passed": true
+    },
+    {
+      "name": "map handoff preserves the selected incoming edge and exact date",
+      "passed": true,
+      "detail": {
+        "topic": "视觉创作",
+        "from": "本地模型",
+        "to": "视觉创作",
+        "reopenedEarlierContext": true
+      }
+    },
+    {
+      "name": "partial and expired maps explain omissions and do not advertise unavailable line clicks",
+      "passed": true
+    },
+    {
+      "name": "popup model work leaves recent tasks and saving available",
+      "passed": true
+    },
+    {
+      "name": "popup page landing opens only that page and whitespace names show a correction",
+      "passed": true
+    },
+    {
+      "name": "native extension popup, grouping, saving, sidePanel and restore use real Chrome APIs",
+      "passed": true,
+      "detail": {
+        "nativePopup": true,
+        "nativeSidePanel": true,
+        "savedPages": 4,
+        "repeatedRestoreDidNotDuplicate": true
+      }
+    },
+    {
+      "name": "popup successive success error and recovery have exactly one visible feedback action",
+      "passed": true
+    }
+  ],
+  "nativeChecks": [
+    {
+      "name": "native subset returns actual count and undo restores exact order",
+      "status": "passed",
+      "detail": {
+        "count": 3,
+        "unselectedProtected": true,
+        "undoExact": true
+      }
+    },
+    {
+      "name": "superseded revisions and repeated apply cannot mutate the window",
+      "status": "passed",
+      "detail": {
+        "oldVersionBlocked": true,
+        "duplicateAppliedOnce": true
+      }
+    },
+    {
+      "name": "one proposed members moved to another window are withdrawn and blocked",
+      "status": "passed",
+      "detail": {
+        "blocked": true,
+        "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+        "windowsUnchanged": true,
+        "movedMembers": 1,
+        "otherSuggestions": 0
+      }
+    },
+    {
+      "name": "all proposed members moved to another window are withdrawn and blocked",
+      "status": "passed",
+      "detail": {
+        "blocked": true,
+        "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+        "windowsUnchanged": true,
+        "movedMembers": 4,
+        "otherSuggestions": 0
+      }
+    },
+    {
+      "name": "navigated title URL and protected state each invalidate the proposal",
+      "status": "passed",
+      "detail": [
+        {
+          "kind": "title",
+          "blocked": true,
+          "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+          "windowsUnchanged": true
+        },
+        {
+          "kind": "url",
+          "blocked": true,
+          "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+          "windowsUnchanged": true
+        },
+        {
+          "kind": "pin",
+          "blocked": true,
+          "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+          "windowsUnchanged": true
+        },
+        {
+          "kind": "group",
+          "blocked": true,
+          "error": "页面已经变化，这条建议已撤回。请重新生成建议。",
+          "windowsUnchanged": true
+        }
+      ]
+    },
+    {
+      "name": "closed member is rejected through the stale native popup handler before refresh",
+      "status": "passed",
+      "detail": {
+        "staleHandlerBlocked": true,
+        "actualRegeneratedCount": 3,
+        "undoFromFeedback": true
+      }
+    },
+    {
+      "name": "sidebar result is visible and all four members can be corrected",
+      "status": "passed",
+      "detail": {
+        "resultTop": 345.796875,
+        "memberCheckboxes": 4,
+        "appliedMembers": 3
+      }
+    },
+    {
+      "name": "native sort displays evidence without moving tab-strip order",
+      "status": "passed",
+      "detail": {
+        "rows": 12,
+        "visibleMetrics": 12,
+        "caption": "仅排序此列表 · 停留统计最近 7 天"
+      }
+    },
+    {
+      "name": "external title changes preserve page button focus",
+      "status": "passed",
+      "detail": {
+        "focusedId": "tab-title-2035493190",
+        "retained": true
+      }
+    },
+    {
+      "name": "task member expansion and landing focus survive live refresh",
+      "status": "passed",
+      "detail": {
+        "members": 4,
+        "retainedFocus": true,
+        "retainedExpansion": true
+      }
+    },
+    {
+      "name": "newly created and closed tabs refresh the visible native list",
+      "status": "passed",
+      "detail": {
+        "created": true,
+        "closed": true,
+        "removedFocusFallback": "tab-title-2035493200"
+      }
+    },
+    {
+      "name": "paused state is visible after toast disappears",
+      "status": "passed",
+      "detail": {
+        "text": "记录已暂停",
+        "hidden": false
+      }
+    }
+  ],
+  "verificationNotes": [
+    "One initial batched UI inspection, one broad confirmation, then targeted defect checks only.",
+    "Sidebar footer specificity and feedback animation hit-testing were repaired and checked at 320/360 px.",
+    "Map wire and pause checks wait for actual asynchronous completion.",
+    "A failed Chrome startup and an isolated demo initialization timeout were retried; the feedback-cycle check subsequently passed.",
+    "No model latency or accuracy benchmark was rerun."
+  ],
+  "knownLimits": [
+    "Chrome native APIs do not provide an atomic compare-and-set for arbitrary concurrent external tab changes.",
+    "Windows, Edge, Chrome 120, prolonged real browsing and large-scale grouping quality were not revalidated."
+  ],
+  "screenshots": [
+    {
+      "file": "screenshots/panel-applied-320.png",
+      "sha256": "463396ca808111cee6b597370c9247ee3ad3f8889fd861083a2ccde5c394970a"
+    },
+    {
+      "file": "screenshots/panel-native-paused.png",
+      "sha256": "f5551d61102feaab0b47a987f40b19f768da08d109acf3c2dbe032cd8613cd65"
+    },
+    {
+      "file": "screenshots/panel-native-suggestions.png",
+      "sha256": "96cc4943dcbea244170368f118aaf97328d9eff255b49d5ced0bd3237d51e298"
+    },
+    {
+      "file": "screenshots/panel-native-task-members.png",
+      "sha256": "d5e9c25a87c56bd124df35eff22fe874b745b1409a170c04a08a6ba61cfc6ebd"
+    },
+    {
+      "file": "screenshots/panel-path-details-320.png",
+      "sha256": "af11a3762635f2ca93d5a3a4faa80ae754344dac9007cdc70a644d287bdc67d4"
+    },
+    {
+      "file": "screenshots/popup-applied-520.png",
+      "sha256": "8360c4a6150620b7925cd6fd832c0bd289c13463a8c05f735e0eac83c436abe1"
+    },
+    {
+      "file": "screenshots/popup-native-stale-retry.png",
+      "sha256": "9311fb8d7bf0e81949f2672e0608200fc652c0d629cd346ac243481172caf2ef"
+    },
+    {
+      "file": "screenshots/popup-native-stale-withdrawn.png",
+      "sha256": "58652951e6c155f190ba13bea93d3051a7571b4d6f1a83fec518d7f29a5c9294"
+    },
+    {
+      "file": "screenshots/popup-retry-520.png",
+      "sha256": "e6365de2f3ddd64e4001e41caf64a0d9f7024489598fee64b356225a3b3200cc"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
-# Focuence 2.0：数据与实现说明
+# Focuence 2：数据与实现说明
 
-版本：2.1.0
+版本：2.1.2
 
-更新日期：2026 年 10 月 22 日
+更新日期：2026 年 10 月 23 日
 
 本版把快速分组、任务恢复和浏览回顾放在浏览器本机执行。生成式云端请求已从运行链路中移除；本地模型负责计算页面向量，分组名称、访问时长和路径统计由确定性代码处理。本文说明交付版本已经实现的行为，不把待开发能力写成现成功能。
 
@@ -23,19 +23,21 @@
 | [`background.js`](../background.js) | 接收界面消息、读取浏览器状态、串行提交活动记录、调用本地推理、应用和撤销分组、保存及恢复任务 |
 | [`src/text.js`](../src/text.js) | 清洗网址和标题、生成页面 ID、提供规则标签和模型短文本输入 |
 | [`src/grouping.js`](../src/grouping.js) | 生成规则／语义分组建议；保护已识别的项目边界，不直接改浏览器 tab |
+| [`src/proposals.js`](../src/proposals.js) | 建议窗口 / 版本 / 成员快照、应用子集核验、两端成员选择口径 |
 | [`src/activity.js`](../src/activity.js) | 纯函数访问片段状态机，处理焦点、导航、空闲、暂停、重启与缺测 |
 | [`src/store.js`](../src/store.js) | IndexedDB 读写、原子保存、保留期清理、导出与清除 |
 | [`src/analytics.js`](../src/analytics.js) | 今日统计、主标签有向转移、低样本回退与轻量建议 |
 | [`inference/worker.js`](../inference/worker.js) | 本地 BGE 向量推理，使用随包提供的 ONNX／WASM 文件 |
 | `app/`、`panel/`、`popup/` | 完整回顾页、原生侧栏和短操作弹窗，共享后台消息与同一份本机数据 |
 | [`src/tasks.js`](../src/tasks.js) | 去重恢复计划、继续页面、复用/新开预览及最近任务排序 |
+| [`src/task-pages.js`](../src/task-pages.js) | 三个入口共享的任务页面展开与单页打开控件 |
 | [`src/ui.js`](../src/ui.js)、[`src/navigation.js`](../src/navigation.js) | 共享渲染和三层入口导航；侧栏在用户点击内直接调用原生 API |
 
-界面通过 `chrome.runtime.sendMessage({target:'background', type, ...payload})` 调用后台，结果统一为 `{ok:true,data}` 或 `{ok:false,error}`。读取当前浏览器上下文的函数本身不写历史；实际记录走活动队列，再由 `saveActivity` 在同一数据库事务中保存状态和片段。
+界面通过 `chrome.runtime.sendMessage({target:'background', type, ...payload})` 调用后台，结果统一为 `{ok:true,data}` 或 `{ok:false,error,code?}`。过期建议用 `STALE_PROPOSAL` 触发重新读取与重新生成入口。读取当前浏览器上下文的函数本身不写历史；实际记录走活动队列，再由 `saveActivity` 在同一数据库事务中保存状态和片段。
 
 `GET_STATE` 会先在队列中对当前状态做一次核对，再读取统计。用于显示的临时片段预览不修改传入状态，并按 segment ID 覆盖已有快照；不会把预览当成一次新访问重复累计。
 
-2.1 的 `GET_STATE {windowId, range}` 支持 `today / yesterday / week`，返回 `attention {range, summary, nodes, daily}`。后台以完整选定范围计算节点、边和概况；最新 2,000 条限制只作用于列表。七天以本地日历计算，使用日期加减而不是固定 24 小时，覆盖夏令时边界。侧栏地图仅预览主要五个主题；完整地图和关系表包含全部主题与关系。
+2.1 的 `GET_STATE {windowId, range}` 支持 `today / yesterday / week`，返回 `attention {range, summary, nodes, daily}`。后台以完整选定范围计算节点、边和概况；最新 2,000 条限制只作用于列表。七天以本地日历计算，使用日期加减而不是固定 24 小时，覆盖夏令时边界。侧栏地图显示所选主题和每方向最多两条直接关系，并说明未展开数量；完整地图和关系表包含全部主题与关系。
 
 任务保存兼容新增 `lastRestoredAt`、`lastActivePageId` 和 `lastRestoreResult {at, opened, reused, failedCount}`，数据库结构版本不变。恢复根据当前窗口的真实网址计算缺页，复用已打开页面；逐页失败不阻止其余页面恢复。结果先持久化再激活页面，使弹窗关闭后仍保留失败提示。继续页优先为任务中当前活动页面，其次为近七天内最近访问页，再退回已记住的恢复页或首个保存页。
 
@@ -70,7 +72,11 @@
 
 ### 应用与撤销
 
-建议只针对选定的一个普通浏览器窗口，点击应用才创建原生组。应用前再次检查页面仍存在、尚未分组、未固定、处于同一窗口且网址未发生不匹配的变化，不会先清除其他窗口的分组。
+建议只针对选定的一个普通浏览器窗口，点击应用才创建原生组。后台保存唯一版本 `revision` 及逐 tab 的窗口、规范 URL、标题快照。`GET_STATE` 对照当前窗口撤回过期建议，返回 `proposalNotice`；旧会话中没有快照的建议不能继续应用。
+
+`APPLY_GROUP {windowId, group:{id,revision,windowId,tabIds}}` 对照后台权威建议核验：窗口必须为原窗口，版本仍有效，完整原建议中的每个页面仍存在、未固定、未分组且身份未改变；提交成员必须是至少两个不同 ID 的子集。客户端传入的名称、页面快照或空 URL 列表不能改变核验范围。页面变化后拒绝整次旧操作，不静默缩减成员；重新生成后由用户再次选择。响应包含实际 `groupId / tabIds / count / name`。应用和撤销在后台串行执行，避免重复提交。
+
+原生浏览器 API 不提供针对页面状态的原子比较交换；校验紧邻原生操作，浏览器仍可能在异步调用期间发生新的用户动作。该实现不承诺拦截任意并发时刻，也不自动重试已改变的分组。
 
 撤销仅针对本浏览器会话中最近一次 Focuence 分组。后台会核对组名、颜色、页面顺序及组成员状态；用户已经手动修改窗口时会拒绝撤销，以免覆盖后续操作。撤销信息和建议保存在会话存储中，普通 worker 回收后仍可恢复；真实浏览器会话结束后不作为长期历史保存。
 

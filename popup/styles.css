@@ -62,7 +62,10 @@ h3 { font-size: 15px; line-height: 1.5; }
 .save-actions .button { min-height: 38px; padding-inline: 18px; }
 .save-actions .form-error { margin: 0; }
 .form-error, .restore-warning { font-size: 13px; color: var(--danger); margin-top: 10px; line-height: 1.5; }
-.feedback, .error { flex: 0 0 auto; margin: 0; padding: 9px 20px; font-size: 13px; border-top: 1px solid var(--line); background: var(--canvas); overflow-wrap: anywhere; max-height: 90px; overflow-y: auto; }
+.feedback, .error { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; margin: 0; padding: 9px 20px; font-size: 13px; border-top: 1px solid var(--line); background: var(--canvas); overflow-wrap: anywhere; max-height: 104px; overflow-y: auto; }
+.feedback > span, .error > span { flex: 1; }
+.feedback .button, .error .button { flex-shrink: 0; }
+.empty .button { margin-top: 16px; }
 .error { color: var(--danger); background: #fff4f3; }
 footer { flex: 0 0 43px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: var(--canvas); border-top: 1px solid var(--line); }
 footer button { border: 0; background: none; padding: 8px 0; font-size: 13px; color: var(--muted); }
@@ -72,5 +75,6 @@ footer button:hover { color: var(--accent); }
 @media (prefers-reduced-motion: no-preference) {
   .button { transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out); }
   .feedback:not([hidden]) { animation: feedback-arrive 180ms var(--ease-out); }
+  .feedback:has(.button), .error:has(.button) { animation: none; }
   @keyframes feedback-arrive { from { clip-path: inset(0 0 100%); } to { clip-path: inset(0); } }
 }

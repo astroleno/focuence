@@ -1,5 +1,6 @@
 import { computeAnalytics, computeReview } from '../src/analytics.js';
 import { taskViews } from '../src/tasks.js';
+import {sealProposal, validateProposalSelection} from '../src/proposals.js';
 
 // Explicit, memory-only preview. This module never reads or writes extension storage.
 // Loaded only when the workbench URL contains ?demo=1.
@@ -29,7 +30,7 @@ export function createDemoTransport() {
   let tabs = pages.map((page, index) => ({
     id: 101 + index, pageId: page.id, title: page.title, domain: page.domain,
     url: page.url, tags: page.tags.slice(), foregroundMs: data[index][4] * minute,
-    windowId: 1, groupId: index === 10 ? 3 : -1, pinned: index === 11, active: index === 0
+    windowId: 1, groupId: index === 10 ? 3 : -1, pinned: index === 11, active: index === 0, lastAccessed: now - index * minute
   }));
   const toTaskPages = (ids) => pages.filter((_, index) => ids.includes(index)).map((page) => ({
     pageId: page.id, title: page.title, url: page.url, tags: page.tags.slice()
@@ -80,16 +81,16 @@ export function createDemoTransport() {
         reason: semantic ? definition.reason : '根据页面标题与已有主题，生成快速分组建议。',
         confidence: semantic ? .88 : .7, tabIds: selected.map((tab) => tab.id),
         pages: selected.map((tab) => pages.find((page) => page.id === tab.pageId)).filter(Boolean),
-        method: semantic ? 'semantic' : 'rules'
+        method: semantic ? 'semantic' : 'rules', windowId: 1
       };
-    }).filter((group) => group.tabIds.length >= 2);
+    }).filter((group) => group.tabIds.length >= 2).map(group => sealProposal(group, tabs));
   }
   groups = makeGroups(false);
   function state(range = 'week') {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.1.1', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.1.2', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       trackingState: { status: settings.tracking ? 'active' : 'paused', activeTabId: tabs.find(tab => tab.active)?.id, lastUpdatedAt: Date.now() }
@@ -111,13 +112,12 @@ export function createDemoTransport() {
           result = {groups, elapsedMs: message.semantic ? 750 : 12, method: message.semantic ? 'semantic' : 'rules', model};
           break;
         case 'APPLY_GROUP': {
-          const ids = message.group.tabIds || [];
-          const eligible = tabs.filter((tab) => ids.includes(tab.id) && tab.groupId < 0 && !tab.pinned);
-          if (eligible.length < 2) throw new Error('该建议里已没有至少两个可分组的页面。');
+          const proposal = groups.find(group => group.id === message.group?.id);
+          const eligible = validateProposalSelection(proposal, message.group, tabs, message.windowId);
           lastApply = eligible.map((tab) => ({id: tab.id, groupId: tab.groupId}));
           eligible.forEach((tab) => { tab.groupId = 99; });
-          groups = makeGroups(false);
-          result = {groupId: 99}; break;
+          groups = groups.filter(group => group.id !== proposal.id);
+          result = {groupId: 99, tabIds: eligible.map(tab => tab.id), count: eligible.length, name: proposal.name}; break;
         }
         case 'UNDO_GROUP':
           if (!lastApply) result = {restored: false};
@@ -174,7 +174,7 @@ export function createDemoTransport() {
       }
       return {ok: true, data: structuredClone(result)};
     } catch (error) {
-      return {ok: false, error: error.message};
+      return {ok: false, error: error.message, code: error.code};
     }
   };
 }

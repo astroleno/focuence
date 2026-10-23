@@ -3,6 +3,8 @@ import { openWorkspace, openSidePanel } from '../src/navigation.js';
 import { mapTopology, localNeighborhood, resolveMapContext } from '../src/map-layout.js';
 import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
+import { taskPages } from '../src/task-pages.js';
+import { proposalMembers, selectedProposal } from '../src/proposals.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -35,7 +37,8 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.1.1',
+    version: value?.version || '2.1.2',
+    proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
     undoAvailable: Boolean(value?.undoAvailable),
     timelineTruncated: Boolean(value?.timelineTruncated),
@@ -53,7 +56,7 @@ const ui = {
   view: Object.hasOwn(viewNames, location.hash.slice(1)) ? location.hash.slice(1) : isPanel ? 'tasks' : 'review',
   range: ['today', 'yesterday', 'week'].includes(params.get('range')) ? params.get('range') : isPanel ? 'today' : 'week',
   state: null, error: '', busy: new Set(), selected: new Set(), applied: new Set(),
-  queries: {pages: '', tasks: ''}, pageFilter: 'all', sort: 'recent',
+  queries: {pages: '', tasks: ''}, pageFilter: 'all', sort: 'recent', pagesMode: 'list', listScroll: 0, members: new Map(), expandedPages: new Set(), expandedSegments: new Set(),
   timelineStatus: 'all', timelineLimit: 60, timelineTag: '', selectedTag: params.get('topic') || '',
   selectedEdge: params.get('from') && params.get('to') ? params.get('from') + '\u0000' + params.get('to') : '',
   mapScope: 'related', mapNotice: '', expandedNotes: new Set(), pendingRange: null, failedRange: null, refreshAfterRange: false,
@@ -79,24 +82,37 @@ async function request(type, payload = {}) {
   const response = await transport({target: 'background', type, ...payload});
   if (!response?.ok) {
     const message = typeof response?.error === 'string' ? response.error : response?.error?.message;
-    throw new Error(message || '操作没有完成，请刷新后重试。');
+    throw Object.assign(new Error(message || '操作没有完成，请刷新后重试。'), {code: response?.code});
   }
   return response.data;
 }
 let toastTimer;
-function toast(message, error = false) {
+function toast(message, error = false, actionName = '') {
   const region = document.getElementById('toast-region');
-  region.replaceChildren(el('div', {class: 'toast' + (error ? ' error' : '')}, icon(error ? 'info' : 'check'), el('span', {}, message)));
+  const hadFocus = region.contains(document.activeElement);
+  region.replaceChildren(el('div', {class: 'toast' + (error ? ' error' : '')}, icon(error ? 'info' : 'check'), el('span', {}, message),
+    actionName && button(actionName === 'undo-group' ? '撤销' : '重新生成', actionName, {id: 'toast-action'}, 'toast-action')));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => region.replaceChildren(), error ? 6500 : 3700);
+  if (!actionName) toastTimer = setTimeout(() => region.replaceChildren(), error ? 6500 : 3700);
+  if (hadFocus) (document.getElementById('toast-action') || document.getElementById('grouping-title') || document.getElementById('main'))?.focus({preventScroll: true});
 }
 function busy(id) { return ui.busy.has(id); }
 async function operation(id, callback) {
   if (busy(id)) return;
+  const focusId = document.activeElement?.id;
   ui.busy.add(id); render();
   try { return await callback(); }
-  catch (error) { toast(error.message || String(error), true); }
-  finally { ui.busy.delete(id); render(); }
+  catch (error) {
+    if (error.code === 'STALE_PROPOSAL') await refresh({quiet: true});
+    toast(error.message || String(error), true, error.code === 'STALE_PROPOSAL' ? 'propose' : '');
+  }
+  finally {
+    ui.busy.delete(id); render();
+    if ([document.body, document.getElementById('main')].includes(document.activeElement)) {
+      const target = focusId && document.getElementById(focusId);
+      if (target && !target.disabled) target.focus({preventScroll: true});
+    }
+  }
 }
 let refreshEpoch = 0;
 async function refresh({quiet = false, range = ui.range, rangeTransition = false} = {}) {
@@ -164,6 +180,7 @@ function buildShell() {
       el('span', {id: 'breadcrumb', class: 'sr-only'}),
       el('main', {class: 'main', id: 'main', tabindex: '-1'}));
     app.append(el('p', {id: 'results-status', class: 'sr-only', role: 'status'}));
+    app.append(document.getElementById('toast-region'));
     return;
   }
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
@@ -190,7 +207,9 @@ function renderNavigation() {
   document.getElementById('sidebar-tracking').replaceChildren(isPanel
     ? iconButton(tracking ? '暂停浏览记录' : '恢复浏览记录', 'toggle-tracking', tracking ? 'pause' : 'play', {id: 'tracking-toggle', disabled: !ui.state || busy('tracking'), 'aria-pressed': !tracking})
     : el('button', {id: 'tracking-toggle', type: 'button', class: 'pause-button', 'data-action': 'toggle-tracking', disabled: !ui.state || busy('tracking')}, icon(tracking ? 'pause' : 'play'), tracking ? '暂停记录' : '恢复记录'));
-  document.getElementById('top-status').replaceChildren(el('span', {class: 'status-dot' + (tracking ? '' : ' paused')}), isDemo ? '示例模式' : tracking ? '本机记录中' : '记录已暂停');
+  const status = document.getElementById('top-status');
+  status.className = isPanel && tracking ? 'sr-only' : 'local-status';
+  status.replaceChildren(el('span', {class: 'status-dot' + (tracking ? '' : ' paused')}), !tracking ? '记录已暂停' : isDemo ? '示例模式' : '本机记录中');
   if (isPanel && ui.state) {
     const active = ui.state.tabs.find(tab => tab.active);
     const label = active ? active.title : '当前窗口 · ' + ui.state.tabs.length + ' 个页面';
@@ -232,6 +251,13 @@ function domainMark(tab, index) {
   const domain = tab.domain || domainOf(tab.url);
   return el('span', {class: 'domain-mark color-' + index % 5, 'aria-hidden': 'true'}, domain.replace(/^www\./, '').slice(0, 2));
 }
+function visitLabel(tab) {
+  const time = tab.lastAccessed || tab.lastSeen;
+  if (!time) return '暂无访问时间';
+  const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
+  const relative = minutes < 1 ? '刚刚' : minutes < 60 ? minutes + ' 分钟前' : minutes < 1440 ? Math.floor(minutes / 60) + ' 小时前' : dateLabel(time);
+  return relative + (tab.lastAccessed ? '访问' : '记录');
+}
 function tabRow(tab, index) {
   const meta = [el('span', {class: 'domain-text'}, tab.domain || domainOf(tab.url))];
   if (tab.pinned) meta.push(el('span', {class: 'tag protected'}, '已固定'));
@@ -240,33 +266,37 @@ function tabRow(tab, index) {
   return el('article', {class: 'tab-row' + (ui.selected.has(tab.id) ? ' selected' : '')},
     el('input', {id: 'tab-select-' + tab.id, type: 'checkbox', 'data-tab-select': tab.id, checked: ui.selected.has(tab.id), 'aria-label': '选择 ' + (tab.title || tab.domain)}),
     domainMark(tab, index), el('div', {class: 'tab-content'},
-      el('button', {type: 'button', class: 'tab-title', 'data-action': 'focus-tab', 'data-id': tab.id, title: tab.title || tab.url}, tab.title || tab.domain || '未命名页面'),
-      el('div', {class: 'tab-meta'}, meta)),
-    el('span', {class: 'tab-time', title: '已记录前台停留'}, duration(tab.foregroundMs)),
+      el('button', {id: 'tab-title-' + tab.id, type: 'button', class: 'tab-title', 'data-action': 'focus-tab', 'data-id': tab.id, title: tab.title || tab.url}, tab.title || tab.domain || '未命名页面'),
+      el('div', {class: 'tab-meta'}, meta),
+      el('p', {class: 'tab-time', title: ui.sort === 'time' ? '最近 7 天已记录的前台停留' : tab.lastAccessed ? new Date(tab.lastAccessed).toLocaleString('zh-CN') : '浏览器未提供最近访问时间，使用本机记录（如有）'}, ui.sort === 'time' ? duration(tab.foregroundMs) + ' · 7 天前台' : visitLabel(tab))),
     iconButton('定位 ' + (tab.title || '页面'), 'focus-tab', 'arrow', {'data-id': tab.id}));
 }
 function proposalCard(group) {
-  const pages = group.pages || [];
-  const tabIds = group.tabIds || [];
+  const tabs = group.tabIds.map(id => ui.state.tabs.find(tab => tab.id === id)).filter(Boolean);
+  const selected = proposalMembers(group, ui.state.tabs, ui.members);
   const applied = ui.applied.has(group.id);
-  return el('article', {class: 'proposal'},
-    el('div', {class: 'proposal-title'}, el('span', {class: 'color-dot', style: {background: colorOf(group.color)}}), el('h3', {}, group.name || '相关页面'), el('small', {}, tabIds.length + ' 页')),
+  const locked = busy('rules') || busy('semantic') || [...ui.busy].some(key => key.startsWith('group-')) || busy('undo');
+  return el('article', {class: 'proposal', 'data-group-id': group.id},
+    el('div', {class: 'proposal-title'}, el('span', {class: 'color-dot', style: {background: colorOf(group.color)}}), el('h3', {}, group.name || '相关页面'), el('small', {}, selected.size + ' / ' + tabs.length + ' 页')),
     el('p', {class: 'proposal-reason'}, group.reason || (group.method === 'semantic' ? '根据页面的语义关系生成建议。' : '根据标题与域名生成建议。')),
-    el('ul', {class: 'proposal-pages'}, pages.slice(0, 3).map((page) => el('li', {title: page.title || page.url}, page.title || page.url)), pages.length > 3 && el('li', {}, '还有 ' + (pages.length - 3) + ' 个页面')),
+    el('div', {class: 'proposal-members'}, tabs.map(tab => el('label', {class: 'proposal-member'},
+      el('input', {id: 'group-member-' + group.id + '-' + tab.id, type: 'checkbox', 'data-group-member': group.id, 'data-tab-id': tab.id, checked: selected.has(tab.id), disabled: locked}),
+      el('span', {title: tab.title || tab.url}, tab.title || tab.url)))),
     el('div', {class: 'proposal-actions'},
-      button('存为任务', 'save-group', {'data-id': group.id, disabled: !pages.length}, 'small subtle', 'save'),
-      button(applied ? '已应用' : '应用分组', 'apply-group', {'data-id': group.id, disabled: applied || group.protected || busy('group-' + group.id)}, 'small' + (applied ? '' : ' primary'), applied ? 'check' : 'plus')));
+      button('存为任务', 'save-group', {'data-id': group.id, disabled: !selected.size || locked}, 'small subtle', 'save'),
+      button(busy('group-' + group.id) ? '正在应用…' : '应用分组', 'apply-group', {'data-id': group.id, disabled: applied || locked || selected.size < 2}, 'small primary', 'check')));
 }
 function groupingPanel() {
   const state = ui.state;
   return el('aside', {class: 'panel group-panel', 'aria-label': '分组建议'},
-    el('div', {class: 'section-heading'}, el('h2', {}, '整理建议'), button('撤销', 'undo-group', {disabled: !ui.canUndo || busy('undo')}, 'small subtle', 'undo')),
-    el('p', {class: 'panel-intro'}, '先给页面一个落点，再决定哪些值得留下。'),
-    modelBar(),
+    el('div', {class: 'section-heading'}, el('h2', {id: 'grouping-title', tabindex: '-1'}, '整理建议'), button('撤销', 'undo-group', {id: 'undo-group', disabled: !ui.canUndo || busy('undo')}, 'small subtle', 'undo')),
+    el('p', {class: 'panel-intro'}, '勾选要放在一起的页面，应用后才会分组。'),
+    state.proposalNotice && el('p', {class: 'proposal-notice', role: 'status'}, state.proposalNotice),
     state.groups.length ? el('div', {class: 'proposal-list'}, state.groups.map(proposalCard)) :
-      emptyState('还没有分组建议', '点击“快速整理”，为尚未分组、未固定的页面寻找共同主题。', null, null, true, 'layers'),
+      emptyState('还没有分组建议', '点击“生成分组建议”，为尚未分组、未固定的页面寻找共同主题。', null, null, true, 'layers'),
     el('div', {class: 'panel-bottom'},
-      button(busy('semantic') ? '正在进行语义增强…' : '用本地语义再看一遍', 'semantic', {disabled: busy('semantic') || busy('rules') || !state.settings.semantic || state.tabs.length < 2}, 'full dark', busy('semantic') ? undefined : 'spark'),
+      modelBar(),
+      button(busy('semantic') ? '正在进行语义增强…' : '用本地语义再看一遍', 'semantic', {disabled: busy('semantic') || busy('rules') || !state.settings.semantic || state.tabs.filter(tab => !isProtected(tab)).length < 2}, 'full dark', busy('semantic') ? undefined : 'spark'),
       el('p', {}, !state.settings.semantic ? '语义增强已在设置中关闭。' : '在本机完成，不会发送页面内容。')));
 }
 function renderPages() {
@@ -278,20 +308,24 @@ function renderPages() {
   return [
     heading('当前页面', '整理此刻的页面，留住下次继续的线索。', [
       button(selectedCount ? '保存所选 · ' + selectedCount : '保存窗口 · ' + ui.state.tabs.length + ' 页', selectedCount ? 'save-selection' : 'save-window', {id: 'pages-save-task', disabled: ui.state.tabs.length === 0}, '', 'save'),
-      button(busy('rules') ? '正在整理…' : '生成分组建议', 'propose', {disabled: busy('rules') || busy('semantic') || ui.state.tabs.length < 2}, ui.state.groups.length ? '' : 'primary', 'layers')
+      button(busy('rules') ? '正在整理…' : '生成分组建议', 'propose', {id: 'generate-groups', disabled: busy('rules') || busy('semantic') || ungrouped < 2}, ui.state.groups.length ? '' : 'primary', 'layers')
     ]),
     !isPanel && statStrip(),
+    isPanel && el('nav', {class: 'pages-views', 'aria-label': '页面管理视图'},
+      button('页面列表', 'pages-mode', {id: 'pages-mode-list', 'data-mode': 'list', 'aria-pressed': ui.pagesMode === 'list'}),
+      button('整理建议' + (ui.state.groups.length ? ' · ' + ui.state.groups.length : ''), 'pages-mode', {id: 'pages-mode-groups', 'data-mode': 'groups', 'aria-pressed': ui.pagesMode === 'groups'})),
     el('div', {class: 'two-column'},
-      el('section', {'aria-label': '当前窗口页面'},
+      (!isPanel || ui.pagesMode === 'list') && el('section', {'aria-label': '当前窗口页面'},
         el('div', {class: 'section-heading'}, el('h2', {}, '打开的页面', el('small', {}, '当前窗口')), el('span', {}, dateLabel(Date.now()))),
         el('div', {class: 'list-tools'}, searchBox('pages', '搜索标题、站点或主题'), el('div', {class: 'filter-row'}, filters.map(([filter, label]) => el('button', {id: 'page-filter-' + filter, type: 'button', class: 'filter-button' + (ui.pageFilter === filter ? ' active' : ''), 'data-action': 'page-filter', 'data-filter': filter, 'aria-pressed': ui.pageFilter === filter}, label)))),
         el('div', {class: 'select-toolbar'},
           el('label', {class: 'checkbox-label'}, el('input', {type: 'checkbox', id: 'select-all', checked: allSelected, disabled: !tabs.length, 'aria-label': '选择当前列表全部页面'}), selectedCount ? '已选 ' + selectedCount + ' 页' : '选择页面'),
           el('span', {class: 'spacer'}),
-          el('select', {class: 'text-select', id: 'page-sort', 'aria-label': '页面排序'}, el('option', {value: 'recent', selected: ui.sort === 'recent'}, '最近访问优先'), el('option', {value: 'time', selected: ui.sort === 'time'}, '前台停留优先'))),
+          el('select', {class: 'text-select', id: 'page-sort', 'aria-label': '列表排序', 'aria-describedby': 'sort-caption'}, el('option', {value: 'recent', selected: ui.sort === 'recent'}, '最近访问优先'), el('option', {value: 'time', selected: ui.sort === 'time'}, '前台停留优先'))),
+        el('p', {class: 'sort-caption', id: 'sort-caption'}, ui.sort === 'time' ? '仅排序此列表 · 停留统计最近 7 天' : '仅排序此列表 · 缺少访问时间时使用本机记录'),
         el('div', {class: 'tab-list'}, tabs.length ? tabs.map(tabRow) : emptyState(ui.queries.pages || ui.pageFilter !== 'all' ? '没有匹配的页面' : '这里还没有页面', ui.queries.pages || ui.pageFilter !== 'all' ? '换一个关键词或筛选条件试试。' : '在这个窗口打开几个网页，刷新后就可以开始整理。', null, null, false)),
         el('p', {class: 'list-footnote'}, '已固定和已有分组的页面会受到保护。前台时长不等于实际注意力。')),
-      groupingPanel())
+      (!isPanel || ui.pagesMode === 'groups') && groupingPanel())
   ];
 }
 function taskCard(task, {featured = false} = {}) {
@@ -301,14 +335,13 @@ function taskCard(task, {featured = false} = {}) {
       el('h3', {class: 'task-name'}, task.name),
       iconButton('编辑 ' + task.name, 'edit-task', 'edit', {'data-id': task.id})),
     task.resumePage && el('div', {class: 'resume-context'}, icon('page'),
-      el('button', {type: 'button', class: 'resume-page-link', title: task.resumePage.title || task.resumePage.url, 'data-action': 'open-page', 'data-url': task.resumePage.url}, task.resumePage.title || domainOf(task.resumePage.url))),
+      el('button', {id: 'resume-page-' + encodeURIComponent(task.id), type: 'button', class: 'resume-page-link', title: task.resumePage.title || task.resumePage.url, 'data-action': 'open-page', 'data-url': task.resumePage.url}, task.resumePage.title || domainOf(task.resumePage.url))),
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
-    !isPanel && pages.length > 1 && el('details', {class: 'task-page-details'}, el('summary', {}, '任务内的 ' + pages.length + ' 个页面'),
-      el('ul', {class: 'task-pages'}, pages.map(page => el('li', {}, el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url}, page.title || domainOf(page.url)))))),
     el('div', {class: 'task-footer'},
       el('div', {class: 'task-count'}, el('span', {}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
         el('span', {class: 'task-date'}, dateLabel(task.lastActivityAt || task.updatedAt || task.createdAt))),
       button(busy('restore-' + task.id) ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id, disabled: busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
+    taskPages(task, ui.expandedPages.has(task.id), busy('restore-' + task.id)),
     task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加下一步', 'edit-task', {'data-id': task.id}, 'text-button'));
 }
 function renderTasks() {
@@ -394,18 +427,20 @@ function visibleSegments() {
 function timelineEntry(segment) {
   const statusLabel = {active: '前台停留', idle: '暂离', unknown: '记录缺口'}[segment.status] || '未知状态';
   const elapsed = duration(segment.status === 'active' ? segment.foregroundMs : segment.endedAt - segment.startedAt, true);
+  const id = encodeURIComponent(segment.id), expanded = ui.expandedSegments.has(segment.id);
   return el('article', {class: 'timeline-entry ' + segment.status},
     el('div', {class: 'timeline-clock'}, timeLabel(segment.startedAt)),
     el('div', {class: 'timeline-track'}, el('span', {class: 'timeline-point'})),
     el('div', {class: 'timeline-content'},
       el('div', {class: 'timeline-title-row'},
-        el('button', {type: 'button', class: 'timeline-title', 'data-action': 'open-page', 'data-url': segment.url, disabled: !/^https?:\/\//.test(segment.url || '')}, segment.title || domainOf(segment.url)),
+        el('button', {id: 'timeline-page-' + id, type: 'button', class: 'timeline-title', 'data-action': 'open-page', 'data-url': segment.url, disabled: !/^https?:\/\//.test(segment.url || '')}, segment.title || domainOf(segment.url)),
         !isPanel && el('span', {class: 'timeline-duration'}, elapsed)),
       el('div', {class: 'timeline-meta'},
         isPanel && el('span', {class: 'timeline-duration'}, elapsed),
-        el('span', {}, timeLabel(segment.startedAt) + '–' + timeLabel(segment.endedAt)),
-        el('span', {class: segment.status === 'active' ? '' : 'timeline-status'}, statusLabel),
-        tagsOf(segment).slice(0, 3).map(tag => tagChip(tag, 'timeline-tag')))));
+        segment.status !== 'active' && el('span', {class: 'timeline-status'}, statusLabel),
+        tagsOf(segment).slice(0, 3).map((tag, index) => tagChip(tag, 'timeline-tag', {id: 'timeline-tag-' + id + '-' + index})),
+        el('button', {id: 'segment-toggle-' + id, class: 'timeline-details-toggle', type: 'button', 'data-action': 'toggle-segment-details', 'data-id': segment.id, 'aria-expanded': expanded, 'aria-controls': 'segment-details-' + id, 'aria-label': (expanded ? '收起' : '查看') + '时间详情：' + (segment.title || statusLabel)}, icon('info'))),
+      el('p', {id: 'segment-details-' + id, class: 'timeline-details', hidden: !expanded}, timeLabel(segment.startedAt) + '–' + timeLabel(segment.endedAt) + ' · ' + statusLabel)));
 }
 function tagBars(entries) {
   const maximum = Math.max(1, ...entries.map((entry) => entry.foregroundMs));
@@ -618,6 +653,10 @@ function render() {
   if (!document.getElementById('navigation')) return;
   const focused = document.activeElement;
   const focusId = focused?.id;
+  const hadMainFocus = document.getElementById('main')?.contains(focused);
+  const rowIndex = [...document.querySelectorAll('.tab-row')].indexOf(focused?.closest('.tab-row'));
+  const wasProposal = Boolean(focused?.closest('.proposal'));
+  const memberScroll = [...document.querySelectorAll('.task-pages')].map(list => [list.id, list.scrollTop]);
   const selection = focused && 'selectionStart' in focused ? {start: focused.selectionStart, end: focused.selectionEnd} : null;
   renderNavigation();
   const main = document.getElementById('main');
@@ -648,12 +687,19 @@ function render() {
   if (mapScroll != null && main.querySelector('.graph-scroll')) main.querySelector('.graph-scroll').scrollTop = mapScroll;
   document.getElementById('app').setAttribute('aria-busy', String(Boolean(ui.pendingRange) || (!ui.state && !ui.error)));
   main.setAttribute('aria-busy', String(Boolean(ui.pendingRange)));
-  if (focusId && document.getElementById(focusId)) {
+  const toastAction = document.getElementById('toast-action');
+  if (toastAction) toastAction.disabled = toastAction.dataset.action === 'undo-group' ? !ui.canUndo || busy('undo') : busy('rules') || busy('semantic');
+  for (const [id, scroll] of memberScroll) if (document.getElementById(id)) document.getElementById(id).scrollTop = scroll;
+  if (focusId && document.getElementById(focusId) && !document.getElementById(focusId).disabled) {
     const target = document.getElementById(focusId);
     target.focus({preventScroll: true});
     if (selection && typeof target.setSelectionRange === 'function' && target.type !== 'number') {
       try { target.setSelectionRange(selection.start, selection.end); } catch { /* Selects do not expose text selection. */ }
     }
+  } else if (hadMainFocus) {
+    const rows = [...document.querySelectorAll('.tab-title')];
+    const target = rowIndex >= 0 ? rows[Math.min(rowIndex, rows.length - 1)] : wasProposal ? document.getElementById('grouping-title') : null;
+    (target || main).focus({preventScroll: true});
   }
 }
 function navigate(view) {
@@ -800,16 +846,24 @@ async function pollModel(callback) {
 }
 async function propose(semantic = false) {
   const id = semantic ? 'semantic' : 'rules';
+  let completed = false;
   await operation(id, async () => {
     if (semantic && !ui.state.settings.semantic) throw new Error('请先在设置中开启语义增强。');
     const load = () => request('PROPOSE_GROUPS', {windowId, semantic});
     const result = semantic ? await pollModel(load) : await load();
     const groups = result?.groups || [];
     if (result?.model) ui.state.model = {...ui.state.model, ...result.model};
-    ui.state.groups = groups; ui.applied.clear();
+    ui.state.groups = groups; ui.applied.clear(); ui.members.clear();
+    if (isPanel && ui.pagesMode === 'list') ui.listScroll = document.getElementById('main').scrollTop;
+    ui.pagesMode = 'groups';
     toast(groups.length ? '找到 ' + groups.length + ' 组建议。应用后才会改变浏览器分组。' : '暂时没有适合合并的页面，现有分组保持不变。');
     await refresh({quiet: true});
+    completed = true;
   });
+  if (completed && ui.view === 'pages') {
+    document.getElementById('main').scrollTop = 0;
+    document.getElementById('grouping-title')?.focus({preventScroll: true});
+  }
 }
 function captureSettings() {
   if (ui.view !== 'settings') return;
@@ -860,6 +914,12 @@ async function handleAction(action, target) {
     case 'refresh': if (ui.failedRange) await chooseRange(ui.failedRange); else await operation('refresh', () => refresh()); break;
     case 'flush-refresh': await operation('flush', async () => { await request('FLUSH_ACTIVITY'); await refresh(); }); break;
     case 'page-filter': ui.pageFilter = target.dataset.filter; render(); announceResults(); break;
+    case 'pages-mode': {
+      if (ui.pagesMode === 'list') ui.listScroll = document.getElementById('main').scrollTop;
+      ui.pagesMode = target.dataset.mode; render();
+      document.getElementById('main').scrollTop = ui.pagesMode === 'list' ? ui.listScroll : 0;
+      break;
+    }
     case 'propose': await propose(false); break;
     case 'semantic': await propose(true); break;
     case 'focus-tab':
@@ -874,14 +934,14 @@ async function handleAction(action, target) {
     case 'save-selection': taskDialog({scope: 'selection'}); break;
     case 'save-group': {
       const group = ui.state.groups.find((item) => String(item.id) === id);
-      if (group) taskDialog({group}); break;
+      if (group) taskDialog({group: selectedProposal(group, ui.state.tabs, ui.members)}); break;
     }
     case 'apply-group': {
       const group = ui.state.groups.find((item) => String(item.id) === id);
       if (!group) throw new Error('这条建议已更新，请刷新后重试。');
       await operation('group-' + id, async () => {
-        await request('APPLY_GROUP', {group, windowId}); ui.applied.add(group.id); ui.canUndo = true;
-        await refresh({quiet: true}); toast('分组已应用。可以撤销最近一次分组。');
+        const result = await request('APPLY_GROUP', {group: selectedProposal(group, ui.state.tabs, ui.members), windowId}); ui.applied.add(group.id); ui.canUndo = true;
+        await refresh({quiet: true}); toast('已将 ' + result.count + ' 页放入「' + result.name + '」。', false, 'undo-group');
       }); break;
     }
     case 'undo-group':
@@ -897,6 +957,12 @@ async function handleAction(action, target) {
     }
     case 'toggle-task-note':
       if (ui.expandedNotes.has(id)) ui.expandedNotes.delete(id); else ui.expandedNotes.add(id);
+      render(); break;
+    case 'toggle-task-pages':
+      if (ui.expandedPages.has(id)) ui.expandedPages.delete(id); else ui.expandedPages.add(id);
+      render(); break;
+    case 'toggle-segment-details':
+      if (ui.expandedSegments.has(id)) ui.expandedSegments.delete(id); else ui.expandedSegments.add(id);
       render(); break;
     case 'restore-task':
       await operation('restore-' + id, async () => {
@@ -961,7 +1027,13 @@ document.addEventListener('input', (event) => {
 });
 document.addEventListener('change', (event) => {
   const target = event.target;
-  if (target.dataset.tabSelect) {
+  if (target.dataset.groupMember) {
+    const group = ui.state.groups.find(group => group.id === target.dataset.groupMember);
+    if (!group) return;
+    const selected = proposalMembers(group, ui.state.tabs, ui.members), id = Number(target.dataset.tabId);
+    if (target.checked) selected.add(id); else selected.delete(id);
+    render();
+  } else if (target.dataset.tabSelect) {
     const id = Number(target.dataset.tabSelect);
     if (target.checked) ui.selected.add(id); else ui.selected.delete(id);
     render();
@@ -992,9 +1064,8 @@ if (isPanel && !isDemo && globalThis.chrome?.tabs) {
       if (!ui.busy.size && !document.getElementById('dialog').open && !document.hidden) refresh({quiet: true});
     }, 250);
   };
-  chrome.tabs.onActivated.addListener(schedule);
-  chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.title || change.status === 'complete') schedule(); });
-  chrome.tabs.onRemoved.addListener(schedule);
+  for (const name of ['onCreated', 'onRemoved', 'onActivated', 'onMoved', 'onAttached', 'onDetached', 'onReplaced']) chrome.tabs[name].addListener(schedule);
+  chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.pendingUrl || change.title || 'pinned' in change || 'groupId' in change || change.status === 'complete') schedule(); });
   const heartbeat = setInterval(schedule, 15000);
   window.addEventListener('pagehide', () => { clearTimeout(refreshTimer); clearInterval(heartbeat); });
 }

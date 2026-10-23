@@ -13,7 +13,8 @@
     <a class="brand" href="#" aria-label="Focuence"><img src="../icons/icon-48.png" width="24" height="24" alt=""><strong>Focuence</strong></a>
     <button type="button" id="open-panel" class="panel-link" disabled>打开侧栏 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3L10 14M10 5H4v15h15v-6"/></svg></button>
   </header>
-  <main id="popup-main" aria-busy="true"><p class="loading">正在读取当前窗口…</p></main>
+  <p id="tracking-status" class="tracking-banner" hidden>记录已暂停</p>
+  <main id="popup-main" aria-busy="true" tabindex="-1"><p class="loading">正在读取当前窗口…</p></main>
   <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
   <div id="error" class="error" role="alert" hidden></div>
   <div id="save-actions" class="save-actions" hidden></div>

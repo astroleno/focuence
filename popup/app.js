@@ -2,10 +2,12 @@ import { el, icon, duration } from '../src/ui.js';
 import { openWorkspace, openSidePanel } from '../src/navigation.js';
 import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
+import { taskPages } from '../src/task-pages.js';
+import { proposalMembers, selectedProposal } from '../src/proposals.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
-const ui = { state: null, view: 'groups', working: '', analyzing: false, analysisNote: '', analysisError: false, form: null, members: new Map(), expandedNotes: new Set(), didPropose: false };
+const ui = { state: null, view: 'groups', working: '', analyzing: false, analysisNote: '', analysisError: false, form: null, members: new Map(), expandedNotes: new Set(), expandedPages: new Set(), didPropose: false, readError: '', feedbackAction: '' };
 let windowId, transport;
 let fitFrame;
 function fitPopup() {
@@ -27,27 +29,28 @@ if (isDemo) {
 }
 async function request(type, payload = {}) {
   const response = await transport({ target: 'background', type, windowId, ...payload });
-  if (!response?.ok) throw new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。');
+  if (!response?.ok) throw Object.assign(new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。'), {code: response?.code});
   return response.data;
 }
-function feedback(message, error = false) {
-  byId('feedback').hidden = true; byId('error').hidden = true;
+function feedback(message, error = false, actionName = '') {
+  const regions = [byId('feedback'), byId('error')];
+  const hadFocus = regions.some(region => region.contains(document.activeElement));
+  for (const region of regions) { region.hidden = true; region.replaceChildren(); }
   const region = byId(error ? 'error' : 'feedback');
-  region.textContent = message; region.hidden = !message;
+  ui.feedbackAction = actionName;
+  region.replaceChildren(el('span', {}, message), actionName && action(actionName === 'undo' ? '撤销' : '重新生成', actionName, {id: 'feedback-action', disabled: false}, false));
+  region.hidden = !message;
+  if (hadFocus) (region.querySelector('button') || byId('popup-main')).focus({preventScroll: true});
   fitPopup();
 }
 function action(label, name, attributes = {}, primary = false, iconName) {
   return el('button', {id: 'action-' + name + '-' + encodeURIComponent(attributes['data-id'] || attributes['data-view'] || ''), type: 'button', 'data-action': name, disabled: Boolean(ui.working), ...attributes, class: 'button' + (primary ? ' primary' : '') + (attributes.class ? ' ' + attributes.class : '')}, iconName && icon(iconName), label);
 }
 function groupMembers(group) {
-  if (!ui.members.has(group.id)) ui.members.set(group.id, new Set(group.tabIds));
-  return ui.members.get(group.id);
+  return proposalMembers(group, ui.state.tabs, ui.members);
 }
 function selectedGroup(group) {
-  const selected = groupMembers(group);
-  const tabIds = group.tabIds.filter(id => selected.has(id));
-  const urls = new Set(ui.state.tabs.filter(tab => tabIds.includes(tab.id)).map(tab => tab.url));
-  return { ...group, tabIds, pages: group.pages.filter(page => urls.has(page.url)) };
+  return selectedProposal(group, ui.state.tabs, ui.members);
 }
 function groupCard(group) {
   const selected = groupMembers(group);
@@ -70,6 +73,7 @@ function taskCard(task, index) {
     el('div', {class: 'task-actions'},
       el('span', {class: 'secondary'}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
       action(ui.working === 'restore-' + task.id ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id}, index === 0, 'arrow')),
+    taskPages(task, ui.expandedPages.has(task.id), Boolean(ui.working)),
     taskNotes(task, ui.expandedNotes.has(task.id)));
 }
 function saveForm() {
@@ -100,6 +104,8 @@ function paint(...content) {
   const focused = document.activeElement;
   const id = focused?.id;
   const selection = focused && 'selectionStart' in focused ? [focused.selectionStart, focused.selectionEnd] : null;
+  const hadFocus = byId('popup-main').contains(focused);
+  const memberScroll = [...document.querySelectorAll('.task-pages')].map(list => [list.id, list.scrollTop]);
   byId('popup-main').replaceChildren(...content);
   fitPopup();
   const replacement = id && byId(id);
@@ -108,7 +114,8 @@ function paint(...content) {
     if (selection && replacement.setSelectionRange && replacement.type !== 'checkbox') {
       try { replacement.setSelectionRange(...selection); } catch { /* Not every input supports a text range. */ }
     }
-  }
+  } else if (hadFocus) byId('popup-main').focus({preventScroll: true});
+  for (const [listId, scroll] of memberScroll) if (byId(listId)) byId(listId).scrollTop = scroll;
 }
 function render() {
   const state = ui.state;
@@ -116,8 +123,15 @@ function render() {
   byId('toggle-tracking').disabled = !state || Boolean(ui.working);
   byId('workspace').disabled = Boolean(ui.working);
   renderSaveActions();
-  if (!state) return;
+  const feedbackButton = byId('feedback-action');
+  if (feedbackButton) feedbackButton.disabled = Boolean(ui.working) || ui.analyzing || (ui.feedbackAction === 'undo' && !state?.undoAvailable);
+  if (!state) {
+    byId('popup-main').setAttribute('aria-busy', String(Boolean(ui.working)));
+    if (ui.readError) paint(el('div', {class: 'empty'}, icon('info'), el('h1', {}, '暂时无法读取窗口'), el('p', {class: 'secondary'}, '可以在这里重试，恢复后继续整理页面。'), action(ui.working ? '正在重试…' : '重新读取', 'retry-read', {id: 'retry-read', disabled: Boolean(ui.working)}, true, 'refresh')));
+    return;
+  }
   byId('toggle-tracking').textContent = state.settings.tracking ? '暂停记录' : '恢复记录';
+  byId('tracking-status').hidden = state.settings.tracking;
   const main = byId('popup-main');
   main.setAttribute('aria-busy', String(Boolean(ui.working)));
   if (ui.form) { paint(saveForm()); return; }
@@ -132,6 +146,7 @@ function render() {
       el('h1', {}, '整理当前窗口'), el('p', { class: 'secondary' }, tabs.length + ' 页打开 · ' + eligible.length + ' 页待整理')),
       action(ui.working === 'propose' ? '正在整理…' : groups.length ? '重新整理' : '生成建议', 'propose', { disabled: Boolean(ui.working) || ui.analyzing || eligible.length < 2 }, !groups.length, 'layers')));
     if (ui.analysisNote) content.push(el('p', {class: 'analysis-status' + (ui.analysisError ? ' form-error' : ''), role: 'status'}, ui.analysisNote));
+    if (state.proposalNotice) content.push(el('p', {class: 'proposal-notice', role: 'status'}, state.proposalNotice));
     if (groups.length) content.push(el('section', { class: 'proposal-list', 'aria-label': '可直接应用的分组建议' }, groups.map(groupCard)));
     else content.push(el('div', { class: 'empty' }, icon('layers'), el('p', {}, ui.didPropose ? '暂时没有需要合并的页面' : '先生成建议，再决定如何分组'),
       el('p', { class: 'secondary' }, '已固定和已有分组的页面会受到保护。')));
@@ -153,13 +168,24 @@ async function refresh() {
   const state = await request('GET_STATE', { range: 'today' });
   if (epoch !== refreshEpoch) return;
   ui.state = state;
+  ui.readError = '';
   render();
 }
 async function operation(key, callback) {
   if (ui.working) return;
+  const focusId = document.activeElement?.id;
   ui.working = key; feedback(''); render();
-  try { await callback(); } catch (error) { feedback(error.message, true); }
-  finally { ui.working = ''; render(); }
+  try { await callback(); } catch (error) {
+    if (error.code === 'STALE_PROPOSAL') await refresh().catch(() => {});
+    feedback(error.message, true, error.code === 'STALE_PROPOSAL' ? 'propose' : '');
+  }
+  finally {
+    ui.working = ''; render();
+    if ([document.body, byId('popup-main')].includes(document.activeElement)) {
+      const target = focusId && byId(focusId);
+      (target && !target.disabled ? target : byId('feedback-action') || byId('popup-main')).focus({preventScroll: true});
+    }
+  }
 }
 function startSave(group) {
   const selected = group ? new Set(selectedGroup(group).tabIds) : new Set(ui.state.tabs.map(tab => tab.id));
@@ -195,6 +221,7 @@ async function performAction(actionName, target) {
   const id = target.dataset.id;
   switch (actionName) {
     case 'view': ui.view = target.dataset.view; feedback(''); render(); break;
+    case 'retry-read': await operation('read', async () => { try { await refresh(); } catch (error) { ui.readError = error.message; throw error; } }); break;
     case 'propose': await propose(false); break;
     case 'semantic': await propose(true); break;
     case 'apply-group': {
@@ -202,8 +229,8 @@ async function performAction(actionName, target) {
       if (!group) throw new Error('建议已更新，请重新整理。');
       const selected = selectedGroup(group);
       await operation('apply-' + id, async () => {
-        await request('APPLY_GROUP', { group: selected }); await refresh();
-        feedback('已将 ' + selected.tabIds.length + ' 页放入「' + selected.name + '」，可以撤销。');
+        const result = await request('APPLY_GROUP', { group: selected }); await refresh();
+        feedback('已将 ' + result.count + ' 页放入「' + result.name + '」。', false, 'undo');
       }); break;
     }
     case 'undo':
@@ -224,6 +251,9 @@ async function performAction(actionName, target) {
       await operation('open-page', async () => { await request('OPEN_PAGE', {url: target.dataset.url}); feedback('已接回这个页面。'); }); break;
     case 'toggle-task-note':
       if (ui.expandedNotes.has(id)) ui.expandedNotes.delete(id); else ui.expandedNotes.add(id);
+      render(); break;
+    case 'toggle-task-pages':
+      if (ui.expandedPages.has(id)) ui.expandedPages.delete(id); else ui.expandedPages.add(id);
       render(); break;
   }
 }
@@ -274,4 +304,21 @@ byId('toggle-tracking').addEventListener('click', () => operation('tracking', as
   await request('UPDATE_SETTINGS', { patch: { tracking } }); await refresh();
   feedback(tracking ? '浏览记录已恢复。' : '浏览记录已暂停，已保存任务仍可继续。');
 }));
-try { await refresh(); } catch (error) { byId('popup-main').replaceChildren(el('p', {}, '暂时无法读取窗口，请刷新扩展后重试。')); feedback(error.message, true); }
+if (!isDemo && globalThis.chrome?.tabs) {
+  let timer, pending = false;
+  const update = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      if (ui.working || ui.form) { pending = true; return; }
+      pending = false;
+      try { await refresh(); } catch (error) { feedback('未能更新窗口：' + error.message, true); }
+    }, 250);
+  };
+  for (const name of ['onCreated', 'onRemoved', 'onActivated', 'onMoved', 'onAttached', 'onDetached', 'onReplaced']) chrome.tabs[name].addListener(update);
+  chrome.tabs.onUpdated.addListener((_id, change) => {
+    if (change.url || change.pendingUrl || change.title || 'pinned' in change || 'groupId' in change || change.status === 'complete') update();
+  });
+  const heartbeat = setInterval(() => { if (pending) update(); }, 1000);
+  window.addEventListener('pagehide', () => { clearTimeout(timer); clearInterval(heartbeat); });
+}
+try { await refresh(); } catch (error) { ui.readError = error.message; feedback(error.message, true); render(); }
