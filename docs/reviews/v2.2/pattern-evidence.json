@@ -1,0 +1,19 @@
+{
+  "provenance": "Real extension and IndexedDB with labelled synthetic task episodes, retrieval events and 2,030 later visits.",
+  "checks": [
+    {
+      "name": "Repeated task returns and retrieval expose evidence beyond the timeline limit",
+      "status": "passed",
+      "detail": {
+        "timelineRows": 2000,
+        "totalRows": 2039,
+        "independentEpisodes": 3,
+        "returns": 3,
+        "retrievalDays": 3,
+        "evidenceDialog": true,
+        "reusedOpenPage": true
+      }
+    }
+  ],
+  "errors": []
+}

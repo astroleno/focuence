@@ -1,4 +1,5 @@
 @import url('../src/tokens.css');
+@import url('../src/task-memory.css');
 html { width: 400px; min-width: 400px; }
 body { width: 400px; max-height: 600px; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
 .popup-header { flex: 0 0 54px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--line); }
@@ -7,7 +8,7 @@ body { width: 400px; max-height: 600px; display: flex; flex-direction: column; o
 .panel-link { display: inline-flex; align-items: center; gap: 7px; background: none; border: 0; padding: 7px 0 7px 9px; font-size: 13px; color: var(--muted); }
 .panel-link:hover { color: var(--accent); }
 .panel-link .icon { width: 15px; height: 15px; }
-#popup-main { flex: 1 1 auto; min-height: 0; max-height: 490px; overflow-y: auto; padding: 0 20px 18px; }
+#popup-main { flex: 1 1 auto; min-height: 0; max-height: 490px; overflow-y: auto; padding: 0 20px 18px; scroll-padding-top: 56px; }
 .popup-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 20px; position: sticky; top: 0; z-index: 1; background: var(--surface); }
 .popup-tabs .button { border: 0; border-radius: 0; background: transparent; min-height: 43px; padding: 11px 0; color: var(--muted); position: relative; }
 .popup-tabs .button[aria-pressed='true'] { color: var(--ink); font-weight: 650; }

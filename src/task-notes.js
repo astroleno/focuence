@@ -28,11 +28,11 @@ export function taskNotes(task, expanded = false) {
   if (!note.text) return null;
   const key = encodeURIComponent(task.id);
   const container = el('div', {class: 'task-notes', 'data-summary-more': note.hasMore},
-    el('div', {class: 'note-heading'}, el('span', {}, '下一步'), el('button', {
+    el('div', {class: 'note-heading'}, el('span', {}, '任务笔记'), el('button', {
       id: 'note-toggle-' + key, type: 'button', class: 'note-toggle',
       'data-action': 'toggle-task-note', 'data-id': task.id,
       'aria-expanded': expanded, 'aria-controls': 'note-copy-' + key,
-      'aria-label': (expanded ? '收起' : '展开') + '“' + task.name + '”的下一步'
+      'aria-label': (expanded ? '收起' : '展开') + '“' + task.name + '”的任务笔记'
     }, expanded ? '收起' : '展开')),
     el('p', {id: 'note-copy-' + key, class: 'task-note' + (expanded ? '' : ' note-preview')}, expanded ? note.text : note.summary));
   measureNotes();

@@ -29,7 +29,8 @@ export function planTaskRestore(task, tabs = [], segments = []) {
   const active = tabs.find(tab => tab.active && pageUrls.has(normalizeUrl(tab.url)));
   const recent = visits[0];
   const remembered = pages.find(page => (page.pageId || page.id) === task?.lastActivePageId);
-  const resumeUrl = active ? normalizeUrl(active.url) : recent ? normalizeUrl(recent.url) : remembered?.url;
+  const checkpoint = pages.find(page => page.url === normalizeUrl(task?.checkpoint?.page?.url));
+  const resumeUrl = checkpoint?.url || (active ? normalizeUrl(active.url) : recent ? normalizeUrl(recent.url) : remembered?.url);
   const resumePage = pages.find(page => page.url === resumeUrl) || pages[0] || null;
   const missing = pages.filter(page => !open.has(page.url));
   return {

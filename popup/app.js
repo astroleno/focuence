@@ -4,6 +4,8 @@ import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
 import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
+import { createTaskMemoryUI } from '../src/task-memory-ui.js';
+import { taskText } from '../src/task-context.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
@@ -32,6 +34,7 @@ async function request(type, payload = {}) {
   if (!response?.ok) throw Object.assign(new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。'), {code: response?.code});
   return response.data;
 }
+const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup'});
 function feedback(message, error = false, actionName = '') {
   const regions = [byId('feedback'), byId('error')];
   const hadFocus = regions.some(region => region.contains(document.activeElement));
@@ -72,18 +75,19 @@ function taskCard(task, index) {
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
     el('div', {class: 'task-actions'},
       el('span', {class: 'secondary'}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
-      action(ui.working === 'restore-' + task.id ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id}, index === 0, 'arrow')),
+      action(ui.working === 'restore-' + task.id ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: Boolean(ui.working) || !task.pages.length}, index === 0, 'arrow')),
     taskPages(task, ui.expandedPages.has(task.id), Boolean(ui.working)),
-    taskNotes(task, ui.expandedNotes.has(task.id)));
+    taskNotes(task, ui.expandedNotes.has(task.id)), memory.taskActions(task));
 }
 function saveForm() {
   const form = ui.form, count = form.selected.size;
   return el('form', {id: 'save-task-form'},
     el('div', {class: 'section-heading'}, el('h1', {}, '保存任务'), action('返回', 'cancel-save', {class: 'text-button'})),
     el('p', {class: 'form-scope secondary'}, form.scope + ' · 已选 ' + count + ' 页' + (form.deduplicated ? ' · 同一地址只保留一份' : '')),
-    el('label', {class: 'field'}, el('span', {}, '任务名称'), el('input', {id: 'task-name', name: 'name', required: true, maxlength: 80, value: form.name, placeholder: '正在做的这件事', disabled: Boolean(ui.working)})),
-    el('label', {class: 'field'}, el('span', {}, '下一步'), el('textarea', {id: 'task-notes', name: 'notes', maxlength: 3000, rows: 2, placeholder: '下次回来，先做什么？', disabled: Boolean(ui.working)}, form.notes)),
-    el('div', {class: 'selection-heading'}, el('span', {}, '保存的页面'), action(count ? '清空选择' : '全选', 'toggle-save-all', {class: 'text-button'})),
+    el('label', {class: 'field'}, el('span', {}, '任务名称'), el('input', {id: 'task-name', name: 'name', required: true, value: form.name, placeholder: '正在做的这件事', disabled: Boolean(ui.working)})),
+    el('label', {class: 'field'}, el('span', {}, '任务目标'), el('textarea', {id: 'task-goal', name: 'goal', rows: 2, placeholder: '这件事想达到什么目标？', disabled: Boolean(ui.working)}, form.goal)),
+    el('label', {class: 'field'}, el('span', {}, '任务笔记'), el('textarea', {id: 'task-notes', name: 'notes', rows: 2, placeholder: '保留资料和上下文', disabled: Boolean(ui.working)}, form.notes)),
+    !form.intentOnly && el('div', {class: 'selection-heading'}, el('span', {}, '保存的页面'), action(count ? '清空选择' : '全选', 'toggle-save-all', {class: 'text-button'})),
     el('div', {class: 'save-pages'}, form.tabs.map(tab => el('label', {class: 'page-option'},
       el('input', {id: 'save-member-' + tab.id, type: 'checkbox', 'data-save-member': tab.id, checked: form.selected.has(tab.id), disabled: Boolean(ui.working)}),
       el('span', {title: tab.title || tab.url}, tab.title || tab.domain)))),
@@ -97,8 +101,8 @@ function renderSaveActions() {
   if (!ui.form) { region.replaceChildren(); return; }
   const count = ui.form.selected.size;
   region.replaceChildren(
-    el('span', {class: count > 30 ? 'form-error' : 'secondary'}, count > 30 ? '最多保存 30 页' : count ? '已选 ' + count + ' 页' : '请选择页面'),
-    el('button', {id: 'save-task-submit', type: 'submit', form: 'save-task-form', class: 'button primary', disabled: Boolean(ui.working) || count === 0 || count > 30}, icon('save'), ui.working === 'save' ? '正在保存…' : '保存任务'));
+    el('span', {class: count > 30 ? 'form-error' : 'secondary'}, ui.form.intentOnly ? '保存目标后再关联资料' : count > 30 ? '最多保存 30 页' : count ? '已选 ' + count + ' 页' : '请选择页面'),
+    el('button', {id: 'save-task-submit', type: 'submit', form: 'save-task-form', class: 'button primary', disabled: Boolean(ui.working) || (!ui.form.intentOnly && count === 0) || count > 30}, icon('save'), ui.working === 'save' ? '正在保存…' : '保存任务'));
 }
 function paint(...content) {
   const focused = document.activeElement;
@@ -139,7 +143,7 @@ function render() {
   const eligible = tabs.filter(tab => !tab.pinned && Number(tab.groupId) < 0);
   const groups = state.groups || [];
   const navigation = el('nav', { class: 'popup-tabs', 'aria-label': '快捷操作' },
-    [['groups', '整理页面'], ['tasks', '最近任务']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
+    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
   const content = [isDemo && el('p', { class: 'demo-note' }, '示例模式 · 仅在本页内存中演示'), navigation];
   if (ui.view === 'groups') {
     content.push(el('div', { class: 'window-summary' }, el('div', {},
@@ -154,7 +158,11 @@ function render() {
       action('保存窗口', 'save-window', { disabled: Boolean(ui.working) || !tabs.length }, false, 'save'),
       action('撤销分组', 'undo', { disabled: Boolean(ui.working) || ui.analyzing || !state.undoAvailable })));
     content.push(action(ui.analyzing ? '本地语义分析中…' : '需要更细的建议？使用本机模型', 'semantic', { class: 'text-button', disabled: Boolean(ui.working) || ui.analyzing || !state.settings.semantic || eligible.length < 2 }));
+  } else if (ui.view === 'search') {
+    content.push(memory.searchView());
   } else {
+    content.push(memory.current({compact: true}));
+    content.push(action('新建任务', 'new-task', {}, false, 'plus'));
     content.push(el('div', { class: 'section-heading' }, el('h1', {}, '从上次继续'), el('span', { class: 'secondary' }, state.tasks.length + ' 个任务')));
     content.push(state.tasks.length ? el('section', { class: 'task-list', 'aria-label': '最近保存或访问的任务' }, state.tasks.slice(0, 3).map(taskCard)) :
       el('div', { class: 'empty' }, icon('folder'), el('p', {}, '给正在做的事留个位置'), el('p', { class: 'secondary' }, '保存相关页面，再写一句下次要做什么。')));
@@ -187,11 +195,11 @@ async function operation(key, callback) {
     }
   }
 }
-function startSave(group) {
+function startSave(group, intentOnly = false) {
   const selected = group ? new Set(selectedGroup(group).tabIds) : new Set(ui.state.tabs.map(tab => tab.id));
-  const candidates = group ? ui.state.tabs.filter(tab => group.tabIds.includes(tab.id)) : ui.state.tabs;
+  const candidates = intentOnly ? [] : group ? ui.state.tabs.filter(tab => group.tabIds.includes(tab.id)) : ui.state.tabs;
   const tabs = uniqueTaskPages([...candidates.filter(tab => selected.has(tab.id)), ...candidates.filter(tab => !selected.has(tab.id))]);
-  ui.form = { name: group?.name || '', notes: '', scope: group ? '当前分组' : '当前窗口', tabs, deduplicated: tabs.length < candidates.length, selected: new Set(tabs.filter(tab => selected.has(tab.id)).map(tab => tab.id)) };
+  ui.form = { name: group?.name || '', goal: '', notes: '', intentOnly, scope: intentOnly ? '先记录目标，稍后关联资料' : group ? '当前分组' : '当前窗口', tabs, deduplicated: tabs.length < candidates.length, selected: new Set(tabs.filter(tab => selected.has(tab.id)).map(tab => tab.id)) };
   feedback(''); render(); byId('task-name').focus();
 }
 async function propose(semantic) {
@@ -235,6 +243,7 @@ async function performAction(actionName, target) {
     }
     case 'undo':
       await operation('undo', async () => { const result = await request('UNDO_GROUP'); await refresh(); feedback(result.restored ? '已撤销最近一次分组。' : '没有可以撤销的分组。'); }); break;
+    case 'new-task': startSave(null, true); break;
     case 'save-window': startSave(); break;
     case 'save-group': startSave(ui.state.groups.find(item => item.id === id)); break;
     case 'cancel-save': ui.form = null; feedback(''); render(); break;
@@ -243,7 +252,7 @@ async function performAction(actionName, target) {
     }
     case 'restore-task':
       await operation('restore-' + id, async () => {
-        const result = await request('RESTORE_TASK', { id }); await refresh();
+        const result = await request('RESTORE_TASK', { id, revision: ui.state.tasks.find(task => task.id === id).revision || 0, contextRevision: ui.state.work?.current.revision || 0 }); await refresh();
         const failed = result.failed?.length || 0;
         feedback('复用 ' + result.reused + ' 页，新开 ' + result.opened + ' 页' + (failed ? '；' + failed + ' 页未恢复，可重试。' : '，已接回上次页面。'), failed > 0);
       }); break;
@@ -266,6 +275,7 @@ document.addEventListener('input', event => {
   if (!ui.form) return;
   if (event.target.name === 'name') ui.form.name = event.target.value;
   if (event.target.name === 'notes') ui.form.notes = event.target.value;
+  if (event.target.name === 'goal') ui.form.goal = event.target.value;
 });
 document.addEventListener('change', event => {
   const target = event.target;
@@ -286,9 +296,11 @@ document.addEventListener('submit', event => {
   const form = ui.form;
   if (!form) return;
   if (!form.name.trim()) { feedback('请给任务起一个名字。', true); byId('task-name').focus(); return; }
-  if (!form.selected.size || form.selected.size > 30) return;
+  try { for (const field of ['name', 'goal', 'notes']) taskText(form[field], field, {required: field === 'name'}); }
+  catch (error) { feedback(error.message, true); return; }
+  if ((!form.intentOnly && !form.selected.size) || form.selected.size > 30) return;
   operation('save', async () => {
-    const task = await request('SAVE_TASK', { name: form.name.trim(), notes: form.notes.trim(), tabIds: [...form.selected] });
+    const task = await request('SAVE_TASK', { name: form.name.trim(), goal: form.goal.trim(), notes: form.notes.trim(), tabIds: [...form.selected], ...(form.intentOnly ? {mode: 'intent'} : {}) });
     ui.form = null; ui.view = 'tasks'; await refresh();
     feedback('「' + task.name + '」已保存，共 ' + task.pages.length + ' 页。');
   });

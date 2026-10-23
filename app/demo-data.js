@@ -1,6 +1,11 @@
 import { computeAnalytics, computeReview } from '../src/analytics.js';
 import { taskViews } from '../src/tasks.js';
 import {sealProposal, validateProposalSelection} from '../src/proposals.js';
+import { createWorkspace } from '../src/workspace.js';
+import { createActivityState } from '../src/activity.js';
+import { emptyWorkspace, taskFrom } from '../src/store.js';
+import { assertRevision } from '../src/task-context.js';
+import { pageIdForUrl } from '../src/text.js';
 
 // Explicit, memory-only preview. This module never reads or writes extension storage.
 // Loaded only when the workbench URL contains ?demo=1.
@@ -24,7 +29,7 @@ export function createDemoTransport() {
   ];
   let nextTabId = 113;
   const pages = data.map((entry, index) => ({
-    id: 'demo-page-' + (index + 1), title: entry[0], domain: entry[1], url: entry[2],
+    id: pageIdForUrl(entry[2]), title: entry[0], domain: entry[1], url: entry[2],
     tags: entry[3], lastSeen: now - index * minute
   }));
   let tabs = pages.map((page, index) => ({
@@ -40,6 +45,7 @@ export function createDemoTransport() {
     {id: 'demo-task-local', name: '让浏览器更轻一点', color: 'orange', locked: true, createdAt: now - 86400000 * 2, updatedAt: now - 2 * 3600000, notes: '优先跑通本地语义分组，再把时间记录接到任务恢复。', pages: toTaskPages([3, 4, 5, 6])},
     {id: 'demo-task-visual', name: '产品视觉参考', color: 'blue', locked: true, createdAt: now - 86400000 * 3, updatedAt: now - 86400000 * 2, notes: '光线、材质与信息层级：留住值得回看的参考。', pages: toTaskPages([7, 8, 9])}
   ];
+  tasks = tasks.map(task => taskFrom({...task, goal: task.id === 'demo-task-audio' ? '验证便携音箱的声音采集与播放方案' : task.id === 'demo-task-local' ? '在浏览器中实现本地语义分析和任务恢复' : '整理产品摄影的光线、材质与信息层级参考'}));
   const order = [0, 1, 0, 2, 3, 4, 5, 6, 3, 7, 8, 9, 7, 0, 1, 5];
   let cursor = midnight + 8 * 3600000 + 40 * minute;
   let segments = order.map((pageIndex, index) => {
@@ -64,7 +70,7 @@ export function createDemoTransport() {
     startedAt: midnight - 86400000 + 15 * 3600000, endedAt: midnight - 86400000 + 15 * 3600000 + 17 * minute,
     foregroundMs: 17 * minute, status: 'active', endReason: 'window-blur'
   });
-  let settings = {tracking: true, semantic: true, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
+  let settings = {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
   let model = {status: 'idle', name: 'BGE-small-zh-v1.5 · 本地', progress: 0};
   let groups = [];
   let lastApply = null;
@@ -86,22 +92,66 @@ export function createDemoTransport() {
     }).filter((group) => group.tabIds.length >= 2).map(group => sealProposal(group, tabs));
   }
   groups = makeGroups(false);
-  function state(range = 'week') {
+  let workspaceData = emptyWorkspace(), relations = [], epoch = 0, savedJobs = [];
+  let activity = createActivityState({now, sessionId: 'demo'});
+  const memoryStore = {
+    getWorkspace: async () => structuredClone(workspaceData), getTasks: async () => structuredClone(tasks),
+    getTask: async id => structuredClone(tasks.find(task => task.id === id)), getRelations: async () => structuredClone(relations),
+    getPages: async () => structuredClone(pages), listSegments: async () => structuredClone(segments), getVectors: async () => [],
+    async commitWorkspace(change) {
+      for (const expected of change.expectedTasks || []) assertRevision(tasks.find(task => task.id === expected.id), expected.revision);
+      for (const task of change.tasks || []) tasks = [...tasks.filter(item => item.id !== task.id), taskFrom(task)];
+      tasks = tasks.filter(task => !(change.deleteTasks || []).includes(task.id));
+      relations = relations.filter(item => !(change.deleteTasks || []).includes(item.taskId) && !(change.resetRelations || []).includes(item.taskId) && !(change.deleteRelations || []).includes(item.id));
+      for (const relation of change.relations || []) relations = [...relations.filter(item => item.id !== relation.id), structuredClone(relation)];
+      for (const segment of change.segments || []) segments = [...segments.filter(item => item.id !== segment.id), segment];
+      if (change.workspace) workspaceData = structuredClone(change.workspace);
+      return {};
+    },
+  };
+  const memory = createWorkspace({store: memoryStore, sessionId: 'demo', now: Date.now,
+    settings: () => ({...settings, semantic: false}), epoch: () => epoch, invalidate: () => { epoch++; },
+    getActivity: () => activity, setActivity: value => { activity = value; }, rawContext: async () => tabs.find(tab => tab.active) || null,
+    idleState: async () => 'active', targetWindow: async () => 1, tabs: async () => structuredClone(tabs),
+    allowed: url => /^https?:/.test(url || ''), loadJobs: async () => savedJobs, saveJobs: async values => { savedJobs = structuredClone(values); },
+    async restorePages(task, windowId, single) {
+      let reused = 0, opened = 0;
+      const chosen = single ? [single] : task.pages;
+      for (const page of chosen) {
+        if (tabs.some(tab => tab.url === page.url)) reused++;
+        else { tabs.push({...page, id: nextTabId++, windowId, pinned: false, groupId: -1, foregroundMs: 0}); opened++; }
+      }
+      const resumePage = chosen[0] || null, activeTabId = tabs.find(tab => tab.url === resumePage?.url)?.id;
+      return {reused, opened, failed: [], resumePage, activeTabId};
+    },
+    activateTab: async (_windowId, id) => { tabs.forEach(tab => { tab.active = tab.id === id; }); },
+    openPage: async () => ({opened: true}), embed: async () => { throw new Error('示例模式只演示关键词结果，真实扩展使用本机模型。'); },
+  });
+  const memoryReady = memory.initialize();
+  async function state(range = 'week') {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.1.2', windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.2.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
+      work: await memory.view({windowId: 1, tasks, tabs, segments: scoped}),
       trackingState: { status: settings.tracking ? 'active' : 'paused', activeTabId: tabs.find(tab => tab.active)?.id, lastUpdatedAt: Date.now() }
     };
   }
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   return async function demoRequest(message) {
     try {
+      await memoryReady;
+      if (memory.hasMutation(message.type)) return {ok: true, data: structuredClone(await memory.mutate(message))};
       let result;
       switch (message.type) {
-        case 'GET_STATE': result = state(message.range); break;
+        case 'GET_STATE': result = await state(message.range); break;
+        case 'SEARCH_MEMORY': result = await memory.createJob(message); break;
+        case 'SUGGEST_TASK_PAGES': result = await memory.createJob(message, 'association'); break;
+        case 'GET_SEARCH_STATUS': result = await memory.advanceJob(message); break;
+        case 'CANCEL_SEARCH': result = await memory.cancelJob(message); break;
+        case 'UPDATE_FOCUS_SUPPORT': settings.focusSupport = message.enabled === true; result = settings; break;
         case 'PROPOSE_GROUPS':
           if (message.semantic) {
             model = {status: 'loading', name: model.name, progress: .45};
@@ -125,45 +175,24 @@ export function createDemoTransport() {
           break;
         case 'SAVE_TASK': {
           const selectedPages = message.group ? message.group.pages.map((page) => ({pageId: page.id || page.pageId, title: page.title, url: page.url, tags: page.tags || []})) : tabs.filter((tab) => (message.tabIds || []).includes(tab.id)).map((tab) => ({pageId: tab.pageId, title: tab.title, url: tab.url, tags: tab.tags || []}));
-          if (!selectedPages.length) throw new Error('请先选择要保存的页面。');
+          if (!selectedPages.length && message.mode !== 'intent') throw new Error('请先选择要保存的页面。');
           if (selectedPages.length > 30) throw new Error('每个任务最多保存 30 页。');
-          const task = {id: 'demo-task-' + Date.now(), name: message.name, notes: message.notes || '', pages: selectedPages.slice(0, 30), color: message.group?.color || 'green', locked: true, createdAt: Date.now(), updatedAt: Date.now()};
-          tasks.unshift(task); result = task; break;
-        }
-        case 'UPDATE_TASK': {
-          const task = tasks.find((item) => item.id === message.id);
-          if (!task) throw new Error('找不到这个任务。');
-          if ('name' in message) task.name = message.name;
-          if ('notes' in message) task.notes = message.notes;
-          task.updatedAt = Date.now(); result = task; break;
-        }
-        case 'DELETE_TASK': tasks = tasks.filter((task) => task.id !== message.id); result = {deleted: true}; break;
-        case 'RESTORE_TASK': {
-          const task = tasks.find((item) => item.id === message.id);
-          if (!task) throw new Error('找不到这个任务。');
-          let reused = 0, opened = 0;
-          for (const page of task.pages.slice(0, 30)) {
-            if (tabs.some((tab) => tab.url === page.url)) reused++;
-            else { tabs.push({id: nextTabId++, pageId: page.pageId, title: page.title, url: page.url, domain: new URL(page.url).hostname, tags: page.tags, foregroundMs: 0, pinned: false, groupId: -1, windowId: 1}); opened++; }
-          }
-          task.lastRestoredAt = Date.now();
-          const active = tabs.find(tab => task.pages.some(page => page.url === tab.url));
-          if (active) tabs.forEach(tab => { tab.active = tab.id === active.id; });
-          result = {opened, reused, failed: []}; break;
+          const task = taskFrom({id: 'demo-task-' + Date.now(), name: message.name, goal: message.goal || '', notes: message.notes || '', pages: selectedPages.slice(0, 30), color: message.group?.color || 'green', locked: true, createdAt: Date.now(), updatedAt: Date.now()});
+          tasks.unshift(task); memory.invalidate(); result = task; break;
         }
         case 'FOCUS_TAB':
           if (!tabs.some((tab) => tab.id === message.tabId)) throw new Error('页面已关闭。');
           tabs.forEach((tab) => { tab.active = tab.id === message.tabId; });
           result = {focused: true}; break;
         case 'OPEN_PAGE': result = {opened: true}; break;
-        case 'UPDATE_SETTINGS': settings = {...settings, ...message.patch}; result = settings; break;
+        case 'UPDATE_SETTINGS': settings = {...settings, ...message.patch}; memory.invalidate(); result = settings; break;
         case 'FLUSH_ACTIVITY': result = {saved: true}; break;
-        case 'EXPORT_DATA': result = {schemaVersion: 2, demo: true, exportedAt: Date.now(), pages, tasks, segments, settings}; break;
+        case 'EXPORT_DATA': result = {schemaVersion: 3, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations, segments, settings}; break;
         case 'CLEAR_HISTORY':
-          segments = []; tabs.forEach((tab) => { tab.foregroundMs = 0; }); result = {cleared: true}; break;
+          segments = []; workspaceData = {...emptyWorkspace(), context: workspaceData.context}; await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; }); result = {cleared: true}; break;
         case 'CLEAR_ALL':
-          segments = []; tasks = []; groups = []; tabs.forEach((tab) => { tab.foregroundMs = 0; });
-          settings = {tracking: true, semantic: true, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
+          segments = []; tasks = []; groups = []; relations = []; workspaceData = emptyWorkspace(); await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; });
+          settings = {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
           result = {cleared: true}; break;
         case 'MODEL_WARMUP':
           model = {status: 'loading', name: model.name, progress: .3};

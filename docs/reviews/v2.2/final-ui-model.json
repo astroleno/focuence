@@ -1,0 +1,123 @@
+{
+  "provenance": "Synthetic local fixtures in a fresh isolated browser profile. Model timing is one machine sample, not a product guarantee.",
+  "checks": [
+    {
+      "name": "cold-load and cached actual BGE search distinguish target from seven distractors",
+      "status": "passed",
+      "detail": {
+        "cold": {
+          "elapsedMs": 1206,
+          "keywordCount": 0,
+          "semanticResults": [
+            {
+              "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+              "method": "semantic",
+              "score": 0.5234490439531095
+            }
+          ],
+          "processed": 8,
+          "total": 8
+        },
+        "cached": {
+          "elapsedMs": 54,
+          "keywordCount": 0,
+          "semanticResults": [
+            {
+              "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+              "method": "semantic",
+              "score": 0.5234490439531095
+            }
+          ],
+          "processed": 8,
+          "total": 8
+        }
+      }
+    },
+    {
+      "name": "native UI search shows loading, failure, retry and a clear no-result state",
+      "status": "passed",
+      "detail": {
+        "loading": true,
+        "failure": true,
+        "retry": true,
+        "empty": true
+      }
+    },
+    {
+      "name": "panel 320x760 intent, long-draft and map layout",
+      "status": "passed",
+      "detail": {
+        "validationPreservesDraft": true,
+        "layout": {
+          "width": 320,
+          "height": 760,
+          "bodyWidth": 320,
+          "duplicates": [],
+          "overflow": []
+        },
+        "mapChecked": true
+      }
+    },
+    {
+      "name": "panel 360x760 intent, long-draft and map layout",
+      "status": "passed",
+      "detail": {
+        "validationPreservesDraft": true,
+        "layout": {
+          "width": 360,
+          "height": 760,
+          "bodyWidth": 360,
+          "duplicates": [],
+          "overflow": []
+        },
+        "mapChecked": true
+      }
+    },
+    {
+      "name": "popup 400x520 intent, long-draft and map layout",
+      "status": "passed",
+      "detail": {
+        "validationPreservesDraft": true,
+        "layout": {
+          "width": 400,
+          "height": 520,
+          "bodyWidth": 400,
+          "duplicates": [],
+          "overflow": []
+        },
+        "mapChecked": false
+      }
+    },
+    {
+      "name": "popup 400x600 intent, long-draft and map layout",
+      "status": "passed",
+      "detail": {
+        "validationPreservesDraft": true,
+        "layout": {
+          "width": 400,
+          "height": 600,
+          "bodyWidth": 400,
+          "duplicates": [],
+          "overflow": []
+        },
+        "mapChecked": false
+      }
+    },
+    {
+      "name": "app 1440x950 intent, long-draft and map layout",
+      "status": "passed",
+      "detail": {
+        "validationPreservesDraft": true,
+        "layout": {
+          "width": 1440,
+          "height": 950,
+          "bodyWidth": 1440,
+          "duplicates": [],
+          "overflow": []
+        },
+        "mapChecked": true
+      }
+    }
+  ],
+  "errors": []
+}

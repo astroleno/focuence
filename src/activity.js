@@ -31,6 +31,9 @@ function cleanContext(value) {
     tags: [...new Set((Array.isArray(value.tags) ? value.tags : [])
       .filter(tag => typeof tag === 'string').map(tag => tag.trim().slice(0, 60)).filter(Boolean))].slice(0, 8),
     taskId: typeof value.taskId === 'string' && value.taskId ? value.taskId : null,
+    intendedTaskId: typeof value.intendedTaskId === 'string' && value.intendedTaskId ? value.intendedTaskId : null,
+    assignmentSource: ['saved', 'confirmed', 'excluded'].includes(value.assignmentSource) ? value.assignmentSource : 'unknown',
+    excludedFromIntent: value.excludedFromIntent === true,
     tabId: Number.isInteger(value.tabId) ? value.tabId : null,
     windowId: Number.isInteger(value.windowId) ? value.windowId : null,
   };
@@ -44,6 +47,7 @@ function sameContext(a, b) {
   if (!a || !b) return a === b;
   return a.pageId === b.pageId && a.url === b.url && a.tabId === b.tabId
     && a.windowId === b.windowId && a.title === b.title && a.taskId === b.taskId
+    && a.intendedTaskId === b.intendedTaskId && a.assignmentSource === b.assignmentSource && a.excludedFromIntent === b.excludedFromIntent
     && a.tags.length === b.tags.length && a.tags.every((tag, index) => tag === b.tags[index]);
 }
 
@@ -68,6 +72,9 @@ function makeSegment(state, context, startedAt, endedAt, status, endReason) {
     title: context.title,
     tags: [...context.tags],
     taskId: context.taskId,
+    intendedTaskId: context.intendedTaskId,
+    assignmentSource: context.assignmentSource,
+    excludedFromIntent: context.excludedFromIntent,
     tabId: context.tabId,
     windowId: context.windowId,
     startedAt,
@@ -86,6 +93,7 @@ function reasonForChange(event, previous, next, status) {
   if (previous.idleState !== next.idleState) return 'became-active';
   if (previous.context?.tabId !== next.context.tabId || previous.context?.windowId !== next.context.windowId) return 'tab-switch';
   if (previous.context?.pageId !== next.context.pageId || previous.context?.url !== next.context.url) return 'navigation';
+  if (previous.context?.taskId !== next.context.taskId || previous.context?.intendedTaskId !== next.context.intendedTaskId) return 'task-change';
   return 'metadata-change';
 }
 

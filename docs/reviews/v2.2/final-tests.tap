@@ -1,0 +1,692 @@
+
+> focuence-local@2.2.0 test
+> node --test test/*.test.js
+
+TAP version 13
+# Subtest: empty state has no generated observations or recommendations
+ok 1 - empty state has no generated observations or recommendations
+  ---
+  duration_ms: 14.329417
+  type: 'test'
+  ...
+# Subtest: preview and persisted copies of a visit are counted once
+ok 2 - preview and persisted copies of a visit are counted once
+  ---
+  duration_ms: 3.446125
+  type: 'test'
+  ...
+# Subtest: idle and unknown observations break the transition chain
+ok 3 - idle and unknown observations break the transition chain
+  ---
+  duration_ms: 56.826541
+  type: 'test'
+  ...
+# Subtest: leaving the browser is a barrier even without an idle segment
+ok 4 - leaving the browser is a barrier even without an idle segment
+  ---
+  duration_ms: 0.913667
+  type: 'test'
+  ...
+# Subtest: same-topic page changes count as page switches but not tag transitions
+ok 5 - same-topic page changes count as page switches but not tag transitions
+  ---
+  duration_ms: 0.517125
+  type: 'test'
+  ...
+# Subtest: same-topic page changes remain in the probability denominator
+ok 6 - same-topic page changes remain in the probability denominator
+  ---
+  duration_ms: 0.679042
+  type: 'test'
+  ...
+# Subtest: today clips a cross-midnight visit and splits multi-tag time without inflating totals
+ok 7 - today clips a cross-midnight visit and splits multi-tag time without inflating totals
+  ---
+  duration_ms: 0.691541
+  type: 'test'
+  ...
+# Subtest: defensive active-time union cannot inflate corrupt overlapping visits
+ok 8 - defensive active-time union cannot inflate corrupt overlapping visits
+  ---
+  duration_ms: 0.460792
+  type: 'test'
+  ...
+# Subtest: repetition in one session never masquerades as independent prediction support
+ok 9 - repetition in one session never masquerades as independent prediction support
+  ---
+  duration_ms: 8.676708
+  type: 'test'
+  ...
+# Subtest: three separated work sessions can support an explainable next-topic suggestion
+ok 10 - three separated work sessions can support an explainable next-topic suggestion
+  ---
+  duration_ms: 34.2935
+  type: 'test'
+  ...
+# Subtest: explicitly absent current context disables predictive wording
+ok 11 - explicitly absent current context disables predictive wording
+  ---
+  duration_ms: 1.531958
+  type: 'test'
+  ...
+# Subtest: a tab metadata scan is not evidence that a page was visited
+ok 12 - a tab metadata scan is not evidence that a page was visited
+  ---
+  duration_ms: 0.277959
+  type: 'test'
+  ...
+# Subtest: saved task resources remain useful before there is enough browsing history
+ok 13 - saved task resources remain useful before there is enough browsing history
+  ---
+  duration_ms: 0.263708
+  type: 'test'
+  ...
+# Subtest: localDayStart follows the local calendar rather than UTC slicing
+ok 14 - localDayStart follows the local calendar rather than UTC slicing
+  ---
+  duration_ms: 2.21575
+  type: 'test'
+  ...
+# Subtest: heartbeat updates one visit instead of duplicating elapsed time
+ok 15 - heartbeat updates one visit instead of duplicating elapsed time
+  ---
+  duration_ms: 30.636834
+  type: 'test'
+  ...
+# Subtest: navigation in the same tab closes the old content identity
+ok 16 - navigation in the same tab closes the old content identity
+  ---
+  duration_ms: 2.396625
+  type: 'test'
+  ...
+# Subtest: time away from the browser is never credited to its last active tab
+ok 17 - time away from the browser is never credited to its last active tab
+  ---
+  duration_ms: 5.473917
+  type: 'test'
+  ...
+# Subtest: idle and locked observations stop active duration
+ok 18 - idle and locked observations stop active duration
+  ---
+  duration_ms: 0.509917
+  type: 'test'
+  ...
+# Subtest: pause excludes its full interval and resume can refresh the page
+ok 19 - pause excludes its full interval and resume can refresh the page
+  ---
+  duration_ms: 1.032417
+  type: 'test'
+  ...
+# Subtest: an overnight gap is unknown, not hours of attention on the last page
+ok 20 - an overnight gap is unknown, not hours of attention on the last page
+  ---
+  duration_ms: 3.987833
+  type: 'test'
+  ...
+# Subtest: gap threshold is explicit and does not partially credit an unobserved gap
+ok 21 - gap threshold is explicit and does not partially credit an unobserved gap
+  ---
+  duration_ms: 2.341708
+  type: 'test'
+  ...
+# Subtest: true browser restart preserves confirmed time and starts a new session
+ok 22 - true browser restart preserves confirmed time and starts a new session
+  ---
+  duration_ms: 1.023625
+  type: 'test'
+  ...
+# Subtest: ordinary worker reload can resume a serialized state without a restart gap
+ok 23 - ordinary worker reload can resume a serialized state without a restart gap
+  ---
+  duration_ms: 6.32875
+  type: 'test'
+  ...
+# Subtest: a restart without a fresh observation never reopens the old focused page
+ok 24 - a restart without a fresh observation never reopens the old focused page
+  ---
+  duration_ms: 3.75275
+  type: 'test'
+  ...
+# Subtest: a preview does not alter persisted state, even when it detects a gap
+ok 25 - a preview does not alter persisted state, even when it detects a gap
+  ---
+  duration_ms: 10.958
+  type: 'test'
+  ...
+# Subtest: backward wall clock cannot produce negative duration or double count
+ok 26 - backward wall clock cannot produce negative duration or double count
+  ---
+  duration_ms: 0.895542
+  type: 'test'
+  ...
+# Subtest: unsupported URLs, credentials and incognito contexts are excluded
+ok 27 - unsupported URLs, credentials and incognito contexts are excluded
+  ---
+  duration_ms: 10.813375
+  type: 'test'
+  ...
+# Subtest: two windows still produce only one foreground segment at a time
+ok 28 - two windows still produce only one foreground segment at a time
+  ---
+  duration_ms: 11.064833
+  type: 'test'
+  ...
+# Subtest: input context and historic tag arrays are never shared mutably
+ok 29 - input context and historic tag arrays are never shared mutably
+  ---
+  duration_ms: 7.952583
+  type: 'test'
+  ...
+# Subtest: invalid observations fail without mutating the previous ledger
+ok 30 - invalid observations fail without mutating the previous ledger
+  ---
+  duration_ms: 0.822917
+  type: 'test'
+  ...
+# Subtest: a confirmed checkpoint contains user text and verified page evidence
+ok 31 - a confirmed checkpoint contains user text and verified page evidence
+  ---
+  duration_ms: 2.984583
+  type: 'test'
+  ...
+# Subtest: checkpoint cannot borrow another task or stale observation
+ok 32 - checkpoint cannot borrow another task or stale observation
+  ---
+  duration_ms: 14.853209
+  type: 'test'
+  ...
+# Subtest: unknown, idle and too-short records do not create progress drafts
+ok 33 - unknown, idle and too-short records do not create progress drafts
+  ---
+  duration_ms: 1.230792
+  type: 'test'
+  ...
+# Subtest: return support is opt-in and requires two known pages for five minutes
+ok 34 - return support is opt-in and requires two known pages for five minutes
+  ---
+  duration_ms: 6.669042
+  type: 'test'
+  ...
+# Subtest: unknown, idle, paused, missing foreground and wrong window block prompts
+ok 35 - unknown, idle, paused, missing foreground and wrong window block prompts
+  ---
+  duration_ms: 0.796042
+  type: 'test'
+  ...
+# Subtest: explicit unrelated judgement counts while an unclassified page does not
+ok 36 - explicit unrelated judgement counts while an unclassified page does not
+  ---
+  duration_ms: 0.571
+  type: 'test'
+  ...
+# Subtest: display acknowledgement is idempotent; cooldown and daily maximum survive refresh
+ok 37 - display acknowledgement is idempotent; cooldown and daily maximum survive refresh
+  ---
+  duration_ms: 0.645625
+  type: 'test'
+  ...
+# Subtest: snooze belongs to the current intent, not a later browser session reusing its revision
+ok 38 - snooze belongs to the current intent, not a later browser session reusing its revision
+  ---
+  duration_ms: 0.529666
+  type: 'test'
+  ...
+# Subtest: a later prompt starts a new cooldown and is counted once after the first is dismissed
+ok 39 - a later prompt starts a new cooldown and is counted once after the first is dismissed
+  ---
+  duration_ms: 0.49375
+  type: 'test'
+  ...
+# Subtest: page identity ignores marketing/auth credentials and parameter ordering but retains search intent
+ok 40 - page identity ignores marketing/auth credentials and parameter ordering but retains search intent
+  ---
+  duration_ms: 68.562333
+  type: 'test'
+  ...
+# Subtest: SPA hash route identifies distinct pages without persisting auth parameters
+ok 41 - SPA hash route identifies distinct pages without persisting auth parameters
+  ---
+  duration_ms: 7.680584
+  type: 'test'
+  ...
+# Subtest: content helpers clean titles and do not create incognito pages
+ok 42 - content helpers clean titles and do not create incognito pages
+  ---
+  duration_ms: 4.077917
+  type: 'test'
+  ...
+# Subtest: pinned tabs and pre-existing browser groups are protected even with identical text/vectors
+ok 43 - pinned tabs and pre-existing browser groups are protected even with identical text/vectors
+  ---
+  duration_ms: 35.743042
+  type: 'test'
+  ...
+# Subtest: same-domain pages do not become an automatic megagroup and unrelated singletons stay out
+ok 44 - same-domain pages do not become an automatic megagroup and unrelated singletons stay out
+  ---
+  duration_ms: 6.145125
+  type: 'test'
+  ...
+# Subtest: two repositories retain project boundaries even when their topic and vectors are identical
+ok 45 - two repositories retain project boundaries even when their topic and vectors are identical
+  ---
+  duration_ms: 37.307667
+  type: 'test'
+  ...
+# Subtest: semantic mode uses real supplied vectors across domains and reports missing vectors as rules
+ok 46 - semantic mode uses real supplied vectors across domains and reports missing vectors as rules
+  ---
+  duration_ms: 2.292
+  type: 'test'
+  ...
+# Subtest: semantic bridging cannot join dissimilar endpoints through a third page
+ok 47 - semantic bridging cannot join dissimilar endpoints through a third page
+  ---
+  duration_ms: 0.993291
+  type: 'test'
+  ...
+# Subtest: results are independent of input order and never combine browser windows
+ok 48 - results are independent of input order and never combine browser windows
+  ---
+  duration_ms: 2.245708
+  type: 'test'
+  ...
+# Subtest: incremental proposals preserve an existing group id/name when a matching page is added
+ok 49 - incremental proposals preserve an existing group id/name when a matching page is added
+  ---
+  duration_ms: 3.157083
+  type: 'test'
+  ...
+# Subtest: invalid and zero vectors are not classified as semantic evidence
+ok 50 - invalid and zero vectors are not classified as semantic evidence
+  ---
+  duration_ms: 0.526458
+  type: 'test'
+  ...
+# Subtest: save candidates count page identities without collapsing queries or SPA routes
+ok 51 - save candidates count page identities without collapsing queries or SPA routes
+  ---
+  duration_ms: 4.208084
+  type: 'test'
+  ...
+# Subtest: long note display keeps the full source and respects multiline summaries
+ok 52 - long note display keeps the full source and respects multiline summaries
+  ---
+  duration_ms: 4.918167
+  type: 'test'
+  ...
+# Subtest: note summaries do not split a family emoji or combining character
+ok 53 - note summaries do not split a family emoji or combining character
+  ---
+  duration_ms: 0.373542
+  type: 'test'
+  ...
+# Subtest: light map reports hidden relationships per direction including a selected low-count edge
+ok 54 - light map reports hidden relationships per direction including a selected low-count edge
+  ---
+  duration_ms: 3.394
+  type: 'test'
+  ...
+# Subtest: map handoff retains a selected incoming relation and explains expired objects
+ok 55 - map handoff retains a selected incoming relation and explains expired objects
+  ---
+  duration_ms: 0.589
+  type: 'test'
+  ...
+# Subtest: workspace URL encodes the exact theme, relation, window and range together
+ok 56 - workspace URL encodes the exact theme, relation, window and range together
+  ---
+  duration_ms: 2.088917
+  type: 'test'
+  ...
+# Subtest: native handoff reuses an existing workspace tab with its new map context
+ok 57 - native handoff reuses an existing workspace tab with its new map context
+  ---
+  duration_ms: 1.253708
+  type: 'test'
+  ...
+# Subtest: map retains cycles, all 20 themes and isolated themes without shortening labels
+ok 58 - map retains cycles, all 20 themes and isolated themes without shortening labels
+  ---
+  duration_ms: 22.581959
+  type: 'test'
+  ...
+# Subtest: local map uses only direct observed relationships and retains a selected low-count edge
+ok 59 - local map uses only direct observed relationships and retains a selected low-count edge
+  ---
+  duration_ms: 0.68475
+  type: 'test'
+  ...
+# Subtest: invalid and self relationships cannot create artificial paths
+ok 60 - invalid and self relationships cannot create artificial paths
+  ---
+  duration_ms: 2.599083
+  type: 'test'
+  ...
+# Subtest: search merges page sources while retaining task and notes evidence
+ok 61 - search merges page sources while retaining task and notes evidence
+  ---
+  duration_ms: 122.312833
+  type: 'test'
+  ...
+# Subtest: excluded pages and metadata sightings do not become historical search evidence
+ok 62 - excluded pages and metadata sightings do not become historical search evidence
+  ---
+  duration_ms: 0.482
+  type: 'test'
+  ...
+# Subtest: semantic ranking can find a non-lexical match with an explicit method
+ok 63 - semantic ranking can find a non-lexical match with an explicit method
+  ---
+  duration_ms: 0.393167
+  type: 'test'
+  ...
+# Subtest: long notes are indexed in bounded chunks without truncating saved text
+ok 64 - long notes are indexed in bounded chunks without truncating saved text
+  ---
+  duration_ms: 23.789708
+  type: 'test'
+  ...
+# Subtest: semantic note results show the winning passage rather than unrelated opening text
+ok 65 - semantic note results show the winning passage rather than unrelated opening text
+  ---
+  duration_ms: 25.971042
+  type: 'test'
+  ...
+# Subtest: applying requires the original window even when every member moved together
+ok 66 - applying requires the original window even when every member moved together
+  ---
+  duration_ms: 88.962708
+  type: 'test'
+  ...
+# Subtest: closing a member invalidates the whole consent rather than silently applying fewer tabs
+ok 67 - closing a member invalidates the whole consent rather than silently applying fewer tabs
+  ---
+  duration_ms: 1.384083
+  type: 'test'
+  ...
+# Subtest: title, URL, pending navigation, pinning, grouping and incognito changes each invalidate a proposal
+ok 68 - title, URL, pending navigation, pinning, grouping and incognito changes each invalidate a proposal
+  ---
+  duration_ms: 4.320791
+  type: 'test'
+  ...
+# Subtest: unchanged content tolerates tracking fragments, reordering and visit-time updates
+ok 69 - unchanged content tolerates tracking fragments, reordering and visit-time updates
+  ---
+  duration_ms: 1.432416
+  type: 'test'
+  ...
+# Subtest: legacy and superseded proposals cannot authorize mutations
+ok 70 - legacy and superseded proposals cannot authorize mutations
+  ---
+  duration_ms: 1.387125
+  type: 'test'
+  ...
+# Subtest: a valid subset applies exact IDs and ignores client-supplied metadata
+ok 71 - a valid subset applies exact IDs and ignores client-supplied metadata
+  ---
+  duration_ms: 2.286791
+  type: 'test'
+  ...
+# Subtest: foreign, duplicate, single and nonnumeric IDs are rejected
+ok 72 - foreign, duplicate, single and nonnumeric IDs are rejected
+  ---
+  duration_ms: 2.549583
+  type: 'test'
+  ...
+# Subtest: one changed group does not invalidate an unrelated proposal
+ok 73 - one changed group does not invalidate an unrelated proposal
+  ---
+  duration_ms: 0.495375
+  type: 'test'
+  ...
+# Subtest: member correction survives refresh, prunes unavailable IDs and resets only with a new revision
+ok 74 - member correction survives refresh, prunes unavailable IDs and resets only with a new revision
+  ---
+  duration_ms: 2.74525
+  type: 'test'
+  ...
+# Subtest: selected task pages match selected live tab IDs without losing duplicate identity in the proposal
+ok 75 - selected task pages match selected live tab IDs without losing duplicate identity in the proposal
+  ---
+  duration_ms: 5.360584
+  type: 'test'
+  ...
+# Subtest: calendar ranges use local midnight and seven calendar dates
+ok 76 - calendar ranges use local midnight and seven calendar dates
+  ---
+  duration_ms: 2.307708
+  type: 'test'
+  ...
+# Subtest: yesterday remains one calendar day when daylight saving time changes
+ok 77 - yesterday remains one calendar day when daylight saving time changes
+  ---
+  duration_ms: 181.521375
+  type: 'test'
+  ...
+# Subtest: node totals and transitions include records beyond the 2000-row list limit
+ok 78 - node totals and transitions include records beyond the 2000-row list limit
+  ---
+  duration_ms: 57.587583
+  type: 'test'
+  ...
+# Subtest: range clipping and multi-tag allocation conserve time across midnight
+ok 79 - range clipping and multi-tag allocation conserve time across midnight
+  ---
+  duration_ms: 16.277875
+  type: 'test'
+  ...
+# Subtest: weekly review has explicit empty days and never treats idle as a path
+ok 80 - weekly review has explicit empty days and never treats idle as a path
+  ---
+  duration_ms: 0.331667
+  type: 'test'
+  ...
+# Subtest: a task restore deduplicates normalized URLs and excludes unsupported URLs
+ok 81 - a task restore deduplicates normalized URLs and excludes unsupported URLs
+  ---
+  duration_ms: 0.81775
+  type: 'test'
+  ...
+# Subtest: restore resumes a live task page, then the latest visit, then a remembered page
+ok 82 - restore resumes a live task page, then the latest visit, then a remembered page
+  ---
+  duration_ms: 1.525167
+  type: 'test'
+  ...
+# Subtest: recent tasks are ranked by actual continuation as well as edits
+ok 83 - recent tasks are ranked by actual continuation as well as edits
+  ---
+  duration_ms: 0.494042
+  type: 'test'
+  ...
+# Subtest: an interrupted restore remains the most recent task until it is retried
+ok 84 - an interrupted restore remains the most recent task until it is retried
+  ---
+  duration_ms: 1.348125
+  type: 'test'
+  ...
+# Subtest: GitLab nested project roots match their issue pages and separate repositories
+ok 85 - GitLab nested project roots match their issue pages and separate repositories
+  ---
+  duration_ms: 7.711084
+  type: 'test'
+  ...
+# Subtest: shared embeddings cache by purpose and full input identity
+ok 86 - shared embeddings cache by purpose and full input identity
+  ---
+  duration_ms: 66.011083
+  type: 'test'
+  ...
+# Subtest: cancelled inference never persists late vectors
+ok 87 - cancelled inference never persists late vectors
+  ---
+  duration_ms: 3.069875
+  type: 'test'
+  ...
+# Subtest: invalid or incomplete model outputs fail without cache poisoning
+ok 88 - invalid or incomplete model outputs fail without cache poisoning
+  ---
+  duration_ms: 18.669875
+  type: 'test'
+  ...
+# Subtest: chunking covers long user text including supplementary Unicode
+ok 89 - chunking covers long user text including supplementary Unicode
+  ---
+  duration_ms: 5.511375
+  type: 'test'
+  ...
+# Subtest: shared pages need explicit current intent, never array order
+ok 90 - shared pages need explicit current intent, never array order
+  ---
+  duration_ms: 69.920375
+  type: 'test'
+  ...
+# Subtest: actual task and intended task remain distinct and exclusions override membership
+ok 91 - actual task and intended task remain distinct and exclusions override membership
+  ---
+  duration_ms: 1.543916
+  type: 'test'
+  ...
+# Subtest: window intent is isolated and true restart discards bindings
+ok 92 - window intent is isolated and true restart discards bindings
+  ---
+  duration_ms: 6.606041
+  type: 'test'
+  ...
+# Subtest: task revision and text limits reject stale or oversized input
+ok 93 - task revision and text limits reject stale or oversized input
+  ---
+  duration_ms: 0.525917
+  type: 'test'
+  ...
+# Subtest: changing intent on the same page closes its old observation without rewriting it
+ok 94 - changing intent on the same page closes its old observation without rewriting it
+  ---
+  duration_ms: 1.989209
+  type: 'test'
+  ...
+# Subtest: task association permits cross-site pinned and grouped materials
+ok 95 - task association permits cross-site pinned and grouped materials
+  ---
+  duration_ms: 3.099875
+  type: 'test'
+  ...
+# Subtest: explicit exclusions defeat semantic similarity and do not exclude other tasks
+ok 96 - explicit exclusions defeat semantic similarity and do not exclude other tasks
+  ---
+  duration_ms: 2.320208
+  type: 'test'
+  ...
+# Subtest: current intent is independent per window and old window revisions are rejected
+ok 97 - current intent is independent per window and old window revisions are rejected
+  ---
+  duration_ms: 15.185166
+  type: 'test'
+  ...
+# Subtest: switch stores the previous task checkpoint and context in one successful commit
+ok 98 - switch stores the previous task checkpoint and context in one successful commit
+  ---
+  duration_ms: 10.794334
+  type: 'test'
+  ...
+# Subtest: observations do not overwrite confirmed text and pause keeps checkpoint
+ok 99 - observations do not overwrite confirmed text and pause keeps checkpoint
+  ---
+  duration_ms: 7.956666
+  type: 'test'
+  ...
+# Subtest: relation corrections are revision guarded, undoable and independent of restore membership
+ok 100 - relation corrections are revision guarded, undoable and independent of restore membership
+  ---
+  duration_ms: 17.333791
+  type: 'test'
+  ...
+# Subtest: navigation invalidates candidate actions before a relation can be written
+ok 101 - navigation invalidates candidate actions before a relation can be written
+  ---
+  duration_ms: 0.728625
+  type: 'test'
+  ...
+# Subtest: all failed restores leave intention unchanged; successful page restore selects only after persistence
+ok 102 - all failed restores leave intention unchanged; successful page restore selects only after persistence
+  ---
+  duration_ms: 1.559459
+  type: 'test'
+  ...
+# Subtest: worker reload preserves current intent; a browser restart releases window bindings
+ok 103 - worker reload preserves current intent; a browser restart releases window bindings
+  ---
+  duration_ms: 1.654916
+  type: 'test'
+  ...
+# Subtest: new queries and cancellation cannot be overwritten by a late inference
+ok 104 - new queries and cancellation cannot be overwritten by a late inference
+  ---
+  duration_ms: 24.674084
+  type: 'test'
+  ...
+# Subtest: data edits invalidate completed jobs and never return an old result
+ok 105 - data edits invalidate completed jobs and never return an old result
+  ---
+  duration_ms: 3.447333
+  type: 'test'
+  ...
+# Subtest: a replacement query cancels an in-flight response instead of returning obsolete results
+ok 106 - a replacement query cancels an in-flight response instead of returning obsolete results
+  ---
+  duration_ms: 4.899125
+  type: 'test'
+  ...
+# Subtest: recording pause prevents automatic associations and restoration event collection
+ok 107 - recording pause prevents automatic associations and restoration event collection
+  ---
+  duration_ms: 4.278542
+  type: 'test'
+  ...
+# Subtest: legacy tasks retain notes and pages without invented progress
+ok 108 - legacy tasks retain notes and pages without invented progress
+  ---
+  duration_ms: 16.311
+  type: 'test'
+  ...
+# Subtest: only confirmed checkpoint text persists and supplementary data cannot alter page identities
+ok 109 - only confirmed checkpoint text persists and supplementary data cannot alter page identities
+  ---
+  duration_ms: 11.530916
+  type: 'test'
+  ...
+# Subtest: same task page changes are separate from cross-task transitions
+ok 110 - same task page changes are separate from cross-task transitions
+  ---
+  duration_ms: 1.897542
+  type: 'test'
+  ...
+# Subtest: a pattern requires three independent episodes and exposes real evidence
+ok 111 - a pattern requires three independent episodes and exposes real evidence
+  ---
+  duration_ms: 11.249958
+  type: 'test'
+  ...
+# Subtest: unknown and browser restart boundaries never create a synthetic return
+ok 112 - unknown and browser restart boundaries never create a synthetic return
+  ---
+  duration_ms: 1.105042
+  type: 'test'
+  ...
+# Subtest: repeated retrieval requires separate days and empty history has no patterns
+ok 113 - repeated retrieval requires separate days and empty history has no patterns
+  ---
+  duration_ms: 7.547792
+  type: 'test'
+  ...
+1..113
+# tests 113
+# suites 0
+# pass 113
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 717.008042

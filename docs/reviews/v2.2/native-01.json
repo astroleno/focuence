@@ -1,0 +1,142 @@
+{
+  "provenance": "Isolated Chrome for Testing, real extension APIs and IndexedDB, bundled q8 BGE model; synthetic local pages only.",
+  "checks": [
+    {
+      "name": "native task start, shared page semantics and independent windows",
+      "status": "passed",
+      "detail": {
+        "first": "task_72cba531-d35b-4054-b862-296f8e2ebc13",
+        "isolated": true
+      }
+    },
+    {
+      "name": "confirmed checkpoint and explicit relation correction survive worker stop",
+      "status": "passed",
+      "detail": {
+        "workerStopped": true,
+        "checkpointKept": true,
+        "correctionKept": true,
+        "undo": true
+      }
+    },
+    {
+      "name": "real IndexedDB v1 upgrade and transaction rollback",
+      "status": "passed",
+      "detail": {
+        "notesPreserved": true,
+        "legacyCheckpoint": null,
+        "revision": 0,
+        "name": "旧任务",
+        "relations": 0,
+        "segments": 1,
+        "schema": 3,
+        "aborted": true
+      }
+    },
+    {
+      "name": "concurrent stale task writes reject the second update",
+      "status": "passed",
+      "detail": {
+        "successes": 1,
+        "rejection": "STALE_TASK"
+      }
+    },
+    {
+      "name": "real local model association keeps pinned and grouped pages eligible",
+      "status": "passed",
+      "detail": {
+        "completed": 8,
+        "total": 8,
+        "candidates": [
+          {
+            "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+            "method": "confirmed",
+            "score": 2
+          },
+          {
+            "title": "便携音箱的功放电路与扬声器阻抗匹配",
+            "method": "confirmed",
+            "score": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "real local semantic retrieval finds Chinese paraphrases",
+      "status": "passed",
+      "detail": [
+        {
+          "query": "离线运行人工智能的浏览器资料",
+          "rank": 1,
+          "results": [
+            {
+              "title": "不联网的网页端文本推理：WASM 模型与向量检索",
+              "method": "semantic",
+              "score": 0.5084432931479131
+            },
+            {
+              "title": "Chrome 扩展标签页分组与侧栏接口",
+              "method": "semantic",
+              "score": 0.4716737181105692
+            }
+          ]
+        },
+        {
+          "query": "如何把人声变成数字信号",
+          "rank": 1,
+          "results": [
+            {
+              "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+              "method": "semantic",
+              "score": 0.5417131620728994
+            }
+          ]
+        },
+        {
+          "query": "烘焙时面团要等多久",
+          "rank": 1,
+          "results": [
+            {
+              "title": "酵母面包发酵时间与烤箱温度",
+              "method": "semantic",
+              "score": 0.6258888334525567
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "native partial restore retries reuse success; complete failure does not change intent",
+      "status": "passed",
+      "detail": {
+        "allFailed": 2,
+        "partial": {
+          "opened": 1,
+          "failed": 1
+        },
+        "retry": {
+          "opened": 1,
+          "reused": 1
+        },
+        "repeat": {
+          "opened": 0,
+          "reused": 2
+        }
+      }
+    },
+    {
+      "name": "clearing history preserves confirmed memory, invalidates jobs and clears observations",
+      "status": "passed",
+      "detail": {
+        "schema": 3,
+        "checkpointPreserved": true,
+        "relationPreserved": true,
+        "jobsCleared": true,
+        "separateRelationClear": true
+      }
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "status": "passed"
+}

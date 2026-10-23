@@ -1,0 +1,120 @@
+{
+  "provenance": "Isolated Chrome for Testing; real BGE, IndexedDB and native grouping. Synthetic inputs and explicit fault injection.",
+  "checks": [
+    {
+      "name": "intent-first task creation and real UI keyboard checkpoint",
+      "status": "passed",
+      "detail": {
+        "pageCount": 0,
+        "checkpointSaved": true,
+        "keyboardStayedInDialog": true
+      }
+    },
+    {
+      "name": "full multibatch semantic scope resumes across worker shutdown",
+      "status": "passed",
+      "detail": {
+        "historyPages": 73,
+        "totalDocuments": 113,
+        "completed": 113,
+        "resumedAfter": 24,
+        "matchedFinalNote": true
+      }
+    },
+    {
+      "name": "keyword versus real semantic paraphrases with warm cached timing",
+      "status": "passed",
+      "detail": [
+        {
+          "query": "如何把人声变成数字信号",
+          "keywordRank": 0,
+          "semanticRank": 1,
+          "results": [
+            {
+              "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+              "method": "semantic",
+              "score": 0.5248183893968026
+            }
+          ],
+          "elapsedMs": 43,
+          "cachedMs": 47
+        },
+        {
+          "query": "离线运行人工智能的浏览器资料",
+          "keywordRank": 0,
+          "semanticRank": 1,
+          "results": [
+            {
+              "title": "不联网的网页端文本推理：WASM 模型与向量检索",
+              "method": "semantic",
+              "score": 0.49972770296327945
+            }
+          ],
+          "elapsedMs": 44,
+          "cachedMs": 47
+        },
+        {
+          "query": "烘焙时面团要等多久",
+          "keywordRank": 0,
+          "semanticRank": 1,
+          "results": [
+            {
+              "title": "酵母面包发酵时间与烤箱温度",
+              "method": "semantic",
+              "score": 0.6208534767912289
+            }
+          ],
+          "elapsedMs": 39,
+          "cachedMs": 42
+        },
+        {
+          "query": "qxjv-9472-zztp",
+          "keywordRank": 0,
+          "semanticRank": 0,
+          "results": [],
+          "elapsedMs": 40,
+          "cachedMs": 44
+        }
+      ]
+    },
+    {
+      "name": "cancel and replacement discard delayed inference results",
+      "status": "passed",
+      "detail": {
+        "lateStatus": "cancelled",
+        "lateResults": 0,
+        "newerCompleted": true
+      }
+    },
+    {
+      "name": "model failure stays visible and retry works without blocking task edits",
+      "status": "passed",
+      "detail": {
+        "failureVisible": true,
+        "keywordResultsRetained": true,
+        "taskEditSucceeded": true,
+        "retrySucceeded": true
+      }
+    },
+    {
+      "name": "disable, exclusions and clearing invalidate previous jobs and cache inputs",
+      "status": "passed",
+      "detail": {
+        "disabledStale": true,
+        "excludedScopeDocuments": 0,
+        "clearedJobRemoved": true,
+        "savedTaskPreserved": true
+      }
+    },
+    {
+      "name": "native rule grouping, selected members and undo remain intact",
+      "status": "passed",
+      "detail": {
+        "selected": 2,
+        "restored": true
+      }
+    }
+  ],
+  "errors": [],
+  "timingContext": "The repeated-query timing check ran after the long-scope model test. Both timings use a warm model/cache; fresh-profile first-load timing is in final-ui-model.json."
+}

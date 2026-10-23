@@ -5,12 +5,15 @@ import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
 import { proposeGroups } from './src/grouping.js';
 import { sealProposal, proposalIsCurrent, validateProposalSelection, STALE_PROPOSAL } from './src/proposals.js';
+import { createWorkspace } from './src/workspace.js';
+import { embedItems } from './src/semantic.js';
+import { taskText } from './src/task-context.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
-let store, settings, activity, browserSessionId, initPromise;
+let store, settings, activity, browserSessionId, initPromise, workspace;
 let activityQueue = Promise.resolve();
 let offscreenPromise = null;
 let semanticQueue = Promise.resolve();
@@ -23,7 +26,7 @@ const proposals = new Map();
 const proposalNotices = new Map();
 
 function persistSession() {
-  const job = sessionWrites.then(() => chrome.storage.session.set({ focuenceUndo: lastUndo, focuenceProposals: [...proposals.entries()], focuenceProposalNotices: [...proposalNotices.entries()] }));
+  const job = sessionWrites.then(() => chrome.storage.session.set({ focuenceUndo: lastUndo, focuenceProposals: [...proposals.entries()], focuenceProposalNotices: [...proposalNotices.entries()], focuenceDataEpoch: dataEpoch }));
   sessionWrites = job.catch(() => {});
   return job;
 }
@@ -48,20 +51,31 @@ function queueActivity(fn) {
 
 async function applyActivity(event) {
   const result = reduceActivity(activity, event);
+  const nextWorkspace = workspace?.afterObservation(result.state, result.segments);
+  await store.saveActivity(result.state, result.segments, nextWorkspace);
   activity = result.state;
-  await store.saveActivity(activity, result.segments);
+  workspace?.replaceState(nextWorkspace);
 }
 
-async function currentContext() {
+async function rawContext() {
   const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
   const focused = windows.find(window => window.focused && !window.incognito);
   if (!focused) return null;
   const [tab] = await chrome.tabs.query({ active: true, windowId: focused.id });
   const page = allowedPage(tab);
   if (!page) return null;
-  const tasks = await store.getTasks();
-  const task = tasks.find(item => item.pages?.some(saved => (saved.pageId || saved.id) === page.id));
-  return { tabId: tab.id, windowId: tab.windowId, pageId: page.id, url: page.url, title: page.title, tags: page.tags, taskId: task?.id || null };
+  return { tabId: tab.id, windowId: tab.windowId, pageId: page.id, url: page.url, title: page.title, tags: page.tags };
+}
+
+async function currentContext() {
+  const raw = await rawContext();
+  return workspace ? workspace.contextFor(raw) : raw;
+}
+
+function queueSemantic(operation) {
+  const job = semanticQueue.then(operation);
+  semanticQueue = job.catch(() => {});
+  return job;
 }
 
 async function recordCurrent() {
@@ -76,7 +90,8 @@ async function init() {
   initPromise = (async () => {
     store = await openStore();
     settings = await store.getSettings();
-    const session = await chrome.storage.session.get(['focuenceBrowserSessionId', 'focuenceUndo', 'focuenceProposals', 'focuenceProposalNotices']);
+    const session = await chrome.storage.session.get(['focuenceBrowserSessionId', 'focuenceUndo', 'focuenceProposals', 'focuenceProposalNotices', 'focuenceDataEpoch']);
+    dataEpoch = Number.isInteger(session.focuenceDataEpoch) ? session.focuenceDataEpoch : 0;
     browserSessionId = session.focuenceBrowserSessionId || crypto.randomUUID();
     if (!session.focuenceBrowserSessionId) await chrome.storage.session.set({ focuenceBrowserSessionId: browserSessionId });
     lastUndo = session.focuenceUndo || null;
@@ -85,6 +100,21 @@ async function init() {
     activity = await store.getActivity();
     if (!activity) activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
     else if (activity.sessionId !== browserSessionId) await applyActivity({ type: 'restart', at: Date.now(), sessionId: browserSessionId });
+    workspace = createWorkspace({
+      store, sessionId: browserSessionId, settings: () => settings, getActivity: () => activity, setActivity: value => { activity = value; },
+      epoch: () => dataEpoch, invalidate: () => { dataEpoch++; persistSession().catch(() => {}); },
+      rawContext, idleState: () => chrome.idle.queryState(settings.idleSeconds), tabs: eligibleTabs, targetWindow,
+      allowed: url => Boolean(normalizeUrl(url)) && !excluded(url), restorePages, openPage,
+      activateTab: async (windowId, tabId) => { await chrome.windows.update(windowId, { focused: true }); await chrome.tabs.update(tabId, { active: true }); },
+      loadJobs: async () => { const saved = (await chrome.storage.session.get('focuenceMemoryJobs')).focuenceMemoryJobs; return Array.isArray(saved) ? saved : []; },
+      saveJobs: values => chrome.storage.session.set({ focuenceMemoryJobs: values }),
+      embed: (items, options = {}) => {
+        const epoch = dataEpoch;
+        return queueSemantic(() => embedItems(items, { store, infer: inputs => infer('INFERENCE_EMBED', inputs, epoch),
+          isCurrent: () => epoch === dataEpoch && settings.semantic && (options.isCurrent?.() ?? true), cache: options.cache !== false }));
+      },
+    });
+    await workspace.initialize();
     if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
     chrome.idle.setDetectionInterval(settings.idleSeconds);
     await chrome.alarms.create('focuence-checkpoint', { periodInMinutes: .5 });
@@ -229,7 +259,8 @@ async function getState(message) {
   const idle = await chrome.idle.queryState(settings.idleSeconds);
   const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, now, range: message.range });
   const groups = await currentProposals(windowId, tabs);
-  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups, proposalNotice: proposalNotices.get(windowId) || '', ...analytics, transitions, attention, model,
+  const work = await workspace.view({ windowId, tabs, tasks, segments: scoped, from: attention.range.startedAt, to: attention.range.endedAt });
+  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), work, segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups, proposalNotice: proposalNotices.get(windowId) || '', ...analytics, transitions, attention, model,
     trackingState: { status: !settings.tracking ? 'paused' : activity.warning ? 'unknown' : idle !== 'active' ? 'idle' : context ? 'active' : 'unfocused', activeTabId: context?.tabId, lastUpdatedAt: now, warning: activity.warning || null } };
 }
 
@@ -283,7 +314,12 @@ async function undoGroup() {
 
 async function saveTask(message) {
   let rawPages;
-  if (message.group?.pages) rawPages = message.group.pages;
+  if (message.mode === 'intent') rawPages = [];
+  else if (message.group?.pages) {
+    const tabs = await eligibleTabs(message.windowId);
+    const selected = new Set(message.group.pages.map(page => normalizeUrl(page.url)));
+    rawPages = tabs.filter(tab => selected.has(normalizeUrl(tab.url)));
+  }
   else {
     const tabs = await eligibleTabs(message.windowId);
     rawPages = tabs.filter(tab => !Array.isArray(message.tabIds) || message.tabIds.includes(tab.id));
@@ -291,23 +327,21 @@ async function saveTask(message) {
   const pages = [...new Map(rawPages.flatMap(raw => {
     const page = allowedPage(raw); return page ? [[page.id, { pageId: page.id, url: page.url, title: page.title, tags: page.tags }]] : [];
   })).values()];
-  if (!pages.length) throw new Error('请选择至少一个可保存的网页');
+  if (!pages.length && message.mode !== 'intent') throw new Error('请选择至少一个可保存的网页');
   if (pages.length > 30) throw new Error('单个任务最多保存 30 个页面，请缩小选择范围');
-  const name = String(message.name || message.group?.name || '未命名任务').trim().slice(0, 80);
-  if (!name) throw new Error('请填写任务名称');
+  const name = taskText(message.name || message.group?.name || '未命名任务', 'name', { required: true });
   const now = Date.now();
-  const task = { id: `task_${crypto.randomUUID()}`, name, color: COLORS.has(message.group?.color) ? message.group.color : 'orange', locked: true, createdAt: now, updatedAt: now, notes: String(message.notes || '').slice(0, 10000), pages };
+  const task = { id: `task_${crypto.randomUUID()}`, revision: 0, name, goal: taskText(message.goal, 'goal'), checkpoint: null, color: COLORS.has(message.group?.color) ? message.group.color : 'orange', locked: true, createdAt: now, updatedAt: now, notes: taskText(message.notes, 'notes'), pages };
   await store.putTask(task);
+  workspace.invalidate();
   return task;
 }
 
-async function restoreTask(message) {
-  const task = await store.getTask(message.id);
-  if (!task) throw new Error('这个任务已经不存在');
-  const windowId = await targetWindow(message.windowId);
+async function restorePages(task, windowId, single = null) {
   const existing = await chrome.tabs.query({ windowId });
   const segments = await store.listSegments({ since: calendarRange('week').startedAt });
-  const plan = planTaskRestore(task, existing, segments);
+  const plan = single ? { pages: [single], resumePage: single } : planTaskRestore(task, existing, segments);
+  if (!plan.pages.length) throw Object.assign(new Error('还没有保存的恢复页面。可以先关联并保存资料。'), { code: 'NO_CONTINUE_PAGE' });
   const urls = new Map(existing.map(tab => [normalizeUrl(tab.url), tab.id]));
   let opened = 0, reused = 0;
   const failed = [], restored = [];
@@ -319,22 +353,22 @@ async function restoreTask(message) {
     } catch (error) { failed.push({ pageId: page.pageId, title: page.title, error: error.message }); }
   }
   const resumePage = restored.find(page => page.url === plan.resumePage?.url) || restored[0];
-  task.lastRestoreResult = { at: Date.now(), opened, reused, failedCount: failed.length };
-  if (resumePage) {
-    task.lastRestoredAt = task.lastRestoreResult.at; task.lastActivePageId = resumePage.pageId;
-  }
-  await store.putTask(task);
-  if (resumePage) {
-    await chrome.windows.update(windowId, { focused: true });
-    await chrome.tabs.update(urls.get(resumePage.url), { active: true });
-  }
-  return { opened, reused, failed, activeTabId: resumePage ? urls.get(resumePage.url) : null };
+  return { opened, reused, failed, resumePage, activeTabId: resumePage ? urls.get(resumePage.url) : null };
+}
+
+async function openPage(value, windowId) {
+  const url = normalizeUrl(value); if (!url) throw new Error('只能打开 HTTP(S) 网页');
+  const tabs = await chrome.tabs.query({ windowId });
+  const existing = tabs.find(tab => normalizeUrl(tab.url) === url);
+  if (existing) { await chrome.tabs.update(existing.id, { active: true }); return { opened: false, reused: true }; }
+  await chrome.tabs.create({ windowId, url }); return { opened: true, reused: false };
 }
 
 async function updateSettings(patch = {}) {
   const clean = {};
   if (typeof patch.tracking === 'boolean') clean.tracking = patch.tracking;
   if (typeof patch.semantic === 'boolean') clean.semantic = patch.semantic;
+  if (typeof patch.focusSupport === 'boolean') clean.focusSupport = patch.focusSupport;
   if (patch.idleSeconds != null && Number.isFinite(Number(patch.idleSeconds))) clean.idleSeconds = Math.max(15, Math.min(3600, Math.round(Number(patch.idleSeconds))));
   if (patch.retentionDays != null && Number.isFinite(Number(patch.retentionDays))) clean.retentionDays = Math.max(1, Math.min(365, Math.round(Number(patch.retentionDays))));
   if (Array.isArray(patch.excludedDomains)) clean.excludedDomains = [...new Set(patch.excludedDomains.map(value => {
@@ -344,8 +378,8 @@ async function updateSettings(patch = {}) {
   const previous = settings;
   settings = await store.setSettings(clean);
   const inferenceChanged = previous.semantic !== settings.semantic || JSON.stringify(previous.excludedDomains) !== JSON.stringify(settings.excludedDomains);
+  if (inferenceChanged || previous.tracking !== settings.tracking || previous.retentionDays !== settings.retentionDays) workspace.invalidate();
   if (inferenceChanged) {
-    dataEpoch++;
     if ((await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length) await chrome.offscreen.closeDocument();
     model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   }
@@ -356,6 +390,7 @@ async function updateSettings(patch = {}) {
   await persistSession();
   const pruned = await store.prune({ now: Date.now(), retentionDays: settings.retentionDays });
   if (pruned.activity) activity = pruned.activity;
+  workspace.replaceState(pruned.workspace);
   return settings;
 }
 
@@ -365,6 +400,7 @@ async function clearData(all) {
   model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   if (all) await store.clearAll(); else await store.clearHistory();
   settings = await store.getSettings();
+  await workspace.reload();
   activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
   if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
   else await store.saveActivity(activity);
@@ -375,40 +411,32 @@ async function clearData(all) {
 
 async function handle(message) {
   await init();
+  if (workspace.hasMutation(message.type)) return queueActivity(() => workspace.mutate(message));
   switch (message.type) {
     case 'GET_STATE': return getState(message);
     case 'PROPOSE_GROUPS': {
       if (!message.semantic) return propose(message);
       const epoch = dataEpoch;
-      const job = semanticQueue.then(() => propose(message, epoch));
-      semanticQueue = job.catch(() => {}); return job;
+      return queueSemantic(() => propose(message, epoch));
     }
     case 'APPLY_GROUP':
     case 'UNDO_GROUP': {
       const job = groupQueue.then(() => message.type === 'APPLY_GROUP' ? applyGroup(message) : undoGroup());
       groupQueue = job.catch(() => {}); return job;
     }
-    case 'SAVE_TASK': return saveTask(message);
-    case 'UPDATE_TASK': {
-      const task = await store.getTask(message.id);
-      if (!task) throw new Error('任务不存在');
-      if (typeof message.name === 'string') { const name = message.name.trim().slice(0, 80); if (!name) throw new Error('任务名称不能为空'); task.name = name; }
-      if (typeof message.notes === 'string') task.notes = message.notes.slice(0, 10000);
-      task.updatedAt = Date.now(); await store.putTask(task); return task;
-    }
-    case 'DELETE_TASK': await store.deleteTask(message.id); return { deleted: true };
-    case 'RESTORE_TASK': return restoreTask(message);
+    case 'SAVE_TASK': return queueActivity(() => saveTask(message));
+    case 'SUGGEST_TASK_PAGES': return workspace.createJob(message, 'association');
+    case 'SEARCH_MEMORY': return workspace.createJob(message, 'search');
+    case 'GET_SEARCH_STATUS': return workspace.advanceJob(message);
+    case 'CANCEL_SEARCH': return workspace.cancelJob(message);
+    case 'UPDATE_FOCUS_SUPPORT': return queueActivity(() => updateSettings({ focusSupport: message.enabled === true }));
     case 'FOCUS_TAB': {
       const tab = await chrome.tabs.get(message.tabId);
       await chrome.windows.update(tab.windowId, { focused: true }); await chrome.tabs.update(tab.id, { active: true }); return { focused: true };
     }
     case 'OPEN_PAGE': {
-      const url = normalizeUrl(message.url); if (!url) throw new Error('只能打开 HTTP(S) 网页');
       const windowId = await targetWindow(message.windowId);
-      const tabs = await chrome.tabs.query({ windowId });
-      const existing = tabs.find(tab => normalizeUrl(tab.url) === url);
-      if (existing) { await chrome.tabs.update(existing.id, { active: true }); return { opened: false, reused: true }; }
-      await chrome.tabs.create({ windowId, url }); return { opened: true, reused: false };
+      return openPage(message.url, windowId);
     }
     case 'UPDATE_SETTINGS': return queueActivity(() => updateSettings(message.patch));
     case 'FLUSH_ACTIVITY': await queueActivity(recordCurrent); return { saved: true };
@@ -443,7 +471,7 @@ chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.ti
 chrome.tabs.onRemoved.addListener(reconcile);
 chrome.tabs.onReplaced.addListener(reconcile);
 chrome.windows.onFocusChanged.addListener(reconcile);
-chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); });
+chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); queueActivity(() => workspace.closeWindow(id)).catch(() => {}); });
 chrome.idle.onStateChanged.addListener(state => queueActivity(async () => { await applyActivity({ type: 'idle', at: Date.now(), idleState: state }); await recordCurrent(); }).catch(() => {}));
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'focuence-model-idle') {
@@ -456,6 +484,7 @@ chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'focuence-prune') queueActivity(async () => {
     const result = await store.prune({ now: Date.now(), retentionDays: settings.retentionDays });
     if (result.activity) activity = result.activity;
+    workspace.replaceState(result.workspace);
   }).catch(() => {});
 });
 chrome.runtime.onInstalled.addListener(reconcile);

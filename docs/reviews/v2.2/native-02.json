@@ -1,0 +1,107 @@
+{
+  "provenance": "Dedicated synthetic Chrome profile; real service-worker and browser restarts; return support uses six minutes of seeded, explicitly labelled synthetic foreground records.",
+  "checks": [
+    {
+      "name": "cross-site pinned task suggestion uses the real model",
+      "status": "passed",
+      "detail": {
+        "method": "semantic",
+        "score": 0.6016854257421813,
+        "host": "localhost:60986",
+        "restoreList": 1,
+        "continueOutsideList": true
+      }
+    },
+    {
+      "name": "real browser restart preserves tasks but releases old window intentions",
+      "status": "passed",
+      "detail": {
+        "sessionChanged": true,
+        "windowIntent": null,
+        "tasks": 2,
+        "confirmedCheckpoint": "比较采样率设置"
+      }
+    },
+    {
+      "name": "seeded return evidence produces one real side-panel prompt, then correction dismisses it",
+      "status": "passed",
+      "detail": {
+        "sessionId": "0a236e5c-e5b0-4ac5-acb6-6cfe802cfed0",
+        "minutes": 6,
+        "records": 2,
+        "nativePanel": true,
+        "shownExactlyOnce": true,
+        "relatedFeedbackSaved": true,
+        "oldPromptRejected": true
+      }
+    },
+    {
+      "name": "native popup and side panel preserve checkpoint drafts on stale writes",
+      "status": "passed",
+      "detail": {
+        "draftRetained": true,
+        "explicitRebase": true,
+        "checkpointSaved": true,
+        "layout": {
+          "width": 400,
+          "height": 600,
+          "bodyWidth": 400,
+          "duplicates": [],
+          "overflow": []
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "associationObserved": [
+    {
+      "title": "便携音箱的功放电路与扬声器阻抗匹配",
+      "score": 2,
+      "method": "confirmed"
+    },
+    {
+      "title": "I2S 数字麦克风拾音：降噪、采样率与声道配置",
+      "score": 0.6016854257421813,
+      "method": "semantic"
+    }
+  ],
+  "supportState": {
+    "tracking": {
+      "status": "active",
+      "activeTabId": 1960100852,
+      "lastUpdatedAt": 1792741755061,
+      "warning": null
+    },
+    "prompt": {
+      "id": "return_cb09d6ed3ab2d9c6",
+      "taskId": "task_eeb42b2e-9a88-4cae-9d02-d00b3e07d24f",
+      "windowId": 1960100849,
+      "contextRevision": 1,
+      "intentStartedAt": 1792741335005,
+      "pageId": "p_21a45639484e9d7b",
+      "page": {
+        "pageId": "p_21a45639484e9d7b",
+        "url": "http://127.0.0.1:60986/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路"
+      },
+      "durationMs": 360066,
+      "pages": 2,
+      "evidence": [
+        {
+          "id": "0a236e5c-e5b0-4ac5-acb6-6cfe802cfed0:2:1792741575005",
+          "title": "京都三日游：景点、住宿和交通线路",
+          "startedAt": 1792741575005,
+          "endedAt": 1792741755071
+        },
+        {
+          "id": "0a236e5c-e5b0-4ac5-acb6-6cfe802cfed0:1:1792741395005",
+          "title": "酵母面包发酵时间与烤箱温度",
+          "startedAt": 1792741395005,
+          "endedAt": 1792741575005
+        }
+      ],
+      "shown": false
+    }
+  },
+  "status": "passed"
+}

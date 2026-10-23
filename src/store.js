@@ -1,4 +1,6 @@
 /** IndexedDB persistence. No Chrome globals, network, or in-memory fallback. */
+import { checkpointPage } from './checkpoints.js';
+import { assertRevision, failure, relationId, TASK_LIMITS } from './task-context.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   tracking: true,
@@ -6,11 +8,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   idleSeconds: 120,
   retentionDays: 30,
   excludedDomains: [],
+  focusSupport: false,
 });
 
 const DATABASE_NAME = 'focuence-local-v2';
-const DATABASE_VERSION = 1;
-const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors'];
+const DATABASE_VERSION = 2;
+const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations'];
 
 function req(request) {
   return new Promise((resolve, reject) => {
@@ -53,6 +56,7 @@ function settingsFrom(value = {}) {
     idleSeconds: Math.min(3_600, Math.max(15, finite(value.idleSeconds, DEFAULT_SETTINGS.idleSeconds))),
     retentionDays: Math.min(365, Math.max(1, finite(value.retentionDays, DEFAULT_SETTINGS.retentionDays))),
     excludedDomains,
+    focusSupport: typeof value.focusSupport === 'boolean' ? value.focusSupport : false,
   };
 }
 
@@ -69,7 +73,7 @@ function pageFrom(value) {
   };
 }
 
-function taskFrom(value) {
+export function taskFrom(value) {
   if (!value || !value.id) throw new TypeError('A task needs an id');
   const now = Date.now();
   const seen = new Set();
@@ -81,7 +85,8 @@ function taskFrom(value) {
     }).slice(0, 30).map(item => ({ pageId: item.id, url: item.url, title: item.title, tags: item.tags }));
   return {
     id: String(value.id),
-    name: String(value.name || '未命名任务').trim().slice(0, 120) || '未命名任务',
+    revision: Math.floor(finite(value.revision)),
+    name: [...String(value.name || '未命名任务').trim()].slice(0, TASK_LIMITS.name).join('') || '未命名任务',
     color: String(value.color || 'blue').slice(0, 30),
     locked: true,
     createdAt: finite(value.createdAt, now),
@@ -94,7 +99,16 @@ function taskFrom(value) {
       reused: Math.min(30, Math.floor(finite(value.lastRestoreResult.reused))),
       failedCount: Math.min(30, Math.floor(finite(value.lastRestoreResult.failedCount))),
     } || null,
-    notes: String(value.notes || '').slice(0, 20_000),
+    notes: [...String(value.notes || '')].slice(0, TASK_LIMITS.notes).join(''),
+    goal: [...String(value.goal || '')].slice(0, TASK_LIMITS.goal).join(''),
+    checkpoint: value.checkpoint?.source === 'confirmed' ? {
+      at: finite(value.checkpoint.at), confirmedAt: finite(value.checkpoint.confirmedAt), source: 'confirmed',
+      progress: [...String(value.checkpoint.progress || '')].slice(0, TASK_LIMITS.progress).join(''),
+      blocker: [...String(value.checkpoint.blocker || '')].slice(0, TASK_LIMITS.blocker).join(''),
+      nextStep: [...String(value.checkpoint.nextStep || '')].slice(0, TASK_LIMITS.nextStep).join(''),
+      page: checkpointPage(value.checkpoint.page),
+      evidence: value.checkpoint.evidence?.segmentId ? { segmentId: String(value.checkpoint.evidence.segmentId), at: finite(value.checkpoint.evidence.at), startedAt: finite(value.checkpoint.evidence.startedAt) } : null,
+    } : null,
     pages,
   };
 }
@@ -113,6 +127,9 @@ function segmentFrom(value) {
     title: String(value.title || '').slice(0, 500),
     tags: tags(value.tags),
     taskId: typeof value.taskId === 'string' && value.taskId ? value.taskId : null,
+    intendedTaskId: typeof value.intendedTaskId === 'string' && value.intendedTaskId ? value.intendedTaskId : null,
+    assignmentSource: ['saved', 'confirmed', 'excluded'].includes(value.assignmentSource) ? value.assignmentSource : 'unknown',
+    excludedFromIntent: value.excludedFromIntent === true,
     tabId: Number.isInteger(value.tabId) ? value.tabId : null,
     windowId: Number.isInteger(value.windowId) ? value.windowId : null,
     startedAt: value.startedAt,
@@ -136,15 +153,28 @@ function vectorFrom(value) {
   };
 }
 
+export function relationFrom(value) {
+  const page = checkpointPage(value?.page);
+  if (!value?.taskId || !page || !['related', 'unrelated'].includes(value.decision) || !value.revision) throw failure('INVALID_RELATION', '关联记忆缺少有效页面或决定。');
+  return { id: relationId(String(value.taskId), page.pageId), taskId: String(value.taskId), pageId: page.pageId,
+    page, decision: value.decision, source: 'manual', revision: String(value.revision), at: finite(value.at, Date.now()) };
+}
+
+export function emptyWorkspace() { return { context: null, drafts: {}, support: { shown: [], snoozed: {} }, events: [], undo: {} }; }
+
 /** @returns {Promise<object>} A small promise-based store API. */
 export async function openStore(options = {}) {
   const factory = options.indexedDB || globalThis.indexedDB;
   const keyRange = options.IDBKeyRange || globalThis.IDBKeyRange;
   if (!factory) throw new Error('IndexedDB is unavailable; local history cannot be saved.');
   const database = await new Promise((resolve, reject) => {
+    let abandoned = false;
     const request = factory.open(options.name || DATABASE_NAME, DATABASE_VERSION);
     request.onerror = () => reject(request.error || new Error('Could not open local history'));
-    request.onblocked = () => reject(new Error('Local database is blocked by another open Focuence page. Close it and retry.'));
+    request.onblocked = () => {
+      abandoned = true;
+      reject(new Error('本机数据升级被另一个 Focuence 页面阻塞。请关闭其他 Focuence 页面后重试。'));
+    };
     request.onupgradeneeded = () => {
       const db = request.result;
       for (const name of STORES) {
@@ -158,6 +188,7 @@ export async function openStore(options = {}) {
       if (!vectors.indexNames.contains('updatedAt')) vectors.createIndex('updatedAt', 'updatedAt', { unique: false });
     };
     request.onsuccess = () => {
+      if (abandoned) { request.result.close(); return; }
       request.result.onversionchange = () => request.result.close();
       resolve(request.result);
     };
@@ -230,11 +261,47 @@ export async function openStore(options = {}) {
     },
 
     getTask(id) {
-      return transaction(['tasks'], 'readonly', async ({ tasks }) => (await req(tasks.get(id))) || null);
+      return transaction(['tasks'], 'readonly', async ({ tasks }) => { const value = await req(tasks.get(id)); return value ? taskFrom(value) : null; });
     },
 
     getTasks() {
-      return transaction(['tasks'], 'readonly', async ({ tasks }) => (await req(tasks.getAll())).sort((a, b) => b.updatedAt - a.updatedAt));
+      return transaction(['tasks'], 'readonly', async ({ tasks }) => (await req(tasks.getAll())).map(taskFrom).sort((a, b) => b.updatedAt - a.updatedAt));
+    },
+
+    getRelations() {
+      return transaction(['taskRelations'], 'readonly', ({ taskRelations }) => req(taskRelations.getAll()));
+    },
+
+    getWorkspace() {
+      return transaction(['meta'], 'readonly', async ({ meta }) => ({ ...emptyWorkspace(), ...((await req(meta.get('workspace')))?.value || {}) }));
+    },
+
+    /** Compare and atomically commit intent, task decisions and their visit boundary. */
+    commitWorkspace(change = {}) {
+      const normalizedTasks = (change.tasks || []).map(taskFrom);
+      const normalizedRelations = (change.relations || []).map(relationFrom);
+      return transaction(['meta', 'tasks', 'taskRelations', 'segments', 'vectors'], 'readwrite', async stores => {
+        for (const { id, revision } of change.expectedTasks || []) assertRevision(await req(stores.tasks.get(id)), revision);
+        if (change.expectedContext) {
+          const actual = (await req(stores.meta.get('workspace')))?.value?.context;
+          const check = change.expectedContext;
+          if (actual?.sessionId !== check.sessionId || (actual.windows?.[check.windowId]?.revision || 0) !== check.revision) throw failure('STALE_CONTEXT', '当前任务已改变，请重新读取。');
+        }
+        for (const task of normalizedTasks) stores.tasks.put(task);
+        for (const relation of normalizedRelations) stores.taskRelations.put(relation);
+        for (const id of change.deleteRelations || []) stores.taskRelations.delete(id);
+        const removed = new Set(change.deleteTasks || []);
+        const reset = new Set([...(change.resetRelations || []), ...removed]);
+        if (reset.size) for (const relation of await req(stores.taskRelations.getAll())) if (reset.has(relation.taskId)) stores.taskRelations.delete(relation.id);
+        for (const id of removed) stores.tasks.delete(id);
+        if (removed.size) for (const vector of await req(stores.vectors.getAll())) {
+          if ([...removed].some(id => vector.id === `mem:goal:${id}` || vector.id.startsWith(`mem:task:${id}:`))) stores.vectors.delete(vector.id);
+        }
+        if (change.workspace) stores.meta.put({ key: 'workspace', value: change.workspace });
+        if (change.activity) stores.meta.put({ key: 'activity', value: change.activity });
+        putRecords(stores.segments, change.segments || [], segmentFrom);
+        return { tasks: normalizedTasks, relations: normalizedRelations };
+      });
     },
 
     deleteTask(id) {
@@ -263,10 +330,11 @@ export async function openStore(options = {}) {
       });
     },
 
-    saveActivity(state, values = []) {
+    saveActivity(state, values = [], workspace) {
       return transaction(['meta', 'segments'], 'readwrite', ({ meta, segments }) => {
         meta.put({ key: 'activity', value: state });
         putRecords(segments, values, segmentFrom);
+        if (workspace) meta.put({ key: 'workspace', value: workspace });
         return state;
       });
     },
@@ -331,6 +399,13 @@ export async function openStore(options = {}) {
           }
           if (activityState.context?.pageId) keptPageIds.add(activityState.context.pageId);
         }
+        const workspace = (await req(stores.meta.get('workspace')))?.value;
+        if (workspace) {
+          workspace.drafts = Object.fromEntries(Object.entries(workspace.drafts || {}).filter(([, value]) => value.at >= cutoff));
+          workspace.events = (workspace.events || []).filter(value => value.at >= cutoff);
+          workspace.support = { ...workspace.support, shown: (workspace.support?.shown || []).filter(value => value.at >= cutoff) };
+          stores.meta.put({ key: 'workspace', value: workspace });
+        }
         let deletedPages = 0;
         for (const page of pages) {
           if (page.lastSeen < cutoff && !keptPageIds.has(page.id)) {
@@ -345,20 +420,22 @@ export async function openStore(options = {}) {
             deletedVectors += 1;
           }
         }
-        return { deletedSegments, clippedSegments, deletedPages, deletedVectors, cutoff, activity: activityState };
+        return { deletedSegments, clippedSegments, deletedPages, deletedVectors, cutoff, activity: activityState, workspace: workspace || null };
       });
     },
 
     exportData() {
-      return transaction(['meta', 'pages', 'tasks', 'segments'], 'readonly', async stores => {
-        const [settings, pages, tasks, segments] = await Promise.all([
+      return transaction(['meta', 'pages', 'tasks', 'segments', 'taskRelations'], 'readonly', async stores => {
+        const [settings, pages, tasks, segments, taskRelations] = await Promise.all([
           req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()), req(stores.segments.getAll()),
+          req(stores.taskRelations.getAll()),
         ]);
         return {
-          schemaVersion: 2,
+          schemaVersion: 3,
           exportedAt: new Date().toISOString(),
           pages,
-          tasks,
+          tasks: tasks.map(taskFrom),
+          taskRelations,
           segments: segments.sort((a, b) => a.startedAt - b.startedAt),
           settings: settingsFrom(settings?.value),
         };
@@ -366,7 +443,9 @@ export async function openStore(options = {}) {
     },
 
     clearHistory() {
-      return transaction(['meta', 'segments', 'pages', 'vectors'], 'readwrite', stores => {
+      return transaction(['meta', 'segments', 'pages', 'vectors'], 'readwrite', async stores => {
+        const old = (await req(stores.meta.get('workspace')))?.value;
+        if (old) stores.meta.put({ key: 'workspace', value: { ...old, drafts: {}, events: [], support: { shown: [], snoozed: {} }, undo: {} } });
         stores.meta.delete('activity');
         stores.segments.clear();
         stores.pages.clear();

@@ -1,0 +1,285 @@
+{
+  "checks": [
+    "Native side panel shows seeded return support, acknowledges once, saves related correction and rejects old prompt"
+  ],
+  "errors": [],
+  "seed": {
+    "activity": {
+      "version": 2,
+      "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+      "sequence": 2,
+      "tracking": true,
+      "idleState": "active",
+      "context": {
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998
+      },
+      "open": {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998,
+        "startedAt": 1792740466406,
+        "endedAt": 1792740646406,
+        "foregroundMs": 180000,
+        "status": "active",
+        "endReason": "checkpoint"
+      },
+      "lastEventAt": 1792740646406,
+      "lastConfirmedAt": 1792740646406,
+      "maxGapMs": 90000,
+      "clockRegressedUntil": null,
+      "warning": null
+    },
+    "workspace": {
+      "context": {
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "windows": {
+          "1809840998": {
+            "taskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+            "revision": 1,
+            "startedAt": 1792740226406
+          }
+        }
+      },
+      "drafts": {},
+      "support": {
+        "shown": [],
+        "snoozed": {}
+      },
+      "events": [],
+      "undo": {}
+    },
+    "segments": [
+      {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:1:1792740286406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_db812b6547090abc",
+        "url": "http://127.0.0.1:64871/fixture/cooking/bread",
+        "title": "酵母面包发酵时间与烤箱温度",
+        "tags": [
+          "其他"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841001,
+        "windowId": 1809840998,
+        "startedAt": 1792740286406,
+        "endedAt": 1792740466406,
+        "foregroundMs": 180000,
+        "status": "active",
+        "endReason": "tab-switch"
+      },
+      {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998,
+        "startedAt": 1792740466406,
+        "endedAt": 1792740646406,
+        "foregroundMs": 180000,
+        "status": "active",
+        "endReason": "checkpoint"
+      }
+    ]
+  },
+  "state": {
+    "tracking": {
+      "status": "active",
+      "activeTabId": 1809841002,
+      "lastUpdatedAt": 1792740646489,
+      "warning": null
+    },
+    "current": {
+      "taskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+      "revision": 1,
+      "startedAt": 1792740226406
+    },
+    "prompt": {
+      "id": "return_084d1e7d96ad72b1",
+      "taskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+      "windowId": 1809840998,
+      "contextRevision": 1,
+      "intentStartedAt": 1792740226406,
+      "pageId": "p_9f788b642a7647dc",
+      "page": {
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路"
+      },
+      "durationMs": 360120,
+      "pages": 2,
+      "evidence": [
+        {
+          "id": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+          "title": "京都三日游：景点、住宿和交通线路",
+          "startedAt": 1792740466406,
+          "endedAt": 1792740646526
+        },
+        {
+          "id": "c0910570-c987-4720-9478-4e6daa05527d:1:1792740286406",
+          "title": "酵母面包发酵时间与烤箱温度",
+          "startedAt": 1792740286406,
+          "endedAt": 1792740466406
+        }
+      ],
+      "shown": false
+    }
+  },
+  "persisted": {
+    "activity": {
+      "version": 2,
+      "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+      "sequence": 2,
+      "tracking": true,
+      "idleState": "active",
+      "context": {
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998
+      },
+      "open": {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998,
+        "startedAt": 1792740466406,
+        "endedAt": 1792740646488,
+        "foregroundMs": 180082,
+        "status": "active",
+        "endReason": "checkpoint"
+      },
+      "lastEventAt": 1792740646488,
+      "lastConfirmedAt": 1792740646488,
+      "maxGapMs": 90000,
+      "clockRegressedUntil": null,
+      "warning": null
+    },
+    "workspace": {
+      "context": {
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "windows": {
+          "1809840998": {
+            "taskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+            "revision": 1,
+            "startedAt": 1792740226406
+          }
+        }
+      },
+      "drafts": {
+        "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5": {
+          "at": 1792740646488,
+          "page": {
+            "pageId": "p_9f788b642a7647dc",
+            "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+            "title": "京都三日游：景点、住宿和交通线路"
+          },
+          "segmentId": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+          "startedAt": 1792740466406,
+          "source": "observed"
+        }
+      },
+      "support": {
+        "shown": [],
+        "snoozed": {}
+      },
+      "events": [],
+      "undo": {}
+    },
+    "segments": [
+      {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:1:1792740286406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_db812b6547090abc",
+        "url": "http://127.0.0.1:64871/fixture/cooking/bread",
+        "title": "酵母面包发酵时间与烤箱温度",
+        "tags": [
+          "其他"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841001,
+        "windowId": 1809840998,
+        "startedAt": 1792740286406,
+        "endedAt": 1792740466406,
+        "foregroundMs": 180000,
+        "status": "active",
+        "endReason": "tab-switch"
+      },
+      {
+        "id": "c0910570-c987-4720-9478-4e6daa05527d:2:1792740466406",
+        "sessionId": "c0910570-c987-4720-9478-4e6daa05527d",
+        "pageId": "p_9f788b642a7647dc",
+        "url": "http://127.0.0.1:64871/fixture/travel/kyoto",
+        "title": "京都三日游：景点、住宿和交通线路",
+        "tags": [
+          "旅行"
+        ],
+        "taskId": "task_8a2b30e6-2369-432e-bcb2-83fddebbc3d5",
+        "intendedTaskId": "task_fbe4d9b4-0370-4440-a1de-aa7d86bb42b9",
+        "assignmentSource": "saved",
+        "excludedFromIntent": false,
+        "tabId": 1809841002,
+        "windowId": 1809840998,
+        "startedAt": 1792740466406,
+        "endedAt": 1792740646488,
+        "foregroundMs": 180082,
+        "status": "active",
+        "endReason": "checkpoint"
+      }
+    ]
+  }
+}

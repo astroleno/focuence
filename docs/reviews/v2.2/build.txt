@@ -1,0 +1,9 @@
+
+> focuence-local@2.2.0 build
+> node scripts/build.mjs
+
+
+  inference/worker.bundle.js  809.5kb
+
+⚡ Done in 124ms
+Focuence 2.2.0: local worker and matching WASM assets ready.

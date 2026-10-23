@@ -5,12 +5,14 @@ import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
 import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
+import { createTaskMemoryUI } from '../src/task-memory-ui.js';
+import { taskText } from '../src/task-context.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
 const isDemo = params.get('demo') === '1';
-const viewNames = isPanel ? {tasks: '任务', pages: '页面', timeline: '路径', map: '地图'} : {review: '一周回顾', tasks: '任务工作台', pages: '当前页面', timeline: '访问路径', map: '注意力地图', settings: '数据与设置'};
-const viewIcons = {review: 'clock', pages: 'layers', tasks: 'folder', timeline: 'clock', map: 'nodes', settings: 'settings'};
+const viewNames = isPanel ? {tasks: '任务', search: '查找', pages: '页面', timeline: '路径', map: '地图'} : {review: '一周回顾', tasks: '任务工作台', search: '找回线索', pages: '当前页面', timeline: '访问路径', map: '注意力地图', settings: '数据与设置'};
+const viewIcons = {review: 'clock', pages: 'layers', tasks: 'folder', search: 'search', timeline: 'clock', map: 'nodes', settings: 'settings'};
 const palette = {grey: '#929889', gray: '#929889', blue: '#8a9eb3', red: '#bd8579', yellow: '#c0a56c', green: '#8caa8c', pink: '#b492a4', purple: '#a494b3', cyan: '#7ba9a4', orange: '#d89068'};
 function button(label, action, attributes = {}, className = '', iconName) {
   return el('button', {type: 'button', ...(attributes['data-id'] != null ? {id: 'action-' + action + '-' + encodeURIComponent(attributes['data-id'])} : {}), class: 'btn ' + className, 'data-action': action, ...attributes}, iconName && icon(iconName), label);
@@ -37,12 +39,14 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.1.2',
+    version: value?.version || '2.2.0',
+    demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
     undoAvailable: Boolean(value?.undoAvailable),
+    work: value?.work,
     timelineTruncated: Boolean(value?.timelineTruncated),
-    settings: {tracking: true, semantic: true, idleSeconds: 120, retentionDays: 30, excludedDomains: [], ...value?.settings},
+    settings: {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: [], ...value?.settings},
     tabs: Array.isArray(value?.tabs) ? value.tabs : [], tasks: Array.isArray(value?.tasks) ? value.tasks : [],
     segments: Array.isArray(value?.segments) ? value.segments : [], groups: Array.isArray(value?.groups) ? value.groups : [],
     stats: {todayForegroundMs: 0, todayPages: 0, todaySwitches: 0, totalTasks: 0, ...value?.stats},
@@ -86,6 +90,22 @@ async function request(type, payload = {}) {
   }
   return response.data;
 }
+const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh: () => refresh({quiet: true}), render,
+  notify: toast, getWindowId: () => windowId, surface: isPanel ? 'panel' : 'workspace', showEvidence: id => {
+    if (!ui.state.segments.some(segment => segment.id === id)) {
+      const segment = (ui.state.work?.patterns?.repeatedReturns || []).flatMap(item => item.evidence.flatMap(row => row.evidence)).find(item => item.id === id);
+      if (!segment) { toast('这条记录已不可用，请重新读取。', true); return; }
+      const {body} = dialogFrame('访问记录', '这条证据在当前路径列表的 2,000 条展示范围之外，仍保留在本机记录中。');
+      body.append(el('div', {class: 'memory-record'}, el('h3', {}, segment.title),
+        el('p', {class: 'memory-caption'}, new Date(segment.startedAt).toLocaleString('zh-CN') + ' — ' + timeLabel(segment.endedAt)),
+        el('p', {}, '前台停留 ' + duration(segment.foregroundMs)), el('p', {class: 'memory-caption'}, segment.url),
+        button('打开页面', 'open-page', {'data-url': segment.url}, 'small')));
+      return;
+    }
+    ui.timelineStatus = 'all'; ui.timelineTag = ''; ui.timelineLimit = ui.state.segments.length; ui.expandedSegments.add(id);
+    ui.view = 'timeline'; render();
+    const target = document.getElementById('segment-toggle-' + encodeURIComponent(id)); target?.scrollIntoView({block: 'center'}); target?.focus({preventScroll: true});
+  }});
 let toastTimer;
 function toast(message, error = false, actionName = '') {
   const region = document.getElementById('toast-region');
@@ -186,7 +206,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#review', 'aria-label': 'Focuence · 一周回顾'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.1')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.2')));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -340,16 +360,18 @@ function taskCard(task, {featured = false} = {}) {
     el('div', {class: 'task-footer'},
       el('div', {class: 'task-count'}, el('span', {}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
         el('span', {class: 'task-date'}, dateLabel(task.lastActivityAt || task.updatedAt || task.createdAt))),
-      button(busy('restore-' + task.id) ? '恢复中…' : '继续任务', 'restore-task', {'data-id': task.id, disabled: busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
+      button(busy('restore-' + task.id) ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: !pages.length || busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
     taskPages(task, ui.expandedPages.has(task.id), busy('restore-' + task.id)),
-    task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加下一步', 'edit-task', {'data-id': task.id}, 'text-button'));
+    task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加笔记', 'edit-task', {'data-id': task.id}, 'text-button'), memory.taskActions(task));
 }
 function renderTasks() {
   const query = ui.queries.tasks.trim().toLocaleLowerCase();
-  const tasks = ui.state.tasks.filter(task => !query || [task.name, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
+  const tasks = ui.state.tasks.filter(task => !query || [task.name, task.goal, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
   return [
     heading(isPanel ? '任务' : '任务工作台', '保存下一步，回到正在做的事。', [
+      button('新建任务', 'new-task', {id: 'task-create'}, isPanel ? 'small' : '', 'plus'),
       button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
+    memory.current({support: isPanel}),
     el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), el('span', {class: 'subtle-label'}, ui.state.tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
       emptyState(query ? '没有找到这个任务' : '保存一件正在做的事', query ? '试试任务名、备注或页面标题。' : '选择相关页面，再写下一步。回来时就能继续。', query ? null : 'nav-pages', '去选择页面', false, 'folder'),
@@ -389,6 +411,7 @@ function renderReview() {
           el('div', {class: 'day-track'}, el('div', {class: 'day-fill', style: {height: (day.foregroundMs / maximum * 100) + '%'}})),
           el('span', {class: 'day-label'}, new Date(day.startedAt).toLocaleDateString('zh-CN', {weekday: 'short'})),
           el('span', {class: 'day-date'}, new Date(day.startedAt).toLocaleDateString('zh-CN', {month: 'numeric', day: 'numeric'})))))),
+    memory.patterns(),
     el('p', {class: 'list-footnote'}, '前台停留不等于实际注意力。以上来自访问记录，不判断工作是否完成。')
   ];
 }
@@ -638,14 +661,16 @@ function renderSettings() {
         settingRow('历史保留时间', '到期的浏览历史会清理，手动保存的任务会继续保留。', selectOptions('setting-retention', settings.retentionDays, [[7, '7 天'], [30, '30 天'], [90, '90 天'], [365, '365 天']], '历史保留时间')),
         el('div', {class: 'field exclusion-field'}, el('label', {for: 'setting-excluded'}, '不记录这些站点'), el('textarea', {id: 'setting-excluded', placeholder: '例如：bank.example.com\n每行一个域名', rows: 3}, (settings.excludedDomains || []).join('\n')), el('p', {class: 'field-help'}, '每行一个域名，或用逗号分隔。隐身页面默认不记录。'))),
       el('section', {class: 'settings-section'}, el('h2', {}, '本地智能'),
-        settingRow('启用语义增强', '用随扩展提供的小模型理解页面之间的联系。关闭后仍能使用快速规则分组。', toggle('setting-semantic', settings.semantic, '启用本地语义增强')),
+        settingRow('启用语义增强', '用本机模型补充页面分组、任务关联和资料查找。关闭后仍可使用规则与关键词。', toggle('setting-semantic', settings.semantic, '启用本地语义增强')),
+        settingRow('低频返回提示', '仅在侧栏显示。连续 5 分钟、至少 2 个已确认的其他页面才会提示；每天最多 3 次。', toggle('setting-focus-support', settings.focusSupport, '启用低频返回提示')),
         settingRow('模型状态', ui.state.model.name || 'BGE-small-zh-v1.5 · 本地语义模型', button(busy('warmup') ? '正在准备…' : ui.state.model.status === 'ready' ? '模型已就绪' : '准备本地模型', 'warmup', {disabled: busy('warmup') || ui.state.model.status === 'ready'}, 'small', 'spark')),
         modelBar(),
         el('div', {class: 'settings-save'}, button(busy('settings') ? '正在保存…' : '保存设置', 'save-settings', {disabled: busy('settings')}, 'primary', 'check'), el('span', {id: 'settings-save-status'}, ui.settingsDirty ? '有尚未保存的更改。' : '所有分析均在本机完成，无需 API 密钥。'))),
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
-        settingRow('清除浏览历史', '删除已记录的访问片段，保留手动保存的任务。这个操作无法撤销。', button('清除历史', 'clear-history', {}, 'small danger')),
+        settingRow('清除浏览历史', '删除访问片段、自动线索和提示记录；保留任务、已确认断点与手工关联记忆。', button('清除历史', 'clear-history', {}, 'small danger')),
+        settingRow('清除关联记忆', '清除全部任务的相关和不相关判断，保留任务、断点及保存的页面。无法撤销。', button('清除关联记忆', 'clear-relations', {}, 'small danger')),
         settingRow('清除全部数据', '删除浏览历史、保存的任务并重置设置。不会关闭浏览器页面。这个操作无法撤销。', button('清除全部', 'clear-all', {}, 'small danger'))))
   ];
 }
@@ -668,7 +693,7 @@ function render() {
     if (!ui.error) content.push(el('div', {class: 'loading-shell'}, el('div', {class: 'spinner'}), '正在读取本机浏览空间…'));
     else content.push(emptyState('暂时无法读取浏览空间', '确认扩展已经安装并启用，然后重试。', null, null));
   } else {
-    const renderers = {review: renderReview, pages: renderPages, tasks: renderTasks, timeline: renderTimeline, map: renderMap, settings: renderSettings};
+    const renderers = {review: renderReview, pages: renderPages, tasks: renderTasks, search: () => [memory.searchView()], timeline: renderTimeline, map: renderMap, settings: renderSettings};
     content.push(...renderers[ui.view]());
   }
   mapResizeObserver?.disconnect();
@@ -746,13 +771,15 @@ function showDialogError(body, message) {
   body.prepend(el('p', {class: 'dialog-error', role: 'alert'}, message));
 }
 function taskDialog({task = null, group = null, scope = 'window'} = {}) {
+  const intentOnly = scope === 'intent';
+  let editorRevision = task?.revision || 0;
   const tabs = scope === 'selection' ? ui.state.tabs.filter(tab => ui.selected.has(tab.id)) : ui.state.tabs;
-  const sourcePages = task?.pages || group?.pages || tabs;
+  const sourcePages = intentOnly ? [] : task?.pages || group?.pages || tabs;
   const taskPages = uniqueTaskPages(sourcePages);
-  if (!task && !taskPages.length) return toast('先选择要保存的页面。', true);
+  if (!task && !intentOnly && !taskPages.length) return toast('先选择要保存的页面。', true);
   const source = group ? '当前分组' : scope === 'selection' ? '所选页面' : '当前窗口';
-  const {dialog, body} = dialogFrame(task ? '编辑任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
-  const memberList = task
+  const {dialog, body} = dialogFrame(task ? '编辑任务' : intentOnly ? '新建任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : intentOnly ? '先写下目标，再设为当前任务寻找相关资料。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
+  const memberList = intentOnly ? null : task
     ? el('ul', {class: 'dialog-pages'}, taskPages.map(page => el('li', {}, icon('page'), el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url, title: page.title || page.url}, page.title || domainOf(page.url)))))
     : el('div', {class: 'task-member-picker'},
       el('div', {class: 'selection-tools'}, el('span', {id: 'task-members-count', role: 'status'}), el('button', {id: 'task-select-all', type: 'button', class: 'note-toggle'}, '清空选择')),
@@ -760,8 +787,9 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
         el('input', {id: 'task-member-' + index, type: 'checkbox', 'data-task-member': index, checked: true}), el('span', {title: page.title || page.url}, page.title || domainOf(page.url))))),
       el('p', {id: 'task-members-error', class: 'member-validation', role: 'status'}));
   const form = el('form', {id: 'task-form', novalidate: ''},
-    field('task-name', '任务名称', task?.name || group?.name || '', false, {required: true, maxlength: 80, placeholder: '例如：周末路线 / 一个新想法'}),
-    field('task-notes', '接下来想做什么？', task?.notes || '', true, {maxlength: 3000, placeholder: '记下一点上下文，下一次就容易继续。'}),
+    field('task-name', '任务名称', task?.name || group?.name || '', false, {required: true, placeholder: '例如：周末路线 / 一个新想法'}),
+    field('task-goal', '这件事想达到什么目标？', task?.goal || '', true, {placeholder: '一句话描述目标，用来寻找相关页面。'}),
+    field('task-notes', '任务笔记', task?.notes || '', true, {placeholder: '保留资料和上下文；可以在“留断点”中单独确认下一步。'}),
     memberList,
     el('div', {class: 'dialog-actions'}, task && button('删除任务', 'delete-task', {'data-id': task.id}, 'danger subtle'), el('span', {class: 'spacer'}), button('取消', 'close-dialog'), el('button', {type: 'submit', class: 'btn primary'}, icon('save'), task ? '保存修改' : '保存任务')));
   body.append(form);
@@ -771,7 +799,7 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
   });
   const selectedPages = () => task ? taskPages : [...form.querySelectorAll('[data-task-member]:checked')].map(input => taskPages[Number(input.dataset.taskMember)]);
   const updateMembers = () => {
-    if (task) return;
+    if (task || intentOnly) return;
     const count = selectedPages().length;
     form.querySelector('#task-members-count').textContent = '已选 ' + count + ' / ' + taskPages.length + ' 页';
     form.querySelector('#task-select-all').textContent = count ? '清空选择' : '全选';
@@ -788,18 +816,33 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (dialogBusy) return;
-    const name = form.querySelector('#task-name').value.trim();
-    const notes = form.querySelector('#task-notes').value.trim();
+    let name, notes, goal;
+    try {
+      name = taskText(form.querySelector('#task-name').value, 'name', {required: true});
+      notes = taskText(form.querySelector('#task-notes').value, 'notes');
+      goal = taskText(form.querySelector('#task-goal').value, 'goal');
+    } catch (error) { showDialogError(body, error.message); return; }
     if (!name) { showDialogError(body, '请给任务起一个名字。'); form.querySelector('#task-name').focus(); return; }
     const pages = selectedPages();
-    if (!task && (pages.length === 0 || pages.length > 30)) { updateMembers(); return; }
+    if (!task && !intentOnly && (pages.length === 0 || pages.length > 30)) { updateMembers(); return; }
     const submit = form.querySelector('[type="submit"]'), label = task ? '保存修改' : '保存任务';
     const unlock = lockDialog(); submit.replaceChildren(icon('save'), '正在保存…');
     try {
-      if (task) await request('UPDATE_TASK', {id: task.id, name, notes});
-      else await request('SAVE_TASK', {windowId, name, notes, ...(group ? {group: {...group, pages}} : {tabIds: pages.map(page => page.id)})});
+      if (task) await request('UPDATE_TASK', {id: task.id, revision: editorRevision, name, goal, notes});
+      else await request('SAVE_TASK', {windowId, name, goal, notes, ...(intentOnly ? {mode: 'intent'} : group ? {group: {...group, pages}} : {tabIds: pages.map(page => page.id)})});
       await refresh({quiet: true}); unlock(); dialog.close(); toast(task ? '任务已更新。' : '任务已保存，下次可以从这里继续。');
-    } catch (error) { showDialogError(body, error.message); }
+    } catch (error) {
+      showDialogError(body, error.message);
+      if (error.code === 'STALE_TASK') {
+        await refresh({quiet: true});
+        const latest = ui.state.tasks.find(item => item.id === task.id);
+        if (latest) {
+          const rebase = el('button', {type: 'button', class: 'btn small'}, '核对最新任务后重新保存');
+          rebase.addEventListener('click', () => { editorRevision = latest.revision; showDialogError(body, '最新名称：' + latest.name + '；目标：' + (latest.goal || '未填写') + '。你的草稿仍保留，请核对后保存。'); });
+          body.querySelector('.dialog-error').append(rebase);
+        }
+      }
+    }
     finally { unlock(); submit.replaceChildren(icon('save'), label); updateMembers(); }
   });
   form.querySelector('#task-name').focus();
@@ -833,7 +876,7 @@ function confirmTaskDeletion(task) {
     field?.focus({preventScroll: true});
     if (selection) field.setSelectionRange(...selection);
   };
-  confirmDialog('删除这个任务？', '“' + task.name + '”的保存页面和备注将被删除。浏览器中打开的页面不受影响。', '删除任务', async () => { await request('DELETE_TASK', {id: task.id}); toast('任务已删除。'); }, false, restoreEditor);
+  confirmDialog('删除这个任务？', '“' + task.name + '”的保存页面、断点、笔记与关联记忆将被删除。浏览器中打开的页面不受影响。', '删除任务', async () => { await request('DELETE_TASK', {id: task.id, revision: task.revision || 0}); toast('任务已删除。'); }, false, restoreEditor);
 }
 async function pollModel(callback) {
   let running = false;
@@ -871,6 +914,7 @@ function captureSettings() {
   if (!byId('setting-tracking')) return;
   ui.settingsDraft = {
     tracking: byId('setting-tracking').checked, semantic: byId('setting-semantic').checked,
+    focusSupport: byId('setting-focus-support').checked,
     idleSeconds: Number(byId('setting-idle').value), retentionDays: Number(byId('setting-retention').value),
     excludedDomains: byId('setting-excluded').value.split(/[\n,，]+/).map((line) => line.trim()).filter(Boolean)
   };
@@ -930,6 +974,7 @@ async function handleAction(action, target) {
       await request('OPEN_PAGE', {url: target.dataset.url, windowId});
       if (isDemo) toast('示例：真实模式会打开这个页面。');
       break;
+    case 'new-task': taskDialog({scope: 'intent'}); break;
     case 'save-window': taskDialog({scope: 'window'}); break;
     case 'save-selection': taskDialog({scope: 'selection'}); break;
     case 'save-group': {
@@ -966,7 +1011,7 @@ async function handleAction(action, target) {
       render(); break;
     case 'restore-task':
       await operation('restore-' + id, async () => {
-        const result = await request('RESTORE_TASK', {id, windowId}); await refresh({quiet: true});
+        const result = await request('RESTORE_TASK', {id, windowId, revision: ui.state.tasks.find(task => task.id === id).revision || 0, contextRevision: ui.state.work?.current.revision || 0}); await refresh({quiet: true});
         const failed = result?.failed?.length || 0;
         toast('已复用 ' + (result?.reused || 0) + ' 页，新开 ' + (result?.opened || 0) + ' 页。' + (failed ? failed + ' 页未恢复，可重试。' : '已接回任务页面。'), failed > 0);
       }); break;
@@ -1000,7 +1045,12 @@ async function handleAction(action, target) {
       }); break;
     case 'export': await operation('export', exportData); break;
     case 'clear-history':
-      confirmDialog('清除浏览历史？', '删除已记录的浏览片段与历史分析，保留手动保存的任务。清除后无法恢复，建议先导出备份。', '清除历史', async () => { await request('CLEAR_HISTORY'); ui.selectedTag = ''; toast('浏览历史已清除，保存的任务仍在。'); });
+      confirmDialog('清除浏览历史？', '删除访问片段、自动线索、查找行为与提示记录，保留任务、已确认断点和手工关联记忆。原始访问证据将不可用。此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); ui.selectedTag = ''; toast('浏览历史已清除，任务与手工记忆仍保留。'); });
+      break;
+    case 'clear-relations':
+      confirmDialog('清除全部关联记忆？', '清除所有任务的相关和不相关判断。任务目标、断点与保存页面仍保留；此操作无法撤销。', '清除关联记忆', async () => {
+        await request('RESET_TASK_RELATIONS', {scope: 'all', expectedTasks: ui.state.tasks.map(task => ({id: task.id, revision: task.revision || 0}))}); toast('关联记忆已清除。');
+      });
       break;
     case 'clear-all':
       confirmDialog('清除全部本机数据？', '这将删除浏览历史、所有保存的任务并重置设置。浏览器页面不会关闭。此操作无法撤销。', '清除全部', async () => {

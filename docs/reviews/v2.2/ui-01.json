@@ -1,0 +1,71 @@
+{
+  "provenance": "Isolated Chromium; synthetic demo data for UI and keyboard flow. Native verification is separate.",
+  "checks": [
+    {
+      "surface": "panel",
+      "width": 320,
+      "height": 760,
+      "status": "passed",
+      "layout": {
+        "width": 320,
+        "height": 760,
+        "bodyWidth": 320,
+        "duplicates": [],
+        "overflow": []
+      }
+    },
+    {
+      "surface": "panel",
+      "width": 360,
+      "height": 760,
+      "status": "passed",
+      "layout": {
+        "width": 360,
+        "height": 760,
+        "bodyWidth": 360,
+        "duplicates": [],
+        "overflow": []
+      }
+    },
+    {
+      "surface": "popup",
+      "width": 400,
+      "height": 520,
+      "status": "passed",
+      "layout": {
+        "width": 400,
+        "height": 520,
+        "bodyWidth": 400,
+        "duplicates": [],
+        "overflow": []
+      }
+    },
+    {
+      "surface": "popup",
+      "width": 400,
+      "height": 600,
+      "status": "passed",
+      "layout": {
+        "width": 400,
+        "height": 600,
+        "bodyWidth": 400,
+        "duplicates": [],
+        "overflow": []
+      }
+    },
+    {
+      "surface": "app",
+      "width": 1440,
+      "height": 950,
+      "status": "passed",
+      "layout": {
+        "width": 1440,
+        "height": 950,
+        "bodyWidth": 1440,
+        "duplicates": [],
+        "overflow": []
+      }
+    }
+  ],
+  "errors": []
+}
