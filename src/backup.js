@@ -1,15 +1,17 @@
 import { normalizeUrl, pageIdForUrl, stableHash } from './text.js';
 import { failure, TASK_LIMITS } from './task-context.js';
 
-export const BACKUP_VERSION = 5;
+export const BACKUP_VERSION = 6;
 export function canonical(value) {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
   return JSON.stringify(value);
 }
 const ordered = values => [...(values || [])].sort((a,b) => String(a.id).localeCompare(String(b.id)));
+const recordContent=value=>{const {revision,...content}=value;return canonical(content);};
+const materialContent=value=>{const {revision,id,...content}=value;return canonical(content);};
 export function backupStamp(data, full = false) {
-  return stableHash(canonical({tasks: ordered(data.tasks), taskRelations: ordered(data.taskRelations), settings: data.settings,
+  return stableHash(canonical({tasks: ordered(data.tasks), taskRelations: ordered(data.taskRelations),libraryItems:ordered(data.libraryItems), settings: data.settings,
     ...(full ? {pages: ordered(data.pages), segments: ordered(data.segments)} : {})}));
 }
 
@@ -18,7 +20,7 @@ export function decodeBackup(input, normalizers) {
   let raw;
   try { raw = typeof input === 'string' ? JSON.parse(input) : structuredClone(input); }
   catch { throw failure('IMPORT_INVALID', '文件不是有效的 JSON；本机数据未改变。'); }
-  if (!raw || ![2,3,4,5].includes(raw.schemaVersion)) throw failure('IMPORT_VERSION', '备份版本不受支持。请使用格式 2—5 的 Focuence 备份。');
+  if (!raw || ![2,3,4,5,6].includes(raw.schemaVersion)) throw failure('IMPORT_VERSION', '备份版本不受支持。请使用格式 2—6 的 Focuence 备份。');
   const issues = [], issue = (path, message) => issues.push(path + '：' + message);
   const id = (value, path) => {
     if (typeof value !== 'string' || !value || value.length > 500 || ['__proto__','prototype','constructor'].includes(value) || /[\u0000-\u001f]/.test(value)) issue(path, '缺少有效标识');
@@ -31,7 +33,7 @@ export function decodeBackup(input, normalizers) {
     return normalizeUrl(value);
   };
   const list = key => {
-    if (!Array.isArray(raw[key]) && !(key === 'taskRelations' && raw.schemaVersion === 2)) issue(key, '应为列表');
+    if (!Array.isArray(raw[key]) && !(key === 'taskRelations' && raw.schemaVersion === 2) && !(key==='libraryItems'&&raw.schemaVersion<6)) issue(key, '应为列表');
     return Array.isArray(raw[key]) ? raw[key] : [];
   };
   const recordList = (key, normalize) => {
@@ -72,6 +74,16 @@ export function decodeBackup(input, normalizers) {
     return normalizers.taskFrom({...value, createdAt: value.createdAt ?? 0, updatedAt: value.updatedAt ?? 0, pages: members});
   });
   const taskIds = new Set(tasks.map(task => task.id));
+  const materialKeys=new Map();
+  const libraryItems=recordList('libraryItems',(value,path)=>{
+    url(value.url,path+'.url');if(value.parentUrl)url(value.parentUrl,path+'.parentUrl');
+    if(value.source!=null&&!['manual','selection'].includes(value.source))issue(path+'.source','来源类型无效');
+    if(value.sourceVerified!=null&&typeof value.sourceVerified!=='boolean')issue(path+'.sourceVerified','来源确认应为开关');
+    const item=normalizers.libraryFrom(value);
+    for(const taskId of item.taskIds)if(!taskIds.has(taskId))issue(path+'.taskIds','引用的任务不存在：'+taskId);
+    const key=item.kind+':'+item.url+':'+item.quote;
+    if(materialKeys.has(key)&&materialKeys.get(key)!==item.id)issue(path,'同一来源同一原文重复，请核对材料标识');materialKeys.set(key,item.id);return item;
+  });
   const taskRelations = recordList('taskRelations', (value,path) => {
     if (!taskIds.has(value.taskId)) issue(path + '.taskId', '关联引用的任务不存在');
     return normalizers.relationFrom({...value, page: page(value.page || {},path + '.page')});
@@ -85,18 +97,18 @@ export function decodeBackup(input, normalizers) {
     return normalizers.segmentFrom({...value, url: cleaned, pageId: pageIdForUrl(cleaned)});
   });
   if (!raw.settings || typeof raw.settings !== 'object' || Array.isArray(raw.settings)) issue('settings', '设置无效');
-  for (const key of ['tracking','semantic','focusSupport','historyEnabled']) if (raw.settings?.[key] != null && typeof raw.settings[key] !== 'boolean') issue('settings.' + key, '应为开关');
+  for (const key of ['tracking','semantic','focusSupport','historyEnabled','captureEnabled']) if (raw.settings?.[key] != null && typeof raw.settings[key] !== 'boolean') issue('settings.' + key, '应为开关');
   if(raw.settings?.historyDays!=null&&![7,30,90].includes(raw.settings.historyDays))issue('settings.historyDays','只支持 7、30、90 天');
   for (const [key,min,max] of [['idleSeconds',15,3600],['retentionDays',1,365]]) if (raw.settings?.[key] != null && (!Number.isFinite(raw.settings[key]) || raw.settings[key] < min || raw.settings[key] > max)) issue('settings.' + key, '超出支持范围');
   if (raw.settings?.excludedDomains != null && (!Array.isArray(raw.settings.excludedDomains) || raw.settings.excludedDomains.length>500 || raw.settings.excludedDomains.some(value => typeof value !== 'string'))) issue('settings.excludedDomains','站点列表无效');
   if (issues.length) throw Object.assign(failure('IMPORT_INVALID', '备份校验未通过：' + issues.slice(0,8).join('；') + (issues.length>8 ? '；另有 ' + (issues.length-8) + ' 项错误' : '')), {issues});
-  return {schemaVersion: raw.schemaVersion, pages, tasks, taskRelations, segments, settings: normalizers.settingsFrom(raw.settings)};
+  return {schemaVersion: raw.schemaVersion, pages, tasks, taskRelations,libraryItems, segments, settings: normalizers.settingsFrom(raw.settings)};
 }
 
 export function planImport(incoming, current, {mode = 'merge', choices = {}, adoptSettings = false} = {}) {
   if (!['merge','replace'].includes(mode)) throw failure('IMPORT_INVALID', '请选择合并或整体恢复。');
   const localTasks = new Map(current.tasks.map(task => [task.id,task]));
-  const conflicts = incoming.tasks.filter(task => localTasks.has(task.id) && canonical(task) !== canonical(localTasks.get(task.id)))
+  const conflicts = incoming.tasks.filter(task => localTasks.has(task.id) && recordContent(task) !== recordContent(localTasks.get(task.id)))
     .map(task => ({id: task.id, name: task.name, localName: localTasks.get(task.id).name, choice: choices[task.id] === 'backup' ? 'backup' : 'local'}));
   const selected = incoming.tasks.filter(task => mode === 'replace' || !localTasks.has(task.id) || choices[task.id] === 'backup');
   const selectedIds = new Set(selected.map(task => task.id));
@@ -109,12 +121,23 @@ export function planImport(incoming, current, {mode = 'merge', choices = {}, ado
   }
   const segments = mode === 'replace' ? incoming.segments : incoming.segments.filter(item => !oldSegments.has(item.id));
   const oldPages = new Set(current.pages.map(item => item.id));
-  return {mode, adoptSettings, baseStamp: backupStamp(current, mode === 'replace'), conflicts,
+  const materialKey=item=>item.kind+':'+item.url+':'+item.quote;
+  let libraryItems=mode==='replace'?[]:[...(current.libraryItems||[])],libraryConflicts=[];
+  for(const item of incoming.libraryItems||[]){
+    const sameId=libraryItems.find(row=>row.id===item.id),sameContent=libraryItems.find(row=>materialKey(row)===materialKey(item));
+    if(sameId&&sameContent&&sameId.id!==sameContent.id)throw failure('IMPORT_CONFLICT','材料 '+item.id+' 的标识与另一材料来源同时冲突，请核对备份。');
+    const old=sameId||sameContent;
+    if(old&&materialContent(old)===materialContent(item))continue;
+    if(old){const id='library:'+item.id,choice=choices[id]==='backup'?'backup':'local';libraryConflicts.push({id,kind:'library',name:item.title,localName:old.title,choice});if(choice!=='backup')continue;libraryItems=libraryItems.filter(row=>row.id!==old.id);}
+    libraryItems.push({...item,revision:Math.max(item.revision,old?.revision||0)+1});
+  }
+  return {mode, adoptSettings, baseStamp: backupStamp(current, mode === 'replace'), conflicts:[...conflicts,...libraryConflicts],
     data: {tasks: tasks.map(task => ({...task, revision: Math.max(task.revision || 0,localTasks.get(task.id)?.revision || 0)+1})), taskRelations: relations,
-      pages: mode === 'replace' ? incoming.pages : incoming.pages.filter(item => !oldPages.has(item.id)), segments, settings: incoming.settings},
+      pages: mode === 'replace' ? incoming.pages : incoming.pages.filter(item => !oldPages.has(item.id)),libraryItems, segments, settings: incoming.settings},
     resetRelations: mode === 'replace' ? [] : [...selectedIds],
     counts: {tasks: incoming.tasks.length, relations: incoming.taskRelations.length, pages: incoming.pages.length, segments: incoming.segments.length,
       newTasks: incoming.tasks.filter(task => !localTasks.has(task.id)).length, taskConflicts: conflicts.length,
+      libraryItems:(incoming.libraryItems||[]).length,libraryConflicts:libraryConflicts.length,removedLibraryItems:mode==='replace'?(current.libraryItems||[]).filter(item=>!(incoming.libraryItems||[]).some(row=>row.id===item.id)).length:0,
       duplicateSegments: incoming.segments.length-segments.length, removedTasks: mode === 'replace' ? current.tasks.filter(task => !incoming.tasks.some(item => item.id === task.id)).length : 0,
       removedSegments: mode === 'replace' ? current.segments.filter(item => !incoming.segments.some(row => row.id === item.id)).length : 0}};
 }

@@ -1,5 +1,5 @@
 import { createActivityState, reduceActivity, previewActivity } from './src/activity.js';
-import { openStore, taskFrom, relationFrom, pageFrom, segmentFrom, settingsFrom } from './src/store.js';
+import { openStore, taskFrom, relationFrom, pageFrom, segmentFrom, settingsFrom,libraryFrom } from './src/store.js';
 import { computeAnalytics, computeReview, calendarRange } from './src/analytics.js';
 import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
@@ -12,12 +12,13 @@ import { workspaceCatalog } from './src/tab-workspace.js';
 import { createTabOperations } from './src/tab-operations.js';
 import { decodeBackup, planImport } from './src/backup.js';
 import { recentSessions, restoreRecentSession, createBrowserHistory, historyRange } from './src/browser-history.js';
+import {createLibrary,capturedDraft,validDraft} from './src/library.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
-let store, settings, activity, browserSessionId, initPromise, workspace, tabOperations, browserHistory;
+let store, settings, activity, browserSessionId, initPromise, workspace, tabOperations, browserHistory,library;
 const imports = new Map();
 let activityQueue = Promise.resolve();
 let offscreenPromise = null;
@@ -135,6 +136,8 @@ async function init() {
         else{const groupId=await chrome.tabs.group({tabIds:ids,createProperties:{windowId}});await chrome.tabGroups.update(groupId,{title:info.title||'',color:info.color||'grey',collapsed:!!info.collapsed});}},
       invalidate:()=>workspace.invalidate()});
     browserHistory=createBrowserHistory({store,api:chrome,settings:()=>settings,allowed:url=>!!normalizeUrl(url)&&!excluded(url),onSettings:async value=>{settings=value;},invalidate:()=>workspace.invalidate()});
+    library=createLibrary({store,allowed:url=>!!normalizeUrl(url)&&!excluded(url),invalidate:()=>workspace.invalidate()});
+    await syncCaptureMenu();
     registerHistoryListener();
     if(settings.historyEnabled)await chrome.alarms.create('focuence-history-import',{periodInMinutes:.5});
     if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
@@ -175,9 +178,9 @@ async function allNormalTabs() {
 async function previewImport(message) {
   for(const [id,entry]of imports)if(entry.at<Date.now()-15*60000)imports.delete(id);
   let incoming;
-  if(message.restorePoint){const point=await store.getRestorePoint();if(!point)throw Error('没有可用的恢复前快照。');incoming=decodeBackup(point.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom});}
+    if(message.restorePoint){const point=await store.getRestorePoint();if(!point)throw Error('没有可用的恢复前快照。');incoming=decodeBackup(point.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom,libraryFrom});}
   else if(message.sourceToken){incoming=imports.get(message.sourceToken)?.incoming;if(!incoming)throw Object.assign(Error('文件预览已过期，请重新选择文件。'),{code:'IMPORT_PREVIEW_STALE'});}
-  else incoming=decodeBackup(message.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom});
+  else incoming=decodeBackup(message.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom,libraryFrom});
   const plan=planImport(incoming,await store.exportData(),message),token=crypto.randomUUID();
   imports.set(token,{at:Date.now(),incoming,plan});
   return{token,mode:plan.mode,counts:plan.counts,conflicts:plan.conflicts,schemaVersion:incoming.schemaVersion};
@@ -190,6 +193,7 @@ async function applyImport(message) {
   const result=await store.applyImport(saved.plan);
   imports.clear();tabOperations.invalidate();proposals.clear();proposalNotices.clear();lastUndo=null;
   settings=await store.getSettings();activity=createActivityState({now:Date.now(),sessionId:browserSessionId,maxGapMs:90000});
+  await chrome.storage.session.remove(['focuenceLibraryDrafts','focuenceLibraryCaptureError']);await chrome.alarms.clear('focuence-library-drafts');await syncCaptureMenu();
   await workspace.reload();
   if((await chrome.runtime.getContexts({contextTypes:['OFFSCREEN_DOCUMENT']})).length)await chrome.offscreen.closeDocument();
   model={status:'idle',name:MODEL_NAME,progress:0};chrome.idle.setDetectionInterval(settings.idleSeconds);await persistSession();
@@ -454,6 +458,7 @@ async function clearData(all) {
   model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   if (all) await store.clearAll(); else await store.clearHistory();
   settings = await store.getSettings();
+  if(all){await chrome.storage.session.remove(['focuenceLibraryDrafts','focuenceLibraryCaptureError']);await chrome.alarms.clear('focuence-library-drafts');await syncCaptureMenu();}
   await workspace.reload();
   activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
   if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
@@ -467,6 +472,15 @@ async function handle(message) {
   await init();
   if (workspace.hasMutation(message.type)) return queueActivity(() => workspace.mutate(message));
   switch (message.type) {
+    case 'LIST_LIBRARY': return library.list(message);
+    case 'GET_LIBRARY_ITEM': {const item=await store.getLibraryItem(message.id);if(!item)throw Object.assign(Error('材料已删除，请重新读取。'),{code:'LIBRARY_NOT_FOUND'});return item;}
+    case 'SAVE_LIBRARY_ITEM':
+    case 'UPDATE_LIBRARY_ITEM':return queueActivity(async()=>{if(message.draftId)await getLibraryDraft(message.draftId);const result=await library.save(message);if(result.item&&message.draftId){const drafts=(await chrome.storage.session.get('focuenceLibraryDrafts')).focuenceLibraryDrafts||{};delete drafts[message.draftId];await chrome.storage.session.set({focuenceLibraryDrafts:drafts});}return result;});
+    case 'DELETE_LIBRARY_ITEM': return queueActivity(()=>library.remove(message));
+    case 'GET_LIBRARY_DRAFT': return queueActivity(()=>getLibraryDraft(message.id));
+    case 'GET_LIBRARY_CAPTURE_ERROR':{const value=(await chrome.storage.session.get('focuenceLibraryCaptureError')).focuenceLibraryCaptureError||'';await chrome.storage.session.remove('focuenceLibraryCaptureError');return value;}
+    case 'GET_LIBRARY_CAPTURE':return{enabled:settings.captureEnabled&&await chrome.permissions.contains({permissions:['contextMenus']})};
+    case 'SET_LIBRARY_CAPTURE':return queueActivity(async()=>{if(message.enabled&&!await chrome.permissions.contains({permissions:['contextMenus']}))throw Object.assign(Error('请先点击启用右键采集并授权。'),{code:'PERMISSION_REQUIRED'});settings=await store.setSettings({captureEnabled:message.enabled===true});await syncCaptureMenu();return{enabled:settings.captureEnabled};});
     case 'START_HISTORY_IMPORT': {const result=await queueActivity(()=>browserHistory.start(message));await chrome.alarms.create('focuence-history-import',{periodInMinutes:.5});return result;}
     case 'GET_HISTORY_IMPORT': return message.advance?browserHistory.step():browserHistory.status();
     case 'CANCEL_HISTORY_IMPORT': return browserHistory.cancel();
@@ -548,6 +562,7 @@ chrome.windows.onFocusChanged.addListener(reconcile);
 chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); queueActivity(() => workspace.closeWindow(id)).catch(() => {}); });
 chrome.idle.onStateChanged.addListener(state => queueActivity(async () => { await applyActivity({ type: 'idle', at: Date.now(), idleState: state }); await recordCurrent(); }).catch(() => {}));
 chrome.alarms.onAlarm.addListener(alarm => {
+  if(alarm.name==='focuence-library-drafts')queueActivity(pruneLibraryDrafts).catch(error=>console.warn('Focuence draft cleanup:',error.message));
   if(alarm.name==='focuence-history-import')init().then(()=>browserHistory.step()).catch(error=>console.warn('Focuence history:',error.message));
   if (alarm.name === 'focuence-model-idle') {
     chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] }).then(async contexts => {
@@ -564,11 +579,37 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }).catch(() => {});
 });
 let historyListening=false;
+let captureListening=false;
+async function getLibraryDraft(id){
+  return validDraft((await pruneLibraryDrafts())[id]);
+}
+async function pruneLibraryDrafts(){
+  const drafts=(await chrome.storage.session.get('focuenceLibraryDrafts')).focuenceLibraryDrafts||{};
+  let changed=false;for(const [key,value]of Object.entries(drafts))if(value.expiresAt<=Date.now()){delete drafts[key];changed=true;}
+  if(changed)await chrome.storage.session.set({focuenceLibraryDrafts:drafts});const times=Object.values(drafts).map(value=>value.expiresAt);if(times.length)await chrome.alarms.create('focuence-library-drafts',{when:Math.min(...times)});else await chrome.alarms.clear('focuence-library-drafts');return drafts;
+}
+async function syncCaptureMenu(){
+  if(!chrome.contextMenus)return;
+  const permission=await chrome.permissions.contains({permissions:['contextMenus']});
+  if(!permission&&settings.captureEnabled)settings=await store.setSettings({captureEnabled:false});
+  if(permission){registerCaptureListener();await new Promise((resolve,reject)=>chrome.contextMenus.removeAll(()=>chrome.runtime.lastError?reject(Error(chrome.runtime.lastError.message)):resolve()));if(settings.captureEnabled)await new Promise((resolve,reject)=>chrome.contextMenus.create({id:'focuence-save-selection',title:'保存选文到 Focuence',contexts:['selection'],documentUrlPatterns:['http://*/*','https://*/*']},()=>chrome.runtime.lastError?reject(Error(chrome.runtime.lastError.message)):resolve()));}
+}
+function registerCaptureListener(){if(!captureListening&&chrome.contextMenus?.onClicked){chrome.contextMenus.onClicked.addListener(onCapture);captureListening=true;}}
+function onCapture(info,tab){
+  if(info.menuItemId!=='focuence-save-selection')return;
+  queueActivity(async()=>{
+    if(!settings.captureEnabled||!await chrome.permissions.contains({permissions:['contextMenus']}))throw Error('选文入口已关闭。');
+    const draft=capturedDraft(info,tab,{allowed:url=>!excluded(url)}),drafts=(await chrome.storage.session.get('focuenceLibraryDrafts')).focuenceLibraryDrafts||{};
+    for(const [id,value]of Object.entries(drafts))if(value.expiresAt<=Date.now())delete drafts[id];drafts[draft.id]=draft;await chrome.storage.session.set({focuenceLibraryDrafts:drafts});await pruneLibraryDrafts();
+    await chrome.tabs.create({windowId:tab.windowId,url:chrome.runtime.getURL('app/index.html?draft='+encodeURIComponent(draft.id)+'#library')});
+  }).catch(async error=>{console.warn('Focuence capture:',error.message);await chrome.storage.session.set({focuenceLibraryCaptureError:error.message});await chrome.tabs.create({url:chrome.runtime.getURL('app/index.html?captureError=1#library')});});
+}
 function registerHistoryListener(){
   if(!historyListening&&chrome.history?.onVisitRemoved){chrome.history.onVisitRemoved.addListener(removed=>init().then(()=>browserHistory.remove(removed)).catch(error=>console.warn('Focuence history removal:',error.message)));historyListening=true;}
 }
 chrome.permissions.onAdded.addListener(change=>{if(change.permissions?.includes('history'))registerHistoryListener();});
 chrome.permissions.onRemoved.addListener(change=>{if(change.permissions?.includes('history'))init().then(()=>browserHistory.disconnect()).catch(error=>console.warn('Focuence history permission:',error.message));});
+chrome.permissions.onRemoved.addListener(change=>{if(change.permissions?.includes('contextMenus'))queueActivity(async()=>{settings=await store.setSettings({captureEnabled:false});}).catch(()=>{});});
 chrome.runtime.onInstalled.addListener(reconcile);
 chrome.runtime.onStartup.addListener(reconcile);
 chrome.commands.onCommand.addListener(async command => {
@@ -579,4 +620,5 @@ chrome.commands.onCommand.addListener(async command => {
   }
   await chrome.tabs.create({ url: chrome.runtime.getURL(`app/index.html?windowId=${windowId}#review`), windowId });
 });
+registerHistoryListener();registerCaptureListener();
 init().catch(error => console.error('Focuence initialization:', error.message));

@@ -331,7 +331,7 @@ dialog::backdrop { background: #18233660; }
 .panel-header .button-cluster { gap: 3px; }
 .panel-header .local-status { margin-right: 4px; font-size: 12px; white-space: nowrap; }
 .panel-header .local-status .status-dot { display: none; }
-.panel-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.panel-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .panel-nav .nav-button { position: relative; min-height: 42px; display: flex; justify-content: center; padding: 11px 4px 10px; font-size: 13px; border-radius: 0; }
 .panel-nav .nav-button .icon { display: none; }
 .panel-nav .nav-button.active { color: var(--ink); font-weight: 650; }

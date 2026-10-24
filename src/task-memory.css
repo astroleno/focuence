@@ -49,6 +49,21 @@
 .memory-history > p,.memory-history > div { margin-top: 10px; }
 .history-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
 .history-range select { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px; }
+.library-workspace h1 { font-size: 26px; margin-bottom: 8px; }
+.library-list-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.library-list-filters label { display: grid; gap: 5px; font-size: 12px; flex: 1 1 130px; min-width: 0; }
+.library-list-filters input,.library-list-filters select { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); }
+.library-dialog h3 { font-size: 14px; margin: 14px 0 8px; }
+.library-original { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.75; font-size: 13px; }
+.library-text-columns { display: grid; gap: 20px; margin: 16px 0; }
+.library-tasks { border: 1px solid var(--line); border-radius: 7px; padding: 12px; max-height: 220px; overflow: auto; }
+.library-tasks legend { padding: 0 4px; font-size: 12px; }
+.library-tasks label { display: flex; gap: 8px; align-items: start; margin: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
+.library-tasks input { margin-top: 3px; flex: 0 0 auto; }
+.library-duplicate { padding: 12px; background: var(--canvas); border-left: 3px solid var(--accent); }
+.library-duplicate h3 { margin-top: 0; }
+.memory-form input:not([type=checkbox]) { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px; color: var(--ink); background: var(--surface); }
+@media (max-width:640px) { .library-workspace h1 { font-size: 21px; } }
 @media (max-width: 640px) {
   .memory-current { padding: 14px; margin-bottom: 18px; }
   .memory-dialog { padding: 16px; }

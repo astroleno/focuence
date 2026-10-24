@@ -7,6 +7,7 @@ import { proposalMembers, selectedProposal } from '../src/proposals.js';
 import { createTaskMemoryUI } from '../src/task-memory-ui.js';
 import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
+import {createLibraryUI} from '../src/library-ui.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
@@ -35,8 +36,9 @@ async function request(type, payload = {}) {
   if (!response?.ok) throw Object.assign(new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。'), {code: response?.code});
   return response.data;
 }
-const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup',demo:isDemo});
+const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup',demo:isDemo,showLibrary:id=>libraryUI.detail(id)});
 const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWindowId:()=>windowId,render,refresh,notify:feedback,demo:isDemo});
+const libraryUI=createLibraryUI({getState:()=>ui.state,request,render,refresh,notify:feedback,getWindowId:()=>windowId,demo:isDemo,surface:'popup'});
 function feedback(message, error = false, actionName = '') {
   const regions = [byId('feedback'), byId('error')];
   const hadFocus = regions.some(region => region.contains(document.activeElement));
@@ -145,7 +147,7 @@ function render() {
   const eligible = tabs.filter(tab => !tab.pinned && Number(tab.groupId) < 0);
   const groups = state.groups || [];
   const navigation = el('nav', { class: 'popup-tabs', 'aria-label': '快捷操作' },
-    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找'],['tabs','窗口']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
+    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找'],['library','资料'],['tabs','窗口']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
   const content = [isDemo && el('p', { class: 'demo-note' }, '示例模式 · 仅在本页内存中演示'), navigation];
   if (ui.view === 'groups') {
     content.push(el('div', { class: 'window-summary' }, el('div', {},
@@ -164,6 +166,8 @@ function render() {
     content.push(tabWorkspace.view());
   } else if (ui.view === 'search') {
     content.push(memory.searchView());
+  } else if(ui.view==='library'){
+    content.push(libraryUI.view());
   } else {
     content.push(memory.current({compact: true}));
     content.push(action('新建任务', 'new-task', {}, false, 'plus'));

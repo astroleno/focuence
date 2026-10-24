@@ -40,3 +40,9 @@ test('worker recycle drops close previews and never auto-continues durable reque
  const f=fixture(),plan=await f.service.preview({tabIds:[1,2],name:'任务'}),fresh=createTabOperations(f.deps);
  await assert.rejects(fresh.execute({token:plan.token}),{code:'STALE_TAB_PLAN'});assert.equal(f.removed.length,0);
 });
+test('immediate restore retries reuse recorded tabs while their requested URLs are still loading',async()=>{
+ const f=fixture(),create=f.deps.create;f.deps.create=async options=>{const tab=await create(options),saved=f.tabs.find(row=>row.id===tab.id);saved.pendingUrl=options.url;saved.url='about:blank';saved.status='loading';return structuredClone(saved);};
+ const plan=await f.service.preview({tabIds:[1,2],name:'加载中的恢复',kind:'duplicates'}),closed=await f.service.execute({token:plan.token}),restore=await f.service.previewRestore({id:closed.id,windowId:1});await f.service.restore({token:restore.token});
+ const again=await f.service.previewRestore({id:closed.id,windowId:1});assert.equal(again.willOpen,0);assert.equal(again.reused,2);assert.equal((await f.service.restore({token:again.token})).reused,2);assert.equal(f.tabs.length,4);
+ f.tabs.find(tab=>tab.pendingUrl).pendingUrl='https://new-destination.test/';assert.equal((await f.service.previewRestore({id:closed.id,windowId:1})).willOpen,1);
+});

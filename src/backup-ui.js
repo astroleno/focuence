@@ -20,11 +20,11 @@ export function createBackupUI({request,render,refresh,notify,demo=false}){
     if(ui.mode==='replace')root.append(caption('整体恢复会覆盖现有资料；浏览器标签页不会关闭。'));
     if(ui.point)root.append(button('预览恢复前快照 · '+new Date(ui.point.at).toLocaleString('zh-CN'),async()=>{ui.restorePoint=true;ui.mode='replace';ui.choices={};ui.name='恢复前快照';await preview();}));
     if(ui.preview){const value=ui.preview,c=value.counts;
-      root.append(el('section',{class:'w-preview'},el('h3',{},'导入预览 · 格式 '+value.schemaVersion),caption(c.tasks+' 个任务 · '+c.relations+' 条关联 · '+c.pages+' 个页面 · '+c.segments+' 条访问'),
+      root.append(el('section',{class:'w-preview'},el('h3',{},'导入预览 · 格式 '+value.schemaVersion),caption(c.tasks+' 个任务 · '+c.relations+' 条关联 · '+c.pages+' 个页面 · '+c.segments+' 条访问 · '+(c.libraryItems||0)+' 份材料'),
         caption('新增任务 '+c.newTasks+' 个 · 任务冲突 '+c.taskConflicts+' 个 · 重复访问 '+c.duplicateSegments+' 条'),
-        value.mode==='replace'&&caption('将移除本机备份中没有的 '+c.removedTasks+' 个任务、'+c.removedSegments+' 条访问。'),
+        caption('材料冲突 '+(c.libraryConflicts||0)+' 份'),value.mode==='replace'&&caption('将移除本机备份中没有的 '+c.removedTasks+' 个任务、'+c.removedSegments+' 条访问、'+(c.removedLibraryItems||0)+' 份材料。'),
         value.conflicts.map(conflict=>{const select=el('select',{'aria-label':conflict.name+'的冲突选择'},el('option',{value:'local',selected:conflict.choice==='local'},'保留本机：'+conflict.localName),el('option',{value:'backup',selected:conflict.choice==='backup'},'使用备份：'+conflict.name));
-          select.addEventListener('change',()=>run(async()=>{ui.choices[conflict.id]=select.value;await preview();}));return el('label',{class:'w-field'},'任务冲突',select);}),
+          select.addEventListener('change',()=>run(async()=>{ui.choices[conflict.id]=select.value;await preview();}));return el('label',{class:'w-field'},conflict.kind==='library'?'材料冲突':'任务冲突',select);}),
         button(value.mode==='replace'?'按预览整体恢复':'按预览合并导入',async()=>{const result=await request('APPLY_IMPORT',{token:value.token});ui.preview=null;ui.point=await request('GET_RESTORE_POINT');await refresh();notify('资料已导入，恢复前快照已保存。');},true)));
     }
     return root;

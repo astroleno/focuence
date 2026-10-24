@@ -1,0 +1,142 @@
+{
+  "environment": "Native extension UI and isolated synthetic pages. Toolbar popup is opened through the actual browser action.",
+  "checks": [
+    {
+      "name": "panel 320×760 workspace",
+      "status": "passed",
+      "detail": {
+        "width": 320,
+        "height": 760,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "panel 320×760 close preview",
+      "status": "passed",
+      "detail": {
+        "width": 320,
+        "height": 760,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "panel 360×760 workspace",
+      "status": "passed",
+      "detail": {
+        "width": 360,
+        "height": 760,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "panel 360×760 close preview",
+      "status": "passed",
+      "detail": {
+        "width": 360,
+        "height": 760,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "popup 400×520 workspace",
+      "status": "passed",
+      "detail": {
+        "width": 400,
+        "height": 520,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "popup 400×520 close preview",
+      "status": "passed",
+      "detail": {
+        "width": 400,
+        "height": 520,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "popup 400×600 workspace",
+      "status": "passed",
+      "detail": {
+        "width": 400,
+        "height": 600,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "popup 400×600 close preview",
+      "status": "passed",
+      "detail": {
+        "width": 400,
+        "height": 600,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "app 1440×950 workspace",
+      "status": "passed",
+      "detail": {
+        "width": 1440,
+        "height": 950,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "app 1440×950 close preview",
+      "status": "passed",
+      "detail": {
+        "width": 1440,
+        "height": 950,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "Native narrow UI preserves an invalid draft and executes a reviewed save/close action",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native status menu archives, filters and explicitly restarts a task",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual native toolbar popup",
+      "status": "passed",
+      "detail": {
+        "width": 400,
+        "height": 600,
+        "overflow": false,
+        "duplicateIds": [],
+        "stray": false
+      }
+    },
+    {
+      "name": "No uncaught script errors on the new native surfaces",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": []
+}

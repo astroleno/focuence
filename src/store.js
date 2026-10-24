@@ -4,6 +4,8 @@ import { assertRevision, failure, relationId, TASK_LIMITS } from './task-context
 import { statusOf } from './task-lifecycle.js';
 import { backupStamp } from './backup.js';
 import { normalizeUrl, pageIdForUrl, cleanTitle } from './text.js';
+import {libraryFrom,libraryKey} from './library.js';
+export {libraryFrom} from './library.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   tracking: true,
@@ -14,11 +16,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   focusSupport: false,
   historyEnabled: false,
   historyDays: 30,
+  captureEnabled:false,
 });
 
 const DATABASE_NAME = 'focuence-local-v2';
-export const DATABASE_VERSION = 4;
-const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints', 'browserHistory', 'historyImports'];
+export const DATABASE_VERSION = 5;
+const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints', 'browserHistory', 'historyImports','libraryItems'];
 
 function req(request) {
   return new Promise((resolve, reject) => {
@@ -67,6 +70,7 @@ export function settingsFrom(value = {}) {
     focusSupport: typeof value.focusSupport === 'boolean' ? value.focusSupport : false,
     historyEnabled: value.historyEnabled === true,
     historyDays: [7,30,90].includes(value.historyDays) ? value.historyDays : 30,
+    captureEnabled:value.captureEnabled===true,
   };
 }
 
@@ -208,6 +212,9 @@ export async function openStore(options = {}) {
       if (!vectors.indexNames.contains('updatedAt')) vectors.createIndex('updatedAt', 'updatedAt', { unique: false });
       const history=request.transaction.objectStore('browserHistory');
       for(const field of ['visitedAt','sourceKey','pageId'])if(!history.indexNames.contains(field))history.createIndex(field,field,{unique:false});
+      const library=request.transaction.objectStore('libraryItems');
+      if(!library.indexNames.contains('updatedAt'))library.createIndex('updatedAt','updatedAt');
+      if(!library.indexNames.contains('taskIds'))library.createIndex('taskIds','taskIds',{multiEntry:true});
     };
     request.onsuccess = () => {
       if (abandoned) { request.result.close(); return; }
@@ -249,15 +256,28 @@ export async function openStore(options = {}) {
   }
 
   async function exportSnapshot(stores) {
-    const [settings, pages, tasks, segments, taskRelations] = await Promise.all([
+    const [settings, pages, tasks, segments, taskRelations,libraryItems] = await Promise.all([
       req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()),
       req(stores.segments.getAll()), req(stores.taskRelations.getAll()),
+      req(stores.libraryItems.getAll()),
     ]);
-    return {schemaVersion: 5, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,
+    return {schemaVersion: 6, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,libraryItems,
       segments: segments.sort((a, b) => a.startedAt - b.startedAt), settings: settingsFrom(settings?.value)};
   }
 
   const api = {
+    getLibraryItems(){return transaction(['libraryItems'],'readonly',({libraryItems})=>req(libraryItems.getAll()));},
+    getLibraryItem(id){return transaction(['libraryItems'],'readonly',async({libraryItems})=>await req(libraryItems.get(id))||null);},
+    putLibraryItem(value,{expectedRevision,create=false}={}){const item=libraryFrom(value);return transaction(['libraryItems','tasks','vectors'],'readwrite',async stores=>{
+      const old=await req(stores.libraryItems.get(item.id));if(create?!!old:!old||old.revision!==expectedRevision)throw failure('STALE_LIBRARY','材料已更新，请保留草稿并重新读取。');
+      for(const id of item.taskIds)if(!await req(stores.tasks.get(id)))throw failure('TASK_NOT_FOUND','关联任务已经删除，请重新选择。');
+      for(const row of await req(stores.libraryItems.getAll()))if(row.id!==item.id&&libraryKey(row)===libraryKey(item)&&row.quote===item.quote)throw failure('DUPLICATE_LIBRARY','同一材料刚被保存，请重新核对复用。');
+      stores.libraryItems.put(item);for(const vector of await req(stores.vectors.getAll()))if(vector.id.startsWith('mem:library:'+item.id+':'))stores.vectors.delete(vector.id);return item;
+    });},
+    deleteLibraryItem(id,revision){return transaction(['libraryItems','vectors'],'readwrite',async stores=>{
+      const item=await req(stores.libraryItems.get(id));if(!item||item.revision!==revision)throw failure('STALE_LIBRARY','材料已经更新或删除，请重新读取。');
+      stores.libraryItems.delete(id);for(const vector of await req(stores.vectors.getAll()))if(vector.id.startsWith('mem:library:'+id+':'))stores.vectors.delete(vector.id);return true;
+    });},
     getMeta(key) { return transaction(['meta'], 'readonly', async ({meta}) => (await req(meta.get(key)))?.value ?? null); },
     setMeta(key, value) { return transaction(['meta'], 'readwrite', ({meta}) => { meta.put({key, value}); return value; }); },
     listTabOperations() { return transaction(['tabOperations'], 'readonly', async ({tabOperations}) => (await req(tabOperations.getAll())).sort((a,b) => b.at-a.at)); },
@@ -358,7 +378,7 @@ export async function openStore(options = {}) {
     commitWorkspace(change = {}) {
       const normalizedTasks = (change.tasks || []).map(taskFrom);
       const normalizedRelations = (change.relations || []).map(relationFrom);
-      return transaction(['meta', 'tasks', 'taskRelations', 'segments', 'vectors', 'tabOperations'], 'readwrite', async stores => {
+      return transaction(['meta', 'tasks', 'taskRelations', 'segments', 'vectors', 'tabOperations','libraryItems'], 'readwrite', async stores => {
         for (const { id, revision } of change.expectedTasks || []) assertRevision(await req(stores.tasks.get(id)), revision);
         if (change.expectedContext) {
           const actual = (await req(stores.meta.get('workspace')))?.value?.context;
@@ -372,6 +392,7 @@ export async function openStore(options = {}) {
         const reset = new Set([...(change.resetRelations || []), ...removed]);
         if (reset.size) for (const relation of await req(stores.taskRelations.getAll())) if (reset.has(relation.taskId)) stores.taskRelations.delete(relation.id);
         for (const id of removed) stores.tasks.delete(id);
+        if(removed.size)for(const item of await req(stores.libraryItems.getAll()))if(item.taskIds.some(id=>removed.has(id)))stores.libraryItems.put({...item,taskIds:item.taskIds.filter(id=>!removed.has(id)),revision:item.revision+1,updatedAt:Date.now()});
         if (removed.size) for (const vector of await req(stores.vectors.getAll())) {
           if ([...removed].some(id => vector.id === `mem:goal:${id}` || vector.id.startsWith(`mem:task:${id}:`))) stores.vectors.delete(vector.id);
         }
@@ -507,7 +528,7 @@ export async function openStore(options = {}) {
     },
 
     exportData() {
-      return transaction(['meta', 'pages', 'tasks', 'segments', 'taskRelations'], 'readonly', exportSnapshot);
+      return transaction(['meta', 'pages', 'tasks', 'segments', 'taskRelations','libraryItems'], 'readonly', exportSnapshot);
     },
 
     /** Validate the reviewed base and take a rollback snapshot in the same transaction. */
@@ -516,13 +537,14 @@ export async function openStore(options = {}) {
         const before = await exportSnapshot(stores);
         if (backupStamp(before, plan.mode === 'replace') !== plan.baseStamp) throw failure('IMPORT_PREVIEW_STALE', '本机资料已改变，请保留选择并重新预览。');
         stores.restorePoints.put({id: 'before-import', at: Date.now(), data: before});
-        if (plan.mode === 'replace') for (const name of ['pages','tasks','taskRelations','segments']) stores[name].clear();
+        if (plan.mode === 'replace') for (const name of ['pages','tasks','taskRelations','segments','libraryItems']) stores[name].clear();
         putRecords(stores.pages, plan.data.pages, pageFrom);
         putRecords(stores.tasks, plan.data.tasks, taskFrom);
         for (const id of plan.resetRelations || []) for (const relation of await req(stores.taskRelations.getAll())) if (relation.taskId === id) stores.taskRelations.delete(relation.id);
         putRecords(stores.taskRelations, plan.data.taskRelations, relationFrom);
         putRecords(stores.segments, plan.data.segments, segmentFrom);
-        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom({...plan.data.settings,historyEnabled:false})});
+        putRecords(stores.libraryItems,plan.data.libraryItems,libraryFrom);
+        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom({...plan.data.settings,historyEnabled:false,captureEnabled:false})});
         stores.browserHistory.clear();stores.historyImports.clear();stores.meta.delete('historyCoverage');stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});
         stores.meta.put({key: 'workspace', value: emptyWorkspace()});
         stores.meta.delete('activity'); stores.vectors.clear();

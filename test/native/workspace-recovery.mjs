@@ -1,5 +1,5 @@
 import {setup,until,sleep} from './cdp.mjs';import assert from 'node:assert/strict';import {writeFileSync} from 'node:fs';
-const env=await setup({headed:true}),{control,rpc,browser,windowId,extensionId,base}=env,report={environment:'Headed isolated Chrome; synthetic files/tabs; real optional permission and IndexedDB.',checks:[],errors:[]};
+const env=await setup({headed:true,out:process.argv.find(value=>value.startsWith('--out='))?.slice(6)||'docs/reviews/v2.3'}),{control,rpc,browser,windowId,extensionId,base}=env,report={environment:'Headed isolated Chrome; synthetic files/tabs; real optional permission and IndexedDB.',checks:[],errors:[]};
 const check=(name,detail={})=>{report.checks.push({name,status:'passed',detail});console.log(name);};
 async function worker(){const info=(await browser.send('Target.getTargets')).targetInfos.find(item=>item.url==='chrome-extension://'+extensionId+'/background.js');return browser.attach(info.targetId);}
 try{

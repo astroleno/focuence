@@ -1,0 +1,120 @@
+{
+  "environment": "Isolated Chrome for Testing; actual history API, synthetic visits and native IndexedDB.",
+  "checks": [
+    {
+      "name": "History defaults off and a direct import cannot bypass optional permission",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual user click enables history through optional permission",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "10,000 actual local Chrome visits match imported native IDs without default-limit truncation",
+      "status": "passed",
+      "detail": {
+        "seeded": 10000,
+        "imported": 10000,
+        "ms": 27488,
+        "windows": 49
+      }
+    },
+    {
+      "name": "Cancellation, durable continuation and actual worker termination preserve the complete import",
+      "status": "passed",
+      "detail": {
+        "beforeStop": 0,
+        "completed": 10000
+      }
+    },
+    {
+      "name": "Native browser deletion removes cached visits and search evidence",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native search paginates the entire source and exposes real visit provenance",
+      "status": "passed",
+      "detail": {
+        "total": 9999,
+        "lastPage": 49
+      }
+    },
+    {
+      "name": "Real v3→v4 upgrade creates source stores without fabricating history",
+      "status": "passed",
+      "detail": {
+        "schema": 6,
+        "count": 0
+      }
+    },
+    {
+      "name": "History batch validation aborts its real native transaction without a partial visit",
+      "status": "passed",
+      "detail": {
+        "count": 9999,
+        "after": 9999,
+        "error": "INVALID_HISTORY_RECORD"
+      }
+    },
+    {
+      "name": "Search, evidence and sizing panel/index.html 320×760",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Search, evidence and sizing panel/index.html 360×760",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Search, evidence and sizing popup/index.html 400×520",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Search, evidence and sizing popup/index.html 400×600",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Search, evidence and sizing app/index.html 1440×950",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Actual permission revocation removes source cache and invalidates old search",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Clear extension history clears import work but never deletes native browser history",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native delete-all invalidates the full source",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": [],
+  "uncaught": []
+}

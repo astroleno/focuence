@@ -1,0 +1,100 @@
+{
+  "environment": "Native MV3, actual Chrome permissions/context menu, synthetic frame selection, native IndexedDB and bundled q8 BGE.",
+  "checks": [
+    {
+      "name": "End-to-end begins with a checkpoint, actual close and restore",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "The restored source is findable from actual local browser history",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual form saves separate text/note and two task links; HTML stays plain text",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Explicit reuse appends a confirmed note and rejects stale edits",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual q8 BGE covers the full long excerpt/note including its final paragraph",
+      "status": "passed",
+      "detail": {
+        "documents": 422,
+        "completed": 422,
+        "results": [
+          {
+            "title": "长研究材料",
+            "method": "semantic",
+            "snippet": "…记录背景记录背景记录背景记录。麦克风的振膜将声波转换为电信号，经过模数转换器得到数字采样，用于语音采集。"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Format six round-trip, material conflict choices and restore point preserve full text",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native material transaction failure rolls back user data and snapshot",
+      "status": "passed",
+      "detail": {
+        "same": true,
+        "error": "INVALID_LIBRARY"
+      }
+    },
+    {
+      "name": "History retention and task deletion preserve text and remove only the deleted task association",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Draft preservation and sizing panel/index.html 320×760",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Draft preservation and sizing panel/index.html 360×760",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Draft preservation and sizing popup/index.html 400×520",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Draft preservation and sizing popup/index.html 400×600",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Draft preservation and sizing app/index.html 1440×950",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    }
+  ],
+  "errors": [],
+  "uncaught": []
+}

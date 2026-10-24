@@ -306,8 +306,8 @@ export function createWorkspace(deps) {
       const documents = sources.map(page => ({ entryId: page.pageId || page.id, item: pageItem(page) }));
       return { ...data, task, tabs, documents, entries: [], signature: stableHash(JSON.stringify(tabs.map(candidateSnapshot))), goal: goalItem(task) };
     }
-    const [segments,browserVisits] = await Promise.all([store.listSegments({ since: now() - deps.settings().retentionDays * 86400000 }),deps.historyRows?.()||[]]);
-    const entries = searchCorpus({ tabs, ...data, segments,browserVisits,currentWindowId:job.windowId, scope: job.scope,filters:job.filters, allowed: deps.allowed });
+    const [segments,browserVisits,library] = await Promise.all([store.listSegments({ since: now() - deps.settings().retentionDays * 86400000 }),deps.historyRows?.()||[],store.getLibraryItems?.()||[]]);
+    const entries = searchCorpus({ tabs, ...data, segments,browserVisits,library,currentWindowId:job.windowId, scope: job.scope,filters:job.filters, allowed: deps.allowed });
     const documents = searchDocuments(entries);
     return { ...data, tabs, documents, entries, signature: stableHash(JSON.stringify(documents.map(item => [item.item.id, item.item.textHash]))) };
   }

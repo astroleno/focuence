@@ -1,6 +1,6 @@
 import {setup,until,sleep} from './cdp.mjs';
-import assert from 'node:assert/strict';import {writeFileSync} from 'node:fs';
-const env=await setup({headed:process.argv.includes('--headed')}),report={environment:'Isolated Chrome for Testing; synthetic browser pages and real extension/IndexedDB.',checks:[],errors:[]};
+import assert from 'node:assert/strict';import {writeFileSync} from 'node:fs';import {BACKUP_VERSION} from '../../src/backup.js';
+const env=await setup({headed:process.argv.includes('--headed'),out:process.argv.find(value=>value.startsWith('--out='))?.slice(6)||'docs/reviews/v2.3'}),report={environment:'Isolated Chrome for Testing; synthetic browser pages and real extension/IndexedDB.',checks:[],errors:[]};
 const {control,rpc,base,browser,windowId,extensionId}=env;
 const check=(name,detail={})=>{report.checks.push({name,status:'passed',detail});console.log(name);};
 try{
@@ -11,7 +11,7 @@ try{
   await new Promise((resolve,reject)=>{const tx=old.transaction('tasks','readwrite');tx.objectStore('tasks').put({id:'legacy',name:'旧任务',notes:'旧备注🙂\n'.repeat(1000),pages:[],createdAt:1,updatedAt:2});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});old.close();
   const {openStore}=await import(chrome.runtime.getURL('src/store.js'));const store=await openStore({name}),task=await store.getTask('legacy'),schema=(await store.exportData()).schemaVersion;store.close();
   await new Promise(resolve=>{indexedDB.deleteDatabase(name).onsuccess=resolve;});return{schema,status:task.status,notes:task.notes.length};
- });assert.equal(migration.schema,4);assert.equal(migration.status,'active');assert(migration.notes>5000);check('Real v2→v3 upgrade preserves legacy text and supplies active status',migration);
+ });assert.equal(migration.schema,BACKUP_VERSION);assert.equal(migration.status,'active');assert(migration.notes>5000);check('Real v2→current upgrade preserves legacy text and supplies active status',migration);
  const backup=await rpc('EXPORT_DATA');backup.tasks=[{id:'import-a',name:'导入目标',goal:'核对资料',notes:'🙂原文\n'.repeat(1000),pages:[],revision:0,createdAt:1,updatedAt:2}];
  let preview=await rpc('PREVIEW_IMPORT',{data:backup});await rpc('APPLY_IMPORT',{token:preview.token});
  let state=await rpc('GET_STATE');assert.equal(state.tasks.length,1);assert.equal(state.tasks[0].notes,backup.tasks[0].notes);

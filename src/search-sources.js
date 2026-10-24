@@ -31,6 +31,7 @@ export function searchCorpus({tabs=[],tasks=[],relations=[],segments=[],browserV
   const related=(pageId,taskId,value)=>{if(!membership.has(pageId))membership.set(pageId,new Set());if(value)membership.get(pageId).add(taskId);else membership.get(pageId).delete(taskId);};
   for(const task of tasks)for(const page of task.pages||[])related(pageIdForUrl(page.url),task.id,true);
   for(const relation of relations)if(taskIds.has(relation.taskId))related(relation.pageId,relation.taskId,relation.decision==='related');
+  for(const item of library)for(const taskId of item.taskIds)if(taskIds.has(taskId))related(pageIdForUrl(item.url),taskId,true);
   const accepts=evidence=>{
     if(!included.has(evidence.source)||filters.sources?.length&&!filters.sources.includes(evidence.source))return false;
     if(filters.domain){if(!evidence.url)return false;const host=new URL(evidence.url).hostname;if(host!==filters.domain&&!host.endsWith('.'+filters.domain))return false;}
@@ -64,10 +65,17 @@ export function searchCorpus({tabs=[],tasks=[],relations=[],segments=[],browserV
   for(const segment of segments)if(segment.status==='active')page(segment,{id:segment.id,segmentId:segment.id,source:'history',observedTaskId:segment.taskId,
     at:segment.startedAt,endAt:segment.endedAt,foregroundMs:segment.foregroundMs,timeType:'前台观察时段'});
   for(const visit of browserVisits)page(visit,{id:visit.id,nativeVisitId:visit.nativeVisitId,source:'browser',at:visit.visitedAt,timeType:'浏览器访问时间'});
+  for(const item of library){
+    const url=normalizeUrl(item.url);if(!url||!allowed(url))continue;
+    const entry={id:'library:'+item.id,kind:'library',libraryId:item.id,pageId:pageIdForUrl(url),url,title:item.title},text=[item.title,url,item.kind==='excerpt'?'摘录原文：\n'+item.quote:'收藏链接',item.note?'自己的笔记：\n'+item.note:''].filter(Boolean).join('\n');
+    const evidence={id:item.id,source:'library',libraryId:item.id,url,parentUrl:item.parentUrl,title:item.title,taskIds:item.taskIds.filter(id=>taskIds.has(id)),at:item.createdAt,timeType:'资料保存时间',updatedAt:item.updatedAt};
+    add(entry,evidence,text);if(item.updatedAt!==item.createdAt)add(entry,{...evidence,id:item.id+':updated',at:item.updatedAt,timeType:'资料修改时间'},text);
+    const saved=entries.get(entry.id);if(saved)saved.searchParts=[{field:'source',text:[item.title,url].join('\n')},{field:'quote',text:item.quote},{field:'note',text:item.note}].filter(part=>part.text);
+  }
   return[...entries.values()].map(entry=>({...entry,text:entry.searchTexts.join('\n')})).sort((a,b)=>a.id.localeCompare(b.id));
 }
 
 export function compactMemoryResult(entry){
-  const {text,searchTexts,evidence,...safe}=entry;
+  const {text,searchTexts,searchParts,evidence,...safe}=entry;
   return{...safe,sourceEvidence:(evidence||[]).slice(0,5),evidenceCount:evidence?.length||0};
 }

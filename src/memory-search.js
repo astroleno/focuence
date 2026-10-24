@@ -4,7 +4,7 @@ import { semanticItem, textChunks } from './semantic.js';
 import { cosineSimilarity } from './grouping.js';
 import {compactMemoryResult} from './search-sources.js';
 
-export const SEARCH_SCOPES = ['all', 'window', 'windows', 'tasks', 'history', 'browser'];
+export const SEARCH_SCOPES = ['all', 'window', 'windows', 'tasks', 'history', 'browser','library'];
 
 export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = [], segments = [], scope = 'all', allowed = () => true }) {
   const entries = new Map(), visits = new Map();
@@ -31,8 +31,8 @@ export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = []
 }
 
 export function searchDocuments(entries) {
-  return entries.flatMap(entry => (entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map((text, index) => ({
-    entryId: entry.id, item: semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : `${entry.pageId}:`}${index}:${stableHash(text)}`, text, entry.kind === 'task' ? 'task' : 'search-page'),
+  return entries.flatMap(entry => (entry.searchParts?entry.searchParts.flatMap(part=>textChunks(part.text).map(text=>({text,field:part.field}))):(entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map(text=>({text}))).map(({text,field}, index) => ({
+    entryId: entry.id,field, item: semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : entry.kind==='library'?`${entry.libraryId}:`:`${entry.pageId}:`}${index}:${stableHash(text)}`, text, entry.kind === 'task' ? 'task' : entry.kind==='library'?'library':'search-page'),
   })));
 }
 
@@ -54,7 +54,8 @@ export function rankMemory(entries, query, semanticScores = {}, limit = 50, brow
     if (!exact && lexical < .1 && (semantic === null || semantic < .46)) return [];
     const method = exact || lexical >= .45 ? 'keywords' : semantic !== null && semantic >= .46 ? 'semantic' : 'keywords';
     const score = exact ? 1.5 + lexical : Math.max(lexical, semantic || 0) + lexical * .12;
-    return [{ ...compactMemoryResult(entry), score, method, snippet: snippetFor(query, method === 'semantic' && match?.text ? match.text : entry.text) }];
+    const part=entry.searchParts?.find(part=>part.text.toLocaleLowerCase().includes(normalized))||entry.searchParts?.toSorted((a,b)=>lexicalAffinity(query,b.text)-lexicalAffinity(query,a.text))[0];
+    return [{ ...compactMemoryResult(entry), score, method,snippetField:method==='semantic'?match?.field:part?.field, snippet: snippetFor(query, method === 'semantic' && match?.text ? match.text : part?.text||entry.text) }];
   }).sort((a, b) => b.score - a.score || b.visitedAt - a.visitedAt || a.id.localeCompare(b.id));
   return { results: ranked.slice(0, limit), total: ranked.length };
 }
@@ -65,7 +66,7 @@ export function accumulateSearchScores(previous, documents, vectors, queryVector
     const score = cosineSimilarity(queryVector, vectors.get(document.item.id));
     const previous = scores[document.entryId];
     const previousScore = typeof previous === 'number' ? previous : previous?.score ?? -1;
-    if (score !== null && score > previousScore) scores[document.entryId] = { score, text: document.item.text };
+    if (score !== null && score > previousScore) scores[document.entryId] = { score, text: document.item.text,field:document.field };
   }
   return scores;
 }

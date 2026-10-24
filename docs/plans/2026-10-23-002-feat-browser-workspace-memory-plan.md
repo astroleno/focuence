@@ -1,7 +1,8 @@
 ---
 title: "feat: Extend task workspaces, browser history and research memory"
 type: feat
-status: implementing
+status: completed
+completed: 2026-10-24
 approved: 2026-10-24
 date: 2026-10-23
 deepened: 2026-10-23
@@ -241,7 +242,7 @@ flowchart TB
   **测试场景：** 同 URL 来自多个窗口/任务/历史时保留全部来源；时区和夏令时的“昨天/上周”；任务历史归属与当前关联不同；第一个结果页之外仍可命中；关键词未命中的已知同义样本；模型失败时过滤不失效；切换条件、删除来源和新查询阻止旧结果覆盖。
   **通过标准：** 选定范围实际全部检索，结果可打开原页面并定位来源；日期筛选与显示一致。
 
-- [ ] **U7：主动采集与研究资料库**（R8、R5、R7、R9）
+- [x] **U7：主动采集与研究资料库**（R8、R5、R7、R9）
 
   **目标与依赖：** 让主动保存的材料成为跨任务可复用的长期资料；依赖 2.4 验收。
   **文件：** 新增 `src/library.js`、`src/library-ui.js`；修改 `manifest.json`、`background.js`、`src/store.js`、`src/backup.js`、`src/search-sources.js`、`src/memory-search.js`、`app/app.js`、`popup/app.js` 及样式；测试 `test/library.test.js`、`test/library-capture.test.js`、`test/library-search.test.js`。
@@ -249,7 +250,7 @@ flowchart TB
   **测试场景：** 手动链接、右键选文、跨源 iframe 来源区分、可编辑区域拒绝、超长中文/emoji 保留草稿、恶意 HTML 作为纯文本显示；同文重复提示；多任务共享；删除任务保留材料；网页改变不改原文；修改/删除使旧结果失效；长摘录末尾命中；格式 2—6 导入及新格式往返。
   **通过标准：** 用户可完整完成采集、核对、关联、检索、打开来源与备份恢复，不依赖全站读取权限。
 
-- [ ] **U8：阶段验收、文档和交付**（R1—R9）
+- [x] **U8：阶段验收、文档和交付**（R1—R9）
 
   **目标与依赖：** 在 2.3、2.4、2.5 各阶段执行对应验收，最终检查完整路线；分别依赖 U4、U6、U7。
   **文件：** 更新 `README.md`、`PRODUCT.md`、`DESIGN.md`、`PRIVACY.md`、`docs/DATA_AND_ARCHITECTURE.md`、`manifest.json`、`package.json`、`package-lock.json`；新增 `docs/reviews/v2.3/README.md`、`docs/reviews/v2.4/README.md`、`docs/reviews/v2.5/README.md` 和证据；原生流程记录在 `test/native/browser-workspace.mjs`、`test/native/history-library.mjs`。
@@ -281,11 +282,11 @@ flowchart TB
 
 ## 执行与交付约定
 
-本文件已获完整确认，包括三个版本范围、保存后关闭、导入覆盖与恢复前快照、按需权限和阶段 commit/push。2026-10-24 已完成 2.3 的 U1—U4 及阶段验收，见 [2.3 验收记录](../reviews/v2.3/README.md)；2.4 的 U5—U6 通过 140 项逻辑测试、构建、10,000 次真实合成访问逐项比对、三端来源、删除/撤权/重启和实际模型检查，见 [2.4 验收记录](../reviews/v2.4/README.md)。1,000 资源完整处理、缓存和取消响应已实测，宽泛查询的排序限制保留在报告中。U7 与最终 U8 继续执行。
+本文件已获完整确认，包括三个版本范围、保存后关闭、导入覆盖与恢复前快照、按需权限和阶段 commit/push。2026-10-24 三个阶段全部通过验收。2.3 的 U1—U4 已提交推送 `116e0c0`，见 [2.3 验收](../reviews/v2.3/README.md)；2.4 的 U5—U6 已提交推送 `7a8bd46`，见 [2.4 验收](../reviews/v2.4/README.md)。2.5 完成 U7 和最终 U8，148 项逻辑测试、构建、79 组原生/模型检查通过，涵盖实际选文菜单、完整路径、10,000 访问和 1,000 资源；见 [最终验收](../reviews/v2.5/README.md)。宽泛查询排序、平台实测范围和浏览器接口限制如实保留。
 
 确认本计划后，按 U1→U8 和版本依赖连续实现、修复、验证，不在每个单元重复询问。内部函数命名、组件小幅拆分、批量参数等可逆实现细节由主线程处理；若新增数据来源、权限、云服务、模型或改变覆盖/关闭规则，才重新确认受影响部分。
 
-沿用原 `main` 工作区，不新增 agent、分支或 worktree。每版验收后的 commit、push 已获明确授权；本计划随 2.3 源码交付并继续更新。ZIP 打包、商店上传和发布不包含在执行范围。
+沿用原 `main` 工作区，不新增 agent、分支或 worktree。每版验收后的 commit、push 已获明确授权；本计划随 2.3 源码交付并随 2.4、2.5 更新。ZIP 打包、商店上传和发布不包含在执行范围。
 
 主线程已对照需求、接口、持久化、三端流程与失败边界进行规划自检；没有独立 agent 评审。运行中的行为和性能必须在实施时实测，本文件不把它们写成已验证事实。
 

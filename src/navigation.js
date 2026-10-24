@@ -1,8 +1,9 @@
-export function workspaceURL(base, {view = 'review', windowId, range = 'week', demo = false, topic, from, to} = {}) {
+export function workspaceURL(base, {view = 'review', windowId, range = 'week', demo = false, topic, from, to,item,draft} = {}) {
   const query = new URLSearchParams({ range });
   if (demo) query.set('demo', '1');
   if (Number.isInteger(windowId)) query.set('windowId', windowId);
   if (topic) query.set('topic', topic);
+  if(item)query.set('item',item);if(draft)query.set('draft',draft);
   if (from && to) { query.set('from', from); query.set('to', to); }
   return base + '?' + query + '#' + view;
 }

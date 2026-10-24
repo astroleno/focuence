@@ -1,0 +1,66 @@
+{
+  "environment": "Actual bundled q8 BGE in native MV3 worker; eight synthetic metadata pages; no mocked vectors.",
+  "checks": [
+    {
+      "name": "如何把人声变成数字信号",
+      "status": "passed",
+      "target": "I2S数字麦克风",
+      "rank": 1,
+      "initialKeywords": [
+        "硬件/I2S数字麦克风拾音"
+      ],
+      "results": [
+        {
+          "title": "硬件/I2S数字麦克风拾音",
+          "method": "keywords",
+          "score": 0.46354185638753426
+        }
+      ],
+      "milliseconds": 710
+    },
+    {
+      "name": "离线运行人工智能的浏览器资料",
+      "status": "passed",
+      "target": "网页端本地模型",
+      "rank": 1,
+      "initialKeywords": [
+        "开发/浏览器扩展接口"
+      ],
+      "results": [
+        {
+          "title": "离线/网页端本地模型与向量检索",
+          "method": "semantic",
+          "score": 0.6036289340166472
+        },
+        {
+          "title": "开发/浏览器扩展接口",
+          "method": "semantic",
+          "score": 0.5307333103119161
+        }
+      ],
+      "milliseconds": 29
+    },
+    {
+      "name": "烘焙时面团要等多久",
+      "status": "passed",
+      "target": "酵母面包",
+      "rank": 1,
+      "initialKeywords": [
+        "烘焙/酵母面包发酵"
+      ],
+      "results": [
+        {
+          "title": "烘焙/酵母面包发酵",
+          "method": "semantic",
+          "score": 0.5501503859927174
+        }
+      ],
+      "milliseconds": 27
+    },
+    {
+      "name": "Unrelated gibberish returns no result",
+      "status": "passed"
+    }
+  ],
+  "errors": []
+}

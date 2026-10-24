@@ -2,6 +2,7 @@ import { computeAnalytics, computeReview } from '../src/analytics.js';
 import { taskViews } from '../src/tasks.js';
 import {sealProposal, validateProposalSelection} from '../src/proposals.js';
 import { createWorkspace } from '../src/workspace.js';
+import {createLibrary,libraryFrom} from '../src/library.js';
 import { createActivityState } from '../src/activity.js';
 import { emptyWorkspace, taskFrom } from '../src/store.js';
 import { assertRevision } from '../src/task-context.js';
@@ -92,9 +93,12 @@ export function createDemoTransport() {
     }).filter((group) => group.tabIds.length >= 2).map(group => sealProposal(group, tabs));
   }
   groups = makeGroups(false);
-  let workspaceData = emptyWorkspace(), relations = [], epoch = 0, savedJobs = [];
+  let workspaceData = emptyWorkspace(), relations = [], epoch = 0, savedJobs = [],libraryItems=[];
   let activity = createActivityState({now, sessionId: 'demo'});
   const memoryStore = {
+    getLibraryItems:async()=>structuredClone(libraryItems),getLibraryItem:async id=>structuredClone(libraryItems.find(item=>item.id===id)||null),
+    async putLibraryItem(value,{expectedRevision,create=false}={}){const item=libraryFrom(value),old=libraryItems.find(row=>row.id===item.id);if(create?!!old:!old||old.revision!==expectedRevision)throw Object.assign(Error('材料已更新，请重新读取。'),{code:'STALE_LIBRARY'});if(item.taskIds.some(id=>!tasks.some(task=>task.id===id)))throw Error('任务已删除，请重新选择。');libraryItems=[...libraryItems.filter(row=>row.id!==item.id),item];return item;},
+    async deleteLibraryItem(id,revision){const item=libraryItems.find(row=>row.id===id);if(!item||item.revision!==revision)throw Object.assign(Error('材料已更新，请重新读取。'),{code:'STALE_LIBRARY'});libraryItems=libraryItems.filter(row=>row.id!==id);},
     getWorkspace: async () => structuredClone(workspaceData), getTasks: async () => structuredClone(tasks),
     getTask: async id => structuredClone(tasks.find(task => task.id === id)), getRelations: async () => structuredClone(relations),
     getPages: async () => structuredClone(pages), listSegments: async () => structuredClone(segments), getVectors: async () => [],
@@ -102,6 +106,7 @@ export function createDemoTransport() {
       for (const expected of change.expectedTasks || []) assertRevision(tasks.find(task => task.id === expected.id), expected.revision);
       for (const task of change.tasks || []) tasks = [...tasks.filter(item => item.id !== task.id), taskFrom(task)];
       tasks = tasks.filter(task => !(change.deleteTasks || []).includes(task.id));
+      libraryItems=libraryItems.map(item=>item.taskIds.some(id=>(change.deleteTasks||[]).includes(id))?{...item,taskIds:item.taskIds.filter(id=>!(change.deleteTasks||[]).includes(id)),revision:item.revision+1}:item);
       relations = relations.filter(item => !(change.deleteTasks || []).includes(item.taskId) && !(change.resetRelations || []).includes(item.taskId) && !(change.deleteRelations || []).includes(item.id));
       for (const relation of change.relations || []) relations = [...relations.filter(item => item.id !== relation.id), structuredClone(relation)];
       for (const segment of change.segments || []) segments = [...segments.filter(item => item.id !== segment.id), segment];
@@ -128,11 +133,12 @@ export function createDemoTransport() {
     openPage: async () => ({opened: true}), embed: async () => { throw new Error('示例模式只演示关键词结果，真实扩展使用本机模型。'); },
   });
   const memoryReady = memory.initialize();
+  const library=createLibrary({store:memoryStore,invalidate:()=>memory.invalidate()});
   async function state(range = 'week') {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.4.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.5.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       work: await memory.view({windowId: 1, tasks, tabs, segments: scoped}),
@@ -146,6 +152,11 @@ export function createDemoTransport() {
       if (memory.hasMutation(message.type)) return {ok: true, data: structuredClone(await memory.mutate(message))};
       let result;
       switch (message.type) {
+        case 'LIST_LIBRARY': result=await library.list(message);break;
+        case 'GET_LIBRARY_ITEM':result=await memoryStore.getLibraryItem(message.id);if(!result)throw Error('材料已删除。');break;
+        case 'SAVE_LIBRARY_ITEM':case 'UPDATE_LIBRARY_ITEM':result=await library.save(message);break;
+        case 'DELETE_LIBRARY_ITEM':result=await library.remove(message);break;
+        case 'GET_LIBRARY_CAPTURE':result={enabled:false};break;
         case 'GET_STATE': result = await state(message.range); break;
         case 'SEARCH_MEMORY': result = await memory.createJob(message); break;
         case 'SUGGEST_TASK_PAGES': result = await memory.createJob(message, 'association'); break;
@@ -189,11 +200,11 @@ export function createDemoTransport() {
         case 'OPEN_PAGE': result = {opened: true}; break;
         case 'UPDATE_SETTINGS': settings = {...settings, ...message.patch}; memory.invalidate(); result = settings; break;
         case 'FLUSH_ACTIVITY': result = {saved: true}; break;
-        case 'EXPORT_DATA': result = {schemaVersion: 5, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations, segments, settings}; break;
+        case 'EXPORT_DATA': result = {schemaVersion: 6, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations,libraryItems, segments, settings}; break;
         case 'CLEAR_HISTORY':
           segments = []; workspaceData = {...emptyWorkspace(), context: workspaceData.context}; await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; }); result = {cleared: true}; break;
         case 'CLEAR_ALL':
-          segments = []; tasks = []; groups = []; relations = []; workspaceData = emptyWorkspace(); await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; });
+          segments = []; tasks = []; groups = []; relations = [];libraryItems=[]; workspaceData = emptyWorkspace(); await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; });
           settings = {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
           result = {cleared: true}; break;
         case 'MODEL_WARMUP':

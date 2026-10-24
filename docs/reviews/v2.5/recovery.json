@@ -1,0 +1,71 @@
+{
+  "environment": "Headed isolated Chrome; synthetic files/tabs; real optional permission and IndexedDB.",
+  "checks": [
+    {
+      "name": "Blocked v2 migration returns actionable retry and leaves no orphan connection",
+      "status": "passed",
+      "detail": {
+        "error": "本机数据升级被另一个 Focuence 页面阻塞。请关闭其他 Focuence 页面后重试。"
+      }
+    },
+    {
+      "name": "An actual concurrent edit rejects an old import preview and preserves the new text",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native import form retains the selected invalid file and shows the validation failure",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native file chooser, conflict selection and apply use the reviewed backup content",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "QuotaExceededError injected at native IDB write rolls back the real transaction and snapshot",
+      "status": "passed",
+      "detail": {
+        "error": "本机存储空间不足，资料没有覆盖。请释放空间后重新预览并重试。",
+        "code": "STORAGE_QUOTA",
+        "unchanged": true,
+        "snapshotUnchanged": true
+      }
+    },
+    {
+      "name": "31 distinct resources are rejected with every native tab still open",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Restoring protected grouped tabs reuses the actual surviving group and preserves newer group metadata",
+      "status": "passed",
+      "detail": {
+        "tabs": 3,
+        "title": "用户改过的组名"
+      }
+    },
+    {
+      "name": "Native close failure retains per-page results and continues safe remaining members",
+      "status": "passed",
+      "detail": {
+        "closed": 2,
+        "failed": 1
+      }
+    },
+    {
+      "name": "Actual worker termination keeps the durable requested log and never continues closing",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "User-triggered native optional session grant and actual recently closed restoration",
+      "status": "passed",
+      "detail": {
+        "items": 4
+      }
+    }
+  ],
+  "errors": []
+}

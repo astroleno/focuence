@@ -1,5 +1,5 @@
 import {setup,until} from './cdp.mjs';import assert from 'node:assert/strict';import {writeFileSync} from 'node:fs';
-const env=await setup({headed:true}),{browser,control,rpc,windowId,base,extensionId}=env,report={environment:'Native extension UI and isolated synthetic pages. Toolbar popup is opened through the actual browser action.',checks:[],errors:[]};
+const env=await setup({headed:true,out:process.argv.find(value=>value.startsWith('--out='))?.slice(6)||'docs/reviews/v2.3'}),{browser,control,rpc,windowId,base,extensionId}=env,report={environment:'Native extension UI and isolated synthetic pages. Toolbar popup is opened through the actual browser action.',checks:[],errors:[]};
 const check=(name,detail={})=>{report.checks.push({name,status:'passed',detail});console.log(name);};
 let currentPage;
 try{

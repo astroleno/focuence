@@ -1,0 +1,78 @@
+{
+  "environment": "Isolated Chrome for Testing; synthetic browser pages and real extension/IndexedDB.",
+  "checks": [
+    {
+      "name": "Real v2→current upgrade preserves legacy text and supplies active status",
+      "status": "passed",
+      "detail": {
+        "schema": 6,
+        "status": "active",
+        "notes": 6000
+      }
+    },
+    {
+      "name": "Actual backup preview and atomic import preserve text; repeated import is idempotent",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual IndexedDB transaction abort retains the whole original database",
+      "status": "passed",
+      "detail": {
+        "error": "A task needs an id",
+        "unchanged": true
+      }
+    },
+    {
+      "name": "Clear history removes the internal pre-import snapshot",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native catalog covers three windows and 100 tabs with exact duplicates",
+      "status": "passed",
+      "detail": {
+        "windows": 3,
+        "tabs": 100
+      }
+    },
+    {
+      "name": "Real save/close/restore keeps duplicate multiplicity and repeated restores reuse successful pages",
+      "status": "passed",
+      "detail": {
+        "closed": 2,
+        "restored": 2,
+        "reused": 2
+      }
+    },
+    {
+      "name": "Native navigation invalidates a close preview before saving or closing",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Task completion atomically releases two actual window bindings and rejects stale revisions",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Recently closed is unavailable until its optional permission is granted",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Real sidebar performs cross-window search with no overflow or duplicate IDs",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "ids": []
+      }
+    },
+    {
+      "name": "Native full workspace exposes the file import and conflict preview surface",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": []
+}

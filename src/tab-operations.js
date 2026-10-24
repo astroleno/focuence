@@ -70,7 +70,7 @@ export function createTabOperations(deps) {
     const windows=await deps.windows(),normal=windows.filter(window=>window.type==='normal'&&!window.incognito);
     const fallback=message.windowId??normal.find(window=>window.focused)?.id??normal[0]?.id;
     if(!normal.some(window=>window.id===fallback))throw failure('NO_WINDOW','请选择一个普通窗口作为恢复目标。');
-    const all=await deps.tabs(),counts=new Map();
+    const all=await deps.tabs(),counts=new Map(),used=new Set();
     const rows=[];
     for(const row of log.rows){
       if(row.closeState==='failed')continue;
@@ -83,8 +83,11 @@ export function createTabOperations(deps) {
       const target=requested??(sameSession&&normal.some(window=>window.id===row.windowId)?row.windowId:fallback);
       if(!normal.some(window=>window.id===target))throw failure('STALE_TAB_PLAN','恢复目标窗口已关闭，请重新选择。');
       const key=target+'|'+row.url,baseline=log.baseline[row.windowId+'|'+row.url]||0;
-      if(!counts.has(key))counts.set(key,all.filter(tab=>tab.windowId===target&&normalizeUrl(tab.url)===row.url).slice(baseline));
-      const candidates=counts.get(key),existing=candidates.shift();
+      const urlOf=tab=>normalizeUrl(tab.pendingUrl||tab.url);
+      if(!counts.has(key))counts.set(key,all.filter(tab=>tab.windowId===target&&urlOf(tab)===row.url).slice(baseline));
+      const candidates=counts.get(key),recorded=row.restoredSessionId===deps.sessionId?all.find(tab=>tab.id===row.restoredTabId&&tab.windowId===target&&urlOf(tab)===row.url&&!used.has(tab.id)):null;
+      let existing=recorded;while(!existing&&candidates.length){const candidate=candidates.shift();if(!used.has(candidate.id))existing=candidate;}
+      if(existing)used.add(existing.id);
       rows.push({key:row.key,url:row.url,title:row.title,windowId:target,reuseId:existing?.id??null,uncertain:row.closeState!=='closed',pinned:row.pinned,index:row.originalIndex??row.index,group:row.group,groupId:row.groupId});
     }
     const plan={token:crypto.randomUUID(),at:now(),operationId:log.id,rows,sessionId:deps.sessionId};restorePreviews.set(plan.token,plan);
@@ -99,7 +102,7 @@ export function createTabOperations(deps) {
       try{
         if(!deps.allowed(row.url))throw Error('站点已排除，未恢复。');
         let tab=row.reuseId==null?null:await deps.getTab(row.reuseId).catch(()=>null);
-        if(tab&&(tab.windowId!==row.windowId||normalizeUrl(tab.url)!==row.url))throw failure('STALE_TAB_PLAN','已有页面已改变，请重新预览恢复。');
+        if(tab&&(tab.windowId!==row.windowId||normalizeUrl(tab.pendingUrl||tab.url)!==row.url))throw failure('STALE_TAB_PLAN','已有页面已改变，请重新预览恢复。');
         if(tab)reused++;else{
           tab=await deps.create({windowId:row.windowId,url:row.url,active:false,pinned:row.pinned,index:row.index});opened++;
           if(row.group&&!row.pinned){const key=row.windowId+'|'+row.groupId;if(!groups.has(key))groups.set(key,{windowId:row.windowId,info:row.group,ids:[]});groups.get(key).ids.push(tab.id);}

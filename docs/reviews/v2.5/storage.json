@@ -1,0 +1,36 @@
+{
+  "environment": "Real native IndexedDB, session storage and MV3 worker.",
+  "checks": [
+    {
+      "name": "Actual v4→v5 migration preserves old task text and browser source",
+      "status": "passed",
+      "migration": {
+        "schema": 6,
+        "notes": 4000,
+        "materials": 0,
+        "history": 1
+      }
+    },
+    {
+      "name": "Native material deletion invalidates completed searches and removes the source",
+      "status": "passed"
+    },
+    {
+      "name": "Actual stale-editor UI preserves the draft, shows the latest text and saves only after explicit review",
+      "status": "passed"
+    },
+    {
+      "name": "Actual sidebar-to-workspace handoff preserves material/window IDs and Escape closes the detail",
+      "status": "passed"
+    },
+    {
+      "name": "Real alarm removes an already-expired draft and retains a current draft",
+      "status": "passed"
+    },
+    {
+      "name": "Session draft survives an actual worker restart and clear-all deletes it",
+      "status": "passed"
+    }
+  ],
+  "errors": []
+}

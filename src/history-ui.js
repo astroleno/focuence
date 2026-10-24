@@ -26,7 +26,7 @@ export function createHistoryUI({request,render,refresh,notify,demo=false,getSta
   function enable(){
     if(demo)return;
     const permission=chrome.permissions.request({permissions:['history']});
-    permission.then(granted=>granted?act('START_HISTORY_IMPORT',{days}):notify('未授权读取浏览器历史。任务与自记录访问仍可使用。',true)).catch(value=>notify(value.message,true));
+    permission.then(granted=>granted?act('START_HISTORY_IMPORT',{days}):notify('未授权读取浏览器历史。任务、自记录访问与资料库仍可使用。',true)).catch(value=>notify(value.message,true));
   }
   function view(compact=true){
     const epoch=getState()?.work?.epoch;
@@ -47,7 +47,7 @@ export function createHistoryUI({request,render,refresh,notify,demo=false,getSta
       state&&el('p',{class:'memory-caption'},'本机缓存 '+state.count+' 次访问'+(coverage?' · 已核对 '+date(coverage.range.from)+' — '+date(coverage.range.to)+(coverage.invalidated?' · 浏览器记录已改变，请刷新':''):' · 尚无完整范围快照')),
       job&&el('div',{role:'status'},el('p',{class:'memory-caption'},({queued:'正在导入',running:'正在导入',done:'所选范围已导入',failed:'导入未完成',cancelled:'导入已停止',stale:'范围需要重新核对'}[job.status]||job.status)+' · 已处理 '+job.processed+' 个地址 / '+job.checkedVisits+' 次本机访问 · 待核对 '+job.pendingWindows+' 个时间窗口'),
         job.error&&el('p',{class:'memory-form-error'},job.error)),
-      el('p',{class:'memory-caption'},'刷新会完整核对所选范围，取消后保留已导入部分。断开、撤销权限或清除扩展历史会清理此缓存；主动保存的任务不受影响。'));
+      el('p',{class:'memory-caption'},'刷新会完整核对所选范围，取消后保留已导入部分。断开、撤销权限或清除扩展历史会清理此缓存；主动保存的任务和材料不受影响。'));
     node.querySelector('#history-days')?.addEventListener('change',event=>{days=Number(event.target.value);});
     if(compact)node.addEventListener('toggle',()=>{open=node.open;});return node;
   }
