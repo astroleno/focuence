@@ -1,12 +1,12 @@
 {
   "name": "focuence-local",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "description": "Local-first tab grouping, task recovery and attention timeline for Chrome and Edge.",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/*.test.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
     "models": "python3 scripts/download-model.py",
     "package": "python3 scripts/package-release.py"
   },

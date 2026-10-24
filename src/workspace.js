@@ -7,6 +7,7 @@ import { matchTaskPages, goalItem, pageItem, candidateSnapshot } from './task-ma
 import { memoryCorpus, searchDocuments, rankMemory, accumulateSearchScores, SEARCH_SCOPES } from './memory-search.js';
 import { semanticItem, QUERY_INSTRUCTION } from './semantic.js';
 import { stableHash, normalizeUrl } from './text.js';
+import { transitionTask, statusOf } from './task-lifecycle.js';
 
 /** One background-owned coordinator. Mutations run in the activity queue. */
 export function createWorkspace(deps) {
@@ -101,6 +102,7 @@ export function createWorkspace(deps) {
     const { tasks, relations } = await bundle();
     const task = tasks.find(item => item.id === message.id);
     if (!task) throw failure('TASK_NOT_FOUND', '这个任务已经不存在。');
+    if (!pause && statusOf(task) !== 'active') throw failure('TASK_INACTIVE', '请先将任务重新设为进行中，再选择当前任务。');
     const current = windowContext(state.context, windowId);
     if (pause && current.taskId !== task.id) throw failure('STALE_CONTEXT', '当前任务已改变，请重新读取。');
     const context = changeWindowContext(state.context, windowId, pause ? null : task.id, message.contextRevision, now());
@@ -214,6 +216,7 @@ export function createWorkspace(deps) {
 
   async function restoreTask(message) {
     const data = await bundle(), task = assertRevision(data.tasks.find(item => item.id === message.id), message.revision);
+    if (statusOf(task) !== 'active') throw failure('TASK_INACTIVE', '请先重新开始这个任务，再恢复资料。');
     const windowId = await deps.targetWindow(message.windowId);
     const current = windowContext(state.context, windowId);
     if (message.contextRevision !== current.revision) throw failure('STALE_CONTEXT', '窗口的当前任务已改变，请重新核对。');
@@ -403,10 +406,25 @@ export function createWorkspace(deps) {
     return { accepted: true };
   }
 
-  const handlers = { UPDATE_TASK: editTask, SET_CURRENT_TASK: selectTask, PAUSE_TASK: message => selectTask(message, true), SAVE_CHECKPOINT: saveCheckpoint,
+  async function setTaskStatus(message) {
+    const data = await bundle(), task = assertRevision(data.tasks.find(item => item.id === message.id), message.revision);
+    const changed = transitionTask(task, message.status, state.context, now());
+    await commit({tasks: [changed.task], expectedTasks: [{id: task.id, revision: message.revision}]}, {...state, context: changed.context},
+      {tasks: data.tasks.map(item => item.id === task.id ? changed.task : item), relations: data.relations});
+    invalidate(); return changed.task;
+  }
+
+  const handlers = { SET_TASK_STATUS: setTaskStatus, UPDATE_TASK: editTask, SET_CURRENT_TASK: selectTask, PAUSE_TASK: message => selectTask(message, true), SAVE_CHECKPOINT: saveCheckpoint,
     SET_TASK_RELATION: setRelation, UNDO_TASK_RELATION: undoRelation, RESET_TASK_RELATIONS: resetRelations, UPDATE_TASK_PAGES: updatePages,
     DELETE_TASK: deleteTask, RESTORE_TASK: restoreTask, OPEN_MEMORY_RESULT: openResult, FOCUS_FEEDBACK: focusFeedback };
   return { initialize, contextFor, view, afterObservation, replaceState: value => { if (value) state = value; }, getState: () => state,
+    async saveTaskAndOperation(task, operation, revision) {
+      const data = await bundle();
+      if (revision !== undefined) assertRevision(data.tasks.find(item => item.id === task.id),revision);
+      await commit({tasks:[task],tabOperations:[operation],expectedTasks:revision===undefined?[]:[{id:task.id,revision}]},state,
+        {tasks:[...data.tasks.filter(item=>item.id!==task.id),task],relations:data.relations});
+      invalidate();
+    },
     invalidate, hasMutation: type => Boolean(handlers[type]), mutate: message => handlers[message.type](message), createJob, advanceJob, cancelJob,
     async reload() { state = await store.getWorkspace(); state.context = normalizeWorkContext(state.context, deps.sessionId); await store.commitWorkspace({workspace: state}); invalidate(); jobs.clear(); await persistJobs(); },
     async closeWindow(windowId) { const next = clone(state); delete next.context.windows[windowId]; await commit({}, next); invalidate(); },

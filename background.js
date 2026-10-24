@@ -1,5 +1,5 @@
 import { createActivityState, reduceActivity, previewActivity } from './src/activity.js';
-import { openStore } from './src/store.js';
+import { openStore, taskFrom, relationFrom, pageFrom, segmentFrom, settingsFrom } from './src/store.js';
 import { computeAnalytics, computeReview, calendarRange } from './src/analytics.js';
 import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
@@ -8,12 +8,17 @@ import { sealProposal, proposalIsCurrent, validateProposalSelection, STALE_PROPO
 import { createWorkspace } from './src/workspace.js';
 import { embedItems } from './src/semantic.js';
 import { taskText } from './src/task-context.js';
+import { workspaceCatalog } from './src/tab-workspace.js';
+import { createTabOperations } from './src/tab-operations.js';
+import { decodeBackup, planImport } from './src/backup.js';
+import { recentSessions, restoreRecentSession } from './src/browser-history.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
-let store, settings, activity, browserSessionId, initPromise, workspace;
+let store, settings, activity, browserSessionId, initPromise, workspace, tabOperations;
+const imports = new Map();
 let activityQueue = Promise.resolve();
 let offscreenPromise = null;
 let semanticQueue = Promise.resolve();
@@ -115,6 +120,14 @@ async function init() {
       },
     });
     await workspace.initialize();
+    tabOperations = createTabOperations({store,sessionId:browserSessionId,allowed:url=>!!normalizeUrl(url)&&!excluded(url),
+      tabs:allNormalTabs,windows:()=>chrome.windows.getAll({windowTypes:['normal']}),group:id=>chrome.tabGroups.get(id),
+      save:(task,log,revision)=>workspace.saveTaskAndOperation(task,log,revision),remove:id=>chrome.tabs.remove(id),getTab:id=>chrome.tabs.get(id),
+      create:async options=>{const tabs=await chrome.tabs.query({windowId:options.windowId});return chrome.tabs.create({...options,index:Math.min(options.index,tabs.length)});},
+      restoreGroup:async({windowId,info,ids,reuseGroup})=>{const existing=reuseGroup?await chrome.tabGroups.get(info.id).catch(()=>null):null;
+        if(existing?.windowId===windowId)await chrome.tabs.group({tabIds:ids,groupId:existing.id});
+        else{const groupId=await chrome.tabs.group({tabIds:ids,createProperties:{windowId}});await chrome.tabGroups.update(groupId,{title:info.title||'',color:info.color||'grey',collapsed:!!info.collapsed});}},
+      invalidate:()=>workspace.invalidate()});
     if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
     chrome.idle.setDetectionInterval(settings.idleSeconds);
     await chrome.alarms.create('focuence-checkpoint', { periodInMinutes: .5 });
@@ -142,6 +155,36 @@ async function eligibleTabs(windowId) {
     const page = allowedPage(tab);
     return page ? [{ id: tab.id, windowId: id, title: page.title, url: page.url, pendingUrl: tab.pendingUrl, domain: page.domain, active: tab.active, pinned: tab.pinned, groupId: tab.groupId, index: tab.index, lastAccessed: tab.lastAccessed || 0, pageId: page.id, tags: page.tags, foregroundMs: 0 }] : [];
   });
+}
+
+async function allNormalTabs() {
+  const windows=await chrome.windows.getAll({windowTypes:['normal']});
+  const ids=new Set(windows.filter(window=>!window.incognito).map(window=>window.id));
+  return(await chrome.tabs.query({})).filter(tab=>ids.has(tab.windowId)&&!tab.incognito);
+}
+
+async function previewImport(message) {
+  for(const [id,entry]of imports)if(entry.at<Date.now()-15*60000)imports.delete(id);
+  let incoming;
+  if(message.restorePoint){const point=await store.getRestorePoint();if(!point)throw Error('没有可用的恢复前快照。');incoming=decodeBackup(point.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom});}
+  else if(message.sourceToken){incoming=imports.get(message.sourceToken)?.incoming;if(!incoming)throw Object.assign(Error('文件预览已过期，请重新选择文件。'),{code:'IMPORT_PREVIEW_STALE'});}
+  else incoming=decodeBackup(message.data,{taskFrom,relationFrom,pageFrom,segmentFrom,settingsFrom});
+  const plan=planImport(incoming,await store.exportData(),message),token=crypto.randomUUID();
+  imports.set(token,{at:Date.now(),incoming,plan});
+  return{token,mode:plan.mode,counts:plan.counts,conflicts:plan.conflicts,schemaVersion:incoming.schemaVersion};
+}
+
+async function applyImport(message) {
+  const saved=imports.get(message.token);
+  if(!saved||saved.at<Date.now()-15*60000)throw Object.assign(Error('导入预览已过期，请重新预览。'),{code:'IMPORT_PREVIEW_STALE'});
+  dataEpoch++;
+  const result=await store.applyImport(saved.plan);
+  imports.clear();tabOperations.invalidate();proposals.clear();proposalNotices.clear();lastUndo=null;
+  settings=await store.getSettings();activity=createActivityState({now:Date.now(),sessionId:browserSessionId,maxGapMs:90000});
+  await workspace.reload();
+  if((await chrome.runtime.getContexts({contextTypes:['OFFSCREEN_DOCUMENT']})).length)await chrome.offscreen.closeDocument();
+  model={status:'idle',name:MODEL_NAME,progress:0};chrome.idle.setDetectionInterval(settings.idleSeconds);await persistSession();
+  return result;
 }
 
 async function ensureOffscreen() {
@@ -396,6 +439,7 @@ async function updateSettings(patch = {}) {
 
 async function clearData(all) {
   dataEpoch++;
+  imports.clear();tabOperations.invalidate();
   if ((await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length) await chrome.offscreen.closeDocument();
   model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   if (all) await store.clearAll(); else await store.clearHistory();
@@ -413,6 +457,17 @@ async function handle(message) {
   await init();
   if (workspace.hasMutation(message.type)) return queueActivity(() => workspace.mutate(message));
   switch (message.type) {
+    case 'LIST_WORKSPACE_TABS': return workspaceCatalog(await chrome.windows.getAll({windowTypes:['normal']}),await allNormalTabs(),url=>!excluded(url));
+    case 'PREVIEW_TAB_ACTION': return queueActivity(()=>tabOperations.preview(message));
+    case 'EXECUTE_TAB_ACTION': return queueActivity(()=>tabOperations.execute(message));
+    case 'GET_TAB_OPERATIONS': return tabOperations.list();
+    case 'PREVIEW_RESTORE_OPERATION': return tabOperations.previewRestore(message);
+    case 'RESTORE_TAB_OPERATION': return queueActivity(()=>tabOperations.restore(message));
+    case 'LIST_RECENTLY_CLOSED': return recentSessions(chrome,url=>!excluded(url));
+    case 'RESTORE_RECENTLY_CLOSED': return queueActivity(()=>restoreRecentSession(chrome,message.id,url=>!excluded(url)));
+    case 'PREVIEW_IMPORT': return queueActivity(()=>previewImport(message));
+    case 'APPLY_IMPORT': return queueActivity(()=>applyImport(message));
+    case 'GET_RESTORE_POINT': { const point=await store.getRestorePoint();return point?{at:point.at}:null; }
     case 'GET_STATE': return getState(message);
     case 'PROPOSE_GROUPS': {
       if (!message.semantic) return propose(message);

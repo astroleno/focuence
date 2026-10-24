@@ -1,5 +1,6 @@
 import { el, icon, duration } from './ui.js';
 import { relationFor, taskText } from './task-context.js';
+import { TASK_STATUSES, statusOf } from './task-lifecycle.js';
 
 const stamp = value => value ? new Date(value).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
 const pending = job => ['queued', 'running'].includes(job?.status);
@@ -10,10 +11,12 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   let query = '', scope = 'all', searchSerial = 0, associationSerial = 0, pollingAssociation = '';
   const shownPrompts = new Set();
   let promptObserver;
+  let statusFilter = 'daily';
   const clientId = 'memory-' + surface + '-' + crypto.randomUUID();
   const work = () => getState()?.work || {current: {taskId: null, revision: 0}, relations: [], drafts: {}, undo: {}};
   const taskById = id => getState()?.tasks.find(item => item.id === id);
   const canContinue = task => {
+    if(statusOf(task)!=='active')return false;
     const relations = work().relations || [];
     const page = task.checkpoint?.page || work().drafts?.[task.id]?.page || task.pages.find(page => relationFor(task, page.pageId, relations).related);
     return page && relationFor(task, page.pageId, relations).source !== 'excluded';
@@ -105,7 +108,10 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   function taskActions(task) {
     const current = work().current.taskId === task.id;
     return el('div', {class: 'memory-task-detail'}, task.goal && el('p', {class: 'memory-goal'}, task.goal), checkpointSummary(task),
-      el('div', {class: 'memory-actions'}, action(current ? '正在做' : '设为当前任务', 'select', {id: task.id, ...(current ? {current: true} : {})}),
+      el('label', {class: 'memory-caption', for: 'memory-task-status-' + task.id}, '任务状态'),
+      el('select', {id: 'memory-task-status-' + task.id, class: 'standard-select', 'data-task-status': task.id, disabled: working},
+        Object.entries(TASK_STATUSES).map(([value,label]) => el('option', {value, selected: statusOf(task) === value}, label))),
+      el('div', {class: 'memory-actions'}, statusOf(task)==='active'?action(current ? '正在做' : '设为当前任务', 'select', {id: task.id, ...(current ? {current: true} : {})}):small('改为进行中后可继续任务。'),
         action('留断点', 'checkpoint', {id: task.id}), action('关联记忆', 'manage', {id: task.id}),
         canContinue(task) && action('继续一页', 'continue', {id: task.id})));
   }
@@ -255,6 +261,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     if (name === 'evidence') return showEvidence?.(data.segmentId);
     if (name === 'select') {
       if (!task || data.current) return;
+      if (statusOf(task) !== 'active') { notify('请先把任务状态改为进行中，再继续。'); return; }
       const previous = taskById(work().current.taskId);
       if (previous) return checkpoint(previous, {switchTo: task});
     }
@@ -300,10 +307,18 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   document.addEventListener('toggle', event => { if (event.target.matches?.('.memory-association')) expanded = event.target.open; }, true);
   document.addEventListener('input', event => { if (event.target.id === 'memory-query') query = event.target.value; });
   document.addEventListener('change', event => {
+    if (event.target.id === 'memory-task-filter') { statusFilter = event.target.value; render(); }
+    if (event.target.dataset.taskStatus) {
+      const task = taskById(event.target.dataset.taskStatus), status = event.target.value;
+      run(async () => { await request('SET_TASK_STATUS', {...payload(task), status}); await refresh(); notify('任务已设为' + TASK_STATUSES[status] + '。'); });
+    }
     if (event.target.id === 'memory-scope') scope = event.target.value;
     if (event.target.id === 'memory-support') run(async () => { await request('UPDATE_FOCUS_SUPPORT', {enabled: event.target.checked}); await refresh(); });
   });
   document.addEventListener('submit', event => { if (event.target.id === 'memory-search-form') { event.preventDefault(); search(); } });
   window.addEventListener('pagehide', () => { searchSerial++; associationSerial++; });
-  return { current, taskActions, searchView, patterns };
+  const filterTasks = tasks => tasks.filter(task => statusFilter === 'all' || (statusFilter === 'daily' ? statusOf(task) !== 'archived' : statusOf(task) === statusFilter));
+  const taskFilter = () => el('select', {id: 'memory-task-filter', class: 'standard-select', 'aria-label': '筛选任务状态'},
+    [['daily','日常任务'],['all','全部任务'],...Object.entries(TASK_STATUSES)].map(([value,label]) => el('option', {value,selected:statusFilter===value},label)));
+  return { current, taskActions, searchView, patterns, filterTasks, taskFilter };
 }

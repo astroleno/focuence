@@ -1,5 +1,6 @@
 @import url('../src/tokens.css');
 @import url('../src/task-memory.css');
+@import url('../src/browser-workspace.css');
 html, body, #app { min-height: 100%; }
 body { background: var(--surface); }
 .skip-link { position: fixed; top: -60px; left: 16px; z-index: 20; background: var(--ink); color: white; padding: 10px 14px; border-radius: 6px; }

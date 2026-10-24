@@ -6,6 +6,7 @@ import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
 import { createTaskMemoryUI } from '../src/task-memory-ui.js';
 import { taskText } from '../src/task-context.js';
+import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
@@ -35,6 +36,7 @@ async function request(type, payload = {}) {
   return response.data;
 }
 const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup'});
+const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWindowId:()=>windowId,render,refresh,notify:feedback,demo:isDemo});
 function feedback(message, error = false, actionName = '') {
   const regions = [byId('feedback'), byId('error')];
   const hadFocus = regions.some(region => region.contains(document.activeElement));
@@ -75,7 +77,7 @@ function taskCard(task, index) {
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
     el('div', {class: 'task-actions'},
       el('span', {class: 'secondary'}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
-      action(ui.working === 'restore-' + task.id ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: Boolean(ui.working) || !task.pages.length}, index === 0, 'arrow')),
+      action(ui.working === 'restore-' + task.id ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: Boolean(ui.working) || !task.pages.length || (task.status&&task.status!=='active')}, index === 0, 'arrow')),
     taskPages(task, ui.expandedPages.has(task.id), Boolean(ui.working)),
     taskNotes(task, ui.expandedNotes.has(task.id)), memory.taskActions(task));
 }
@@ -143,7 +145,7 @@ function render() {
   const eligible = tabs.filter(tab => !tab.pinned && Number(tab.groupId) < 0);
   const groups = state.groups || [];
   const navigation = el('nav', { class: 'popup-tabs', 'aria-label': '快捷操作' },
-    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
+    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找'],['tabs','窗口']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
   const content = [isDemo && el('p', { class: 'demo-note' }, '示例模式 · 仅在本页内存中演示'), navigation];
   if (ui.view === 'groups') {
     content.push(el('div', { class: 'window-summary' }, el('div', {},
@@ -158,13 +160,16 @@ function render() {
       action('保存窗口', 'save-window', { disabled: Boolean(ui.working) || !tabs.length }, false, 'save'),
       action('撤销分组', 'undo', { disabled: Boolean(ui.working) || ui.analyzing || !state.undoAvailable })));
     content.push(action(ui.analyzing ? '本地语义分析中…' : '需要更细的建议？使用本机模型', 'semantic', { class: 'text-button', disabled: Boolean(ui.working) || ui.analyzing || !state.settings.semantic || eligible.length < 2 }));
+  } else if (ui.view === 'tabs') {
+    content.push(tabWorkspace.view());
   } else if (ui.view === 'search') {
     content.push(memory.searchView());
   } else {
     content.push(memory.current({compact: true}));
     content.push(action('新建任务', 'new-task', {}, false, 'plus'));
     content.push(el('div', { class: 'section-heading' }, el('h1', {}, '从上次继续'), el('span', { class: 'secondary' }, state.tasks.length + ' 个任务')));
-    content.push(state.tasks.length ? el('section', { class: 'task-list', 'aria-label': '最近保存或访问的任务' }, state.tasks.slice(0, 3).map(taskCard)) :
+    content.push(memory.taskFilter());
+    content.push(memory.filterTasks(state.tasks).length ? el('section', { class: 'task-list', 'aria-label': '最近保存或访问的任务' }, memory.filterTasks(state.tasks).slice(0, 3).map(taskCard)) :
       el('div', { class: 'empty' }, icon('folder'), el('p', {}, '给正在做的事留个位置'), el('p', { class: 'secondary' }, '保存相关页面，再写一句下次要做什么。')));
     content.push(action('保存当前窗口 · ' + tabs.length + ' 页', 'save-window', { class: 'button full', disabled: Boolean(ui.working) || !tabs.length }));
   }

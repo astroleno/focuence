@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Focuence 智序 · 本机版",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "minimum_chrome_version": "120",
   "description": "围绕任务目标关联资料、保存断点并语义找回。浏览记录与模型推理均留在本机。",
   "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen", "sidePanel"],
+  "optional_permissions": ["sessions"],
   "action": { "default_popup": "popup/index.html", "default_title": "Focuence 智序" },
   "options_page": "options/index.html",
   "side_panel": { "default_path": "panel/index.html" },

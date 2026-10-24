@@ -1,6 +1,8 @@
 /** IndexedDB persistence. No Chrome globals, network, or in-memory fallback. */
 import { checkpointPage } from './checkpoints.js';
 import { assertRevision, failure, relationId, TASK_LIMITS } from './task-context.js';
+import { statusOf } from './task-lifecycle.js';
+import { backupStamp } from './backup.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   tracking: true,
@@ -12,14 +14,17 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const DATABASE_NAME = 'focuence-local-v2';
-const DATABASE_VERSION = 2;
-const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations'];
+export const DATABASE_VERSION = 3;
+const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints'];
 
 function req(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('Local database request failed'));
   });
+}
+function persistenceError(error) {
+  return error?.name === 'QuotaExceededError' ? failure('STORAGE_QUOTA','本机存储空间不足，资料没有覆盖。请释放空间后重新预览并重试。') : error;
 }
 
 function finite(value, fallback = 0) {
@@ -40,7 +45,7 @@ function validUrl(value) {
   }
 }
 
-function settingsFrom(value = {}) {
+export function settingsFrom(value = {}) {
   const domains = Array.isArray(value.excludedDomains) ? value.excludedDomains : [];
   const excludedDomains = [...new Set(domains.filter(item => typeof item === 'string').map(item => {
     const cleaned = item.trim().toLowerCase().replace(/^\*\./, '').replace(/^\./, '');
@@ -60,7 +65,7 @@ function settingsFrom(value = {}) {
   };
 }
 
-function pageFrom(value) {
+export function pageFrom(value) {
   const parsed = validUrl(value?.url);
   if (!parsed || value.incognito || !value.id) return null;
   return {
@@ -86,6 +91,9 @@ export function taskFrom(value) {
   return {
     id: String(value.id),
     revision: Math.floor(finite(value.revision)),
+    status: statusOf(value),
+    statusChangedAt: finite(value.statusChangedAt, finite(value.updatedAt, now)),
+    completedAt: statusOf(value) === 'completed' ? finite(value.completedAt, finite(value.updatedAt, now)) : null,
     name: [...String(value.name || '未命名任务').trim()].slice(0, TASK_LIMITS.name).join('') || '未命名任务',
     color: String(value.color || 'blue').slice(0, 30),
     locked: true,
@@ -113,7 +121,7 @@ export function taskFrom(value) {
   };
 }
 
-function segmentFrom(value) {
+export function segmentFrom(value) {
   if (!value || !value.id || !value.pageId || !validUrl(value.url)) return null;
   if (!['active', 'idle', 'unknown'].includes(value.status)) return null;
   if (!Number.isFinite(value.startedAt) || !Number.isFinite(value.endedAt)
@@ -205,12 +213,12 @@ export async function openStore(options = {}) {
         return;
       }
       tx.oncomplete = () => resolve(result);
-      tx.onerror = () => reject(tx.error || new Error('Local database transaction failed'));
-      tx.onabort = () => reject(tx.error || new Error('Local database transaction was interrupted'));
+      tx.onerror = () => reject(persistenceError(tx.error) || new Error('Local database transaction failed'));
+      tx.onabort = () => reject(persistenceError(tx.error) || new Error('Local database transaction was interrupted'));
       const stores = Object.fromEntries(names.map(name => [name, tx.objectStore(name)]));
       Promise.resolve().then(() => operation(stores, tx)).then(value => { result = value; }).catch(error => {
         try { tx.abort(); } catch { /* The transaction may already have aborted. */ }
-        reject(error);
+        reject(persistenceError(error));
       });
     });
   }
@@ -226,7 +234,22 @@ export async function openStore(options = {}) {
     return count;
   }
 
+  async function exportSnapshot(stores) {
+    const [settings, pages, tasks, segments, taskRelations] = await Promise.all([
+      req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()),
+      req(stores.segments.getAll()), req(stores.taskRelations.getAll()),
+    ]);
+    return {schemaVersion: 4, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,
+      segments: segments.sort((a, b) => a.startedAt - b.startedAt), settings: settingsFrom(settings?.value)};
+  }
+
   const api = {
+    getMeta(key) { return transaction(['meta'], 'readonly', async ({meta}) => (await req(meta.get(key)))?.value ?? null); },
+    setMeta(key, value) { return transaction(['meta'], 'readwrite', ({meta}) => { meta.put({key, value}); return value; }); },
+    listTabOperations() { return transaction(['tabOperations'], 'readonly', async ({tabOperations}) => (await req(tabOperations.getAll())).sort((a,b) => b.at-a.at)); },
+    getTabOperation(id) { return transaction(['tabOperations'], 'readonly', async ({tabOperations}) => await req(tabOperations.get(id)) || null); },
+    putTabOperation(value) { return transaction(['tabOperations'], 'readwrite', ({tabOperations}) => { tabOperations.put(value); return value; }); },
+    getRestorePoint() { return transaction(['restorePoints'], 'readonly', async ({restorePoints}) => await req(restorePoints.get('before-import')) || null); },
     getSettings() {
       return transaction(['meta'], 'readonly', async ({ meta }) => settingsFrom((await req(meta.get('settings')))?.value));
     },
@@ -280,7 +303,7 @@ export async function openStore(options = {}) {
     commitWorkspace(change = {}) {
       const normalizedTasks = (change.tasks || []).map(taskFrom);
       const normalizedRelations = (change.relations || []).map(relationFrom);
-      return transaction(['meta', 'tasks', 'taskRelations', 'segments', 'vectors'], 'readwrite', async stores => {
+      return transaction(['meta', 'tasks', 'taskRelations', 'segments', 'vectors', 'tabOperations'], 'readwrite', async stores => {
         for (const { id, revision } of change.expectedTasks || []) assertRevision(await req(stores.tasks.get(id)), revision);
         if (change.expectedContext) {
           const actual = (await req(stores.meta.get('workspace')))?.value?.context;
@@ -300,6 +323,7 @@ export async function openStore(options = {}) {
         if (change.workspace) stores.meta.put({ key: 'workspace', value: change.workspace });
         if (change.activity) stores.meta.put({ key: 'activity', value: change.activity });
         putRecords(stores.segments, change.segments || [], segmentFrom);
+        for (const operation of change.tabOperations || []) stores.tabOperations.put(operation);
         return { tasks: normalizedTasks, relations: normalizedRelations };
       });
     },
@@ -355,7 +379,7 @@ export async function openStore(options = {}) {
     },
 
     prune({ now = Date.now(), retentionDays } = {}) {
-      return transaction(['meta', 'segments', 'pages', 'tasks', 'vectors'], 'readwrite', async stores => {
+      return transaction(['meta', 'segments', 'pages', 'tasks', 'vectors', 'tabOperations'], 'readwrite', async stores => {
         const saved = (await req(stores.meta.get('settings')))?.value;
         const days = retentionDays === undefined ? settingsFrom(saved).retentionDays : Math.max(1, Math.min(365, retentionDays));
         const cutoff = now - days * 86_400_000;
@@ -420,36 +444,43 @@ export async function openStore(options = {}) {
             deletedVectors += 1;
           }
         }
+        for (const item of await req(stores.tabOperations.getAll())) if (item.at < now - 30 * 86400000) stores.tabOperations.delete(item.id);
         return { deletedSegments, clippedSegments, deletedPages, deletedVectors, cutoff, activity: activityState, workspace: workspace || null };
       });
     },
 
     exportData() {
-      return transaction(['meta', 'pages', 'tasks', 'segments', 'taskRelations'], 'readonly', async stores => {
-        const [settings, pages, tasks, segments, taskRelations] = await Promise.all([
-          req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()), req(stores.segments.getAll()),
-          req(stores.taskRelations.getAll()),
-        ]);
-        return {
-          schemaVersion: 3,
-          exportedAt: new Date().toISOString(),
-          pages,
-          tasks: tasks.map(taskFrom),
-          taskRelations,
-          segments: segments.sort((a, b) => a.startedAt - b.startedAt),
-          settings: settingsFrom(settings?.value),
-        };
+      return transaction(['meta', 'pages', 'tasks', 'segments', 'taskRelations'], 'readonly', exportSnapshot);
+    },
+
+    /** Validate the reviewed base and take a rollback snapshot in the same transaction. */
+    applyImport(plan) {
+      return transaction(STORES, 'readwrite', async stores => {
+        const before = await exportSnapshot(stores);
+        if (backupStamp(before, plan.mode === 'replace') !== plan.baseStamp) throw failure('IMPORT_PREVIEW_STALE', '本机资料已改变，请保留选择并重新预览。');
+        stores.restorePoints.put({id: 'before-import', at: Date.now(), data: before});
+        if (plan.mode === 'replace') for (const name of ['pages','tasks','taskRelations','segments']) stores[name].clear();
+        putRecords(stores.pages, plan.data.pages, pageFrom);
+        putRecords(stores.tasks, plan.data.tasks, taskFrom);
+        for (const id of plan.resetRelations || []) for (const relation of await req(stores.taskRelations.getAll())) if (relation.taskId === id) stores.taskRelations.delete(relation.id);
+        putRecords(stores.taskRelations, plan.data.taskRelations, relationFrom);
+        putRecords(stores.segments, plan.data.segments, segmentFrom);
+        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom(plan.data.settings)});
+        stores.meta.put({key: 'workspace', value: emptyWorkspace()});
+        stores.meta.delete('activity'); stores.vectors.clear();
+        return {imported: true, counts: plan.counts};
       });
     },
 
     clearHistory() {
-      return transaction(['meta', 'segments', 'pages', 'vectors'], 'readwrite', async stores => {
+      return transaction(['meta', 'segments', 'pages', 'vectors', 'restorePoints'], 'readwrite', async stores => {
         const old = (await req(stores.meta.get('workspace')))?.value;
         if (old) stores.meta.put({ key: 'workspace', value: { ...old, drafts: {}, events: [], support: { shown: [], snoozed: {} }, undo: {} } });
         stores.meta.delete('activity');
         stores.segments.clear();
         stores.pages.clear();
         stores.vectors.clear();
+        stores.restorePoints.clear();
         return { cleared: true };
       });
     },

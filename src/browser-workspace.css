@@ -1,0 +1,14 @@
+.browser-workspace{min-width:0;padding:20px;border:1px solid var(--border,#e2e5e9);border-radius:12px;background:#fff;margin-block:14px;overflow-wrap:anywhere}
+.browser-workspace h2{font-size:18px;margin:0 0 10px}.browser-workspace h3{font-size:15px;margin:0 0 10px}
+.w-heading,.w-controls,.w-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.w-heading{justify-content:space-between}
+.w-controls{margin-block:14px}.w-controls input[type=search]{flex:1;min-width:140px}.w-controls select{max-width:100%}
+.browser-workspace input:not([type=checkbox]),.browser-workspace textarea,.browser-workspace select{font:inherit;font-size:13px;color:#263445;border:1px solid #d7dce3;border-radius:7px;padding:8px 10px;background:#fff;max-width:100%;min-width:0;box-sizing:border-box}
+.browser-workspace textarea{width:100%;resize:vertical}.browser-workspace input[type=checkbox]{accent-color:#3e6389;flex-shrink:0;width:16px;height:16px}
+.browser-workspace label{font-size:13px;line-height:1.5}.w-field{display:grid;gap:6px;margin-block:12px}.w-field input,.w-field select{width:100%}
+.w-scroll{max-height:300px;overflow:auto;overscroll-behavior:contain;margin-block:12px}.w-row{padding:12px 0;border-bottom:1px solid #edf0f2;flex-wrap:nowrap}
+.w-row label{flex:1;display:flex;gap:10px;align-items:flex-start;min-width:0}.w-row label span{min-width:0}.w-row strong{font-weight:550;display:block}.w-row small,.w-preview small{display:block;color:#667382;margin-top:4px;font-size:12px}.w-row button{flex-shrink:0}
+.w-protected{color:#856431!important}.w-section{border-top:1px solid #e7ebee;padding-top:16px;margin-top:18px}.w-section summary{cursor:pointer;font-weight:550;font-size:14px}
+.w-preview{border:1px solid #bdcddd;background:#f7f9fc;border-radius:9px;padding:15px;margin-block:16px}.w-preview .memory-button{margin-top:10px}
+.w-error{padding:12px;color:#8f3931;background:#fff3f0;border-radius:7px;font-size:13px;white-space:pre-wrap}.w-record{padding:12px 0;border-bottom:1px solid #edf0f2}.w-record .memory-button{margin:6px 6px 0 0}
+.browser-workspace :focus-visible{outline:2px solid #426f9c;outline-offset:3px}
+@media(max-width:640px){.browser-workspace{padding:14px}.w-controls{gap:8px}.w-row{gap:8px}.w-row .memory-button{padding:7px 8px}.w-preview{padding:12px}.w-field{margin-block:10px}}

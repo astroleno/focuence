@@ -7,6 +7,8 @@ import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
 import { createTaskMemoryUI } from '../src/task-memory-ui.js';
 import { taskText } from '../src/task-context.js';
+import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
+import { createBackupUI } from '../src/backup-ui.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -39,7 +41,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.2.0',
+    version: value?.version || '2.3.0',
     demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
@@ -107,6 +109,8 @@ const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh: (
     const target = document.getElementById('segment-toggle-' + encodeURIComponent(id)); target?.scrollIntoView({block: 'center'}); target?.focus({preventScroll: true});
   }});
 let toastTimer;
+const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWindowId:()=>windowId,render,refresh:()=>refresh({quiet:true}),notify:toast,demo:isDemo});
+const backupUI = createBackupUI({request,render,refresh:()=>refresh({quiet:true}),notify:toast,demo:isDemo});
 function toast(message, error = false, actionName = '') {
   const region = document.getElementById('toast-region');
   const hadFocus = region.contains(document.activeElement);
@@ -206,7 +210,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#review', 'aria-label': 'Focuence · 一周回顾'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.2')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.3')));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -320,6 +324,7 @@ function groupingPanel() {
       el('p', {}, !state.settings.semantic ? '语义增强已在设置中关闭。' : '在本机完成，不会发送页面内容。')));
 }
 function renderPages() {
+  if(ui.pagesMode==='workspace')return[heading('跨窗口与收起','跨窗口查找，带着断点收起页面。',[button('返回整理页面','pages-mode',{'data-mode':'list'},'small')]),tabWorkspace.view()];
   const tabs = filteredTabs();
   const allSelected = tabs.length > 0 && tabs.every((tab) => ui.selected.has(tab.id));
   const selectedCount = ui.selected.size;
@@ -327,6 +332,7 @@ function renderPages() {
   const filters = [['all', '全部 ' + ui.state.tabs.length], ['ungrouped', '待整理 ' + ungrouped], ['protected', '已保护 ' + (ui.state.tabs.length - ungrouped)]];
   return [
     heading('当前页面', '整理此刻的页面，留住下次继续的线索。', [
+      button('跨窗口与收起','pages-mode',{'data-mode':'workspace'},'small','layers'),
       button(selectedCount ? '保存所选 · ' + selectedCount : '保存窗口 · ' + ui.state.tabs.length + ' 页', selectedCount ? 'save-selection' : 'save-window', {id: 'pages-save-task', disabled: ui.state.tabs.length === 0}, '', 'save'),
       button(busy('rules') ? '正在整理…' : '生成分组建议', 'propose', {id: 'generate-groups', disabled: busy('rules') || busy('semantic') || ungrouped < 2}, ui.state.groups.length ? '' : 'primary', 'layers')
     ]),
@@ -360,19 +366,19 @@ function taskCard(task, {featured = false} = {}) {
     el('div', {class: 'task-footer'},
       el('div', {class: 'task-count'}, el('span', {}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
         el('span', {class: 'task-date'}, dateLabel(task.lastActivityAt || task.updatedAt || task.createdAt))),
-      button(busy('restore-' + task.id) ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: !pages.length || busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
+      button(busy('restore-' + task.id) ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: !pages.length || (task.status&&task.status!=='active') || busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
     taskPages(task, ui.expandedPages.has(task.id), busy('restore-' + task.id)),
     task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加笔记', 'edit-task', {'data-id': task.id}, 'text-button'), memory.taskActions(task));
 }
 function renderTasks() {
   const query = ui.queries.tasks.trim().toLocaleLowerCase();
-  const tasks = ui.state.tasks.filter(task => !query || [task.name, task.goal, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
+  const tasks = memory.filterTasks(ui.state.tasks).filter(task => !query || [task.name, task.goal, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
   return [
     heading(isPanel ? '任务' : '任务工作台', '保存下一步，回到正在做的事。', [
       button('新建任务', 'new-task', {id: 'task-create'}, isPanel ? 'small' : '', 'plus'),
       button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
     memory.current({support: isPanel}),
-    el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), el('span', {class: 'subtle-label'}, ui.state.tasks.length + ' 个任务')),
+    el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
       emptyState(query ? '没有找到这个任务' : '保存一件正在做的事', query ? '试试任务名、备注或页面标题。' : '选择相关页面，再写下一步。回来时就能继续。', query ? null : 'nav-pages', '去选择页面', false, 'folder'),
     !isPanel && continuationSuggestions(),
@@ -654,6 +660,7 @@ function renderSettings() {
   const settings = ui.settingsDraft || ui.state.settings;
   return [
     heading('设置', '按你的节奏记录，由你决定保留什么。'),
+    backupUI.view(),
     el('div', {class: 'settings-layout'},
       el('section', {class: 'settings-section'}, el('h2', {}, '浏览记录'),
         settingRow('记录前台浏览', '记录页面的前台停留与切换。暂停后不会新增浏览片段，已有记录仍会保留。', toggle('setting-tracking', settings.tracking, '记录前台浏览')),
@@ -669,7 +676,7 @@ function renderSettings() {
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
-        settingRow('清除浏览历史', '删除访问片段、自动线索和提示记录；保留任务、已确认断点与手工关联记忆。', button('清除历史', 'clear-history', {}, 'small danger')),
+        settingRow('清除浏览历史', '删除访问片段、自动线索、提示记录与内部恢复前快照；保留任务、确认断点及手工关联。', button('清除历史', 'clear-history', {}, 'small danger')),
         settingRow('清除关联记忆', '清除全部任务的相关和不相关判断，保留任务、断点及保存的页面。无法撤销。', button('清除关联记忆', 'clear-relations', {}, 'small danger')),
         settingRow('清除全部数据', '删除浏览历史、保存的任务并重置设置。不会关闭浏览器页面。这个操作无法撤销。', button('清除全部', 'clear-all', {}, 'small danger'))))
   ];
@@ -1045,7 +1052,7 @@ async function handleAction(action, target) {
       }); break;
     case 'export': await operation('export', exportData); break;
     case 'clear-history':
-      confirmDialog('清除浏览历史？', '删除访问片段、自动线索、查找行为与提示记录，保留任务、已确认断点和手工关联记忆。原始访问证据将不可用。此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); ui.selectedTag = ''; toast('浏览历史已清除，任务与手工记忆仍保留。'); });
+      confirmDialog('清除浏览历史？', '删除访问片段、自动线索、查找行为、提示记录及内部恢复前快照。保留任务、确认断点和手工关联。原始访问证据将不可用，此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); await backupUI.reload(); ui.selectedTag = ''; toast('浏览历史及内部恢复点已清除，任务与手工记忆仍保留。'); });
       break;
     case 'clear-relations':
       confirmDialog('清除全部关联记忆？', '清除所有任务的相关和不相关判断。任务目标、断点与保存页面仍保留；此操作无法撤销。', '清除关联记忆', async () => {

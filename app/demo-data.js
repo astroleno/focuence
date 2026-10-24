@@ -132,7 +132,7 @@ export function createDemoTransport() {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.2.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.3.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       work: await memory.view({windowId: 1, tasks, tabs, segments: scoped}),
