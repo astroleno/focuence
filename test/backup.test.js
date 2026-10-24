@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {decodeBackup,planImport,backupStamp} from '../src/backup.js';
 import * as normalizers from '../src/store.js';
 const fixture=()=>({schemaVersion:3,pages:[],tasks:[normalizers.taskFrom({id:'t',name:'目标',notes:'🙂'.repeat(15000),createdAt:1,updatedAt:2,pages:[]})],taskRelations:[],segments:[],settings:normalizers.settingsFrom({})});
-test('formats two through four round-trip full text and unknown future format is rejected',()=>{
-  for(const version of [2,3,4]){const raw={...fixture(),schemaVersion:version}; if(version===2)delete raw.taskRelations; const value=decodeBackup(JSON.stringify(raw),normalizers); assert.equal(value.tasks[0].notes,raw.tasks[0].notes);}
+test('formats two through five round-trip full text and unknown future format is rejected',()=>{
+  for(const version of [2,3,4,5]){const raw={...fixture(),schemaVersion:version}; if(version===2)delete raw.taskRelations; const value=decodeBackup(JSON.stringify(raw),normalizers); assert.equal(value.tasks[0].notes,raw.tasks[0].notes);}
   assert.throws(()=>decodeBackup({...fixture(),schemaVersion:99},normalizers),{code:'IMPORT_VERSION'});
   assert.throws(()=>decodeBackup('{',normalizers),{code:'IMPORT_INVALID'});
 });

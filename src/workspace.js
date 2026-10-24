@@ -4,7 +4,8 @@ import { assertRevision, failure, taskText, resolveTaskContext, normalizeWorkCon
 import { observedDraft, makeCheckpoint, checkpointEvidence, checkpointPage } from './checkpoints.js';
 import { returnPrompt, recordPromptShown, dismissPrompt } from './focus-support.js';
 import { matchTaskPages, goalItem, pageItem, candidateSnapshot } from './task-matching.js';
-import { memoryCorpus, searchDocuments, rankMemory, accumulateSearchScores, SEARCH_SCOPES } from './memory-search.js';
+import { searchDocuments, rankMemory, accumulateSearchScores, SEARCH_SCOPES } from './memory-search.js';
+import { interpretSearch, searchCorpus } from './search-sources.js';
 import { semanticItem, QUERY_INSTRUCTION } from './semantic.js';
 import { stableHash, normalizeUrl } from './text.js';
 import { transitionTask, statusOf } from './task-lifecycle.js';
@@ -262,8 +263,8 @@ export function createWorkspace(deps) {
   }
 
   function publicJob(job) {
-    const { query, scores, queryVector, documents, snapshots, epoch, signature, sessionId, ...safe } = job;
-    return safe;
+    const { query, scores, queryVector, documents, snapshots, epoch, signature, sessionId, seenResults, ...safe } = job;
+    return {...safe,sourceEpoch:epoch};
   }
 
   async function createJob(message, kind = 'search') {
@@ -273,18 +274,20 @@ export function createWorkspace(deps) {
     const current = windowContext(state.context, windowId);
     if (task && (task.id !== current.taskId || current.revision !== message.contextRevision)) throw failure('STALE_CONTEXT', '当前任务已改变，请重新读取。');
     if (task && !deps.settings().tracking) throw failure('TRACKING_PAUSED', '记录已暂停；恢复记录后可更新自动关联。');
-    const query = task ? task.goal || task.name : String(message.query || '').trim();
-    if (!query || [...query].length > 3000) throw failure('INVALID_QUERY', '请输入 1—3000 个字符的查找内容。');
+    const rawQuery = task ? task.goal || task.name : String(message.query || '').trim();
+    const interpreted = task ? {terms:rawQuery,filters:{},hasFilter:false} : interpretSearch(rawQuery,message.filters,now());
+    const query=interpreted.terms;
+    if ((!query&&!interpreted.hasFilter&&(!SEARCH_SCOPES.includes(message.scope)||message.scope==='all')) || [...rawQuery].length > 3000) throw failure('INVALID_QUERY', '请输入查找内容或选择筛选条件，文字最多 3000 个字符。');
     const scope = SEARCH_SCOPES.includes(message.scope) ? message.scope : 'all';
     const job = { id: crypto.randomUUID(), kind, at: now(), sessionId: deps.sessionId, epoch: deps.epoch(), windowId, query,
-      clientId: String(message.clientId || windowId), scope, status: deps.settings().semantic ? 'queued' : 'done', completed: 0, total: 0,
+      clientId: String(message.clientId || windowId), scope, filters:interpreted.filters, explanation:interpreted.explanation||'', status: deps.settings().semantic&&query ? 'queued' : 'done', completed: 0, total: 0,
       taskId: task?.id, taskRevision: task?.revision, contextRevision: current.revision, scores: {}, queryVector: null, results: [], candidates: [], error: '' };
     const prepared = await prepareJob(job, data);
     if (job.epoch !== deps.epoch()) throw failure('STALE_SUGGESTION', '资料已经变化，请重新查找或分析。');
     job.documents = prepared.documents.map(item => item.item.id); job.signature = prepared.signature; job.total = job.documents.length;
     job.snapshots = kind === 'association' ? prepared.tabs.map(candidateSnapshot) : [];
     if (task) job.candidates = matchTaskPages(task, prepared.tabs, data.relations);
-    else Object.assign(job, rankMemory(prepared.entries, query), { total: job.documents.length, resultTotal: rankMemory(prepared.entries, query).total });
+    else { const ranked=rankMemory(prepared.entries,query,{},50,true);job.results=ranked.results;job.resultTotal=ranked.total;job.seenResults=ranked.results.map(item=>item.id); }
     for (const [id, old] of jobs) if ((old.kind === kind && old.windowId === windowId && old.clientId === job.clientId) || now() - old.at > 3600000) {
       old.status = 'cancelled'; old.error = '这次分析已由新请求替代或已过期。'; old.results = []; old.candidates = []; old.queryVector = null;
       jobs.delete(id);
@@ -294,7 +297,7 @@ export function createWorkspace(deps) {
 
   async function prepareJob(job, known) {
     const data = known || await bundle();
-    const tabs = await deps.tabs(job.windowId);
+    const tabs = job.kind==='search'&&deps.allTabs ? await deps.allTabs() : (await deps.tabs(job.windowId)).map(tab=>({...tab,windowId:tab.windowId??job.windowId}));
     if (job.kind === 'association') {
       const task = data.tasks.find(item => item.id === job.taskId);
       if (!task || task.revision !== job.taskRevision || windowContext(state.context, job.windowId).revision !== job.contextRevision) throw failure('STALE_SUGGESTION', '任务已经更新，请重新分析。');
@@ -303,8 +306,8 @@ export function createWorkspace(deps) {
       const documents = sources.map(page => ({ entryId: page.pageId || page.id, item: pageItem(page) }));
       return { ...data, task, tabs, documents, entries: [], signature: stableHash(JSON.stringify(tabs.map(candidateSnapshot))), goal: goalItem(task) };
     }
-    const [pages, segments] = await Promise.all([store.getPages(), store.listSegments({ since: now() - deps.settings().retentionDays * 86400000 })]);
-    const entries = memoryCorpus({ tabs, ...data, pages, segments, scope: job.scope, allowed: deps.allowed });
+    const [segments,browserVisits] = await Promise.all([store.listSegments({ since: now() - deps.settings().retentionDays * 86400000 }),deps.historyRows?.()||[]]);
+    const entries = searchCorpus({ tabs, ...data, segments,browserVisits,currentWindowId:job.windowId, scope: job.scope,filters:job.filters, allowed: deps.allowed });
     const documents = searchDocuments(entries);
     return { ...data, tabs, documents, entries, signature: stableHash(JSON.stringify(documents.map(item => [item.item.id, item.item.textHash]))) };
   }
@@ -342,8 +345,8 @@ export function createWorkspace(deps) {
         vectors.set(prepared.goal.id, job.queryVector);
         job.candidates = matchTaskPages(prepared.task, prepared.tabs, prepared.relations, vectors);
       } else {
-        const ranked = rankMemory(prepared.entries, job.query, job.scores);
-        job.results = ranked.results; job.resultTotal = ranked.total;
+        const ranked = rankMemory(prepared.entries, job.query, job.scores,50,true);
+        job.results = ranked.results; job.resultTotal = ranked.total;job.seenResults=[...new Set([...(job.seenResults||[]),...ranked.results.map(item=>item.id)])];
       }
       job.status = job.completed >= job.total ? 'done' : 'queued';
     } catch (error) {
@@ -370,17 +373,35 @@ export function createWorkspace(deps) {
 
   async function openResult(message) {
     const job = jobs.get(message.jobId);
-    if (!job || job.epoch !== deps.epoch() || job.status === 'stale' || !job.results.some(item => item.id === message.entryId)) throw failure('STALE_SUGGESTION', '结果已经更新，请重新查找。');
+    if (!job || job.epoch !== deps.epoch() || job.status === 'stale' || !(job.seenResults||job.results.map(item=>item.id)).includes(message.entryId)) throw failure('STALE_SUGGESTION', '结果已经更新，请重新查找。');
     const prepared = await prepareJob(job);
     const entry = prepared.entries.find(item => item.id === message.entryId);
     if (!entry || entry.kind !== 'page' || !deps.allowed(entry.url)) throw failure('STALE_SUGGESTION', '这条资料已不可用，请重新查找。');
-    const result = await deps.openPage(entry.url, job.windowId);
+    const live=entry.evidence?.find(item=>item.tabId!=null);
+    const result = live&&deps.focusResult ? await deps.focusResult(live,entry.url) : await deps.openPage(entry.url, job.windowId);
     if (deps.settings().tracking) {
       const next = clone(state);
       next.events.push({ id: crypto.randomUUID(), kind: 'search-open', pageId: entry.pageId, title: entry.title, url: entry.url, at: now() });
       await commit({}, next);
     }
     return result;
+  }
+
+  async function searchResults(message,evidence=false){
+    const job=jobs.get(message.jobId);
+    if(!job||job.kind!=='search'||job.epoch!==deps.epoch()||job.status==='stale')throw failure('STALE_SUGGESTION','资料已经更新，请重新查找。');
+    const prepared=await prepareJob(job);
+    if(prepared.signature!==job.signature)throw failure('STALE_SUGGESTION','检索范围已经改变，请重新查找。');
+    const offset=Math.max(0,Math.floor(Number(message.offset)||0)),limit=Math.min(50,Math.max(1,Math.floor(Number(message.limit)||25)));
+    if(evidence){
+      if(!(job.seenResults||[]).includes(message.entryId))throw failure('STALE_SUGGESTION','请从当前结果打开来源。');
+      const entry=prepared.entries.find(item=>item.id===message.entryId);
+      if(!entry)throw failure('STALE_SUGGESTION','这条资料已不可用。');
+      return{entryId:entry.id,title:entry.title,items:entry.evidence.slice(offset,offset+limit),total:entry.evidence.length,offset,limit};
+    }
+    const ranked=rankMemory(prepared.entries,job.query,job.scores,Infinity,true),results=ranked.results.slice(offset,offset+limit);
+    job.seenResults=[...new Set([...(job.seenResults||[]),...results.map(item=>item.id)])];await persistJobs();
+    return{...publicJob(job),results,resultTotal:ranked.total,offset,limit};
   }
 
   async function focusFeedback(message) {
@@ -425,7 +446,7 @@ export function createWorkspace(deps) {
         {tasks:[...data.tasks.filter(item=>item.id!==task.id),task],relations:data.relations});
       invalidate();
     },
-    invalidate, hasMutation: type => Boolean(handlers[type]), mutate: message => handlers[message.type](message), createJob, advanceJob, cancelJob,
+    invalidate, hasMutation: type => Boolean(handlers[type]), mutate: message => handlers[message.type](message), createJob, advanceJob, cancelJob,searchResults,
     async reload() { state = await store.getWorkspace(); state.context = normalizeWorkContext(state.context, deps.sessionId); await store.commitWorkspace({workspace: state}); invalidate(); jobs.clear(); await persistJobs(); },
     async closeWindow(windowId) { const next = clone(state); delete next.context.windows[windowId]; await commit({}, next); invalidate(); },
   };

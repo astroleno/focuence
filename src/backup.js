@@ -1,7 +1,7 @@
 import { normalizeUrl, pageIdForUrl, stableHash } from './text.js';
 import { failure, TASK_LIMITS } from './task-context.js';
 
-export const BACKUP_VERSION = 4;
+export const BACKUP_VERSION = 5;
 export function canonical(value) {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
@@ -18,7 +18,7 @@ export function decodeBackup(input, normalizers) {
   let raw;
   try { raw = typeof input === 'string' ? JSON.parse(input) : structuredClone(input); }
   catch { throw failure('IMPORT_INVALID', '文件不是有效的 JSON；本机数据未改变。'); }
-  if (!raw || ![2,3,4].includes(raw.schemaVersion)) throw failure('IMPORT_VERSION', '备份版本不受支持。请使用格式 2—4 的 Focuence 备份。');
+  if (!raw || ![2,3,4,5].includes(raw.schemaVersion)) throw failure('IMPORT_VERSION', '备份版本不受支持。请使用格式 2—5 的 Focuence 备份。');
   const issues = [], issue = (path, message) => issues.push(path + '：' + message);
   const id = (value, path) => {
     if (typeof value !== 'string' || !value || value.length > 500 || ['__proto__','prototype','constructor'].includes(value) || /[\u0000-\u001f]/.test(value)) issue(path, '缺少有效标识');
@@ -85,7 +85,8 @@ export function decodeBackup(input, normalizers) {
     return normalizers.segmentFrom({...value, url: cleaned, pageId: pageIdForUrl(cleaned)});
   });
   if (!raw.settings || typeof raw.settings !== 'object' || Array.isArray(raw.settings)) issue('settings', '设置无效');
-  for (const key of ['tracking','semantic','focusSupport']) if (raw.settings?.[key] != null && typeof raw.settings[key] !== 'boolean') issue('settings.' + key, '应为开关');
+  for (const key of ['tracking','semantic','focusSupport','historyEnabled']) if (raw.settings?.[key] != null && typeof raw.settings[key] !== 'boolean') issue('settings.' + key, '应为开关');
+  if(raw.settings?.historyDays!=null&&![7,30,90].includes(raw.settings.historyDays))issue('settings.historyDays','只支持 7、30、90 天');
   for (const [key,min,max] of [['idleSeconds',15,3600],['retentionDays',1,365]]) if (raw.settings?.[key] != null && (!Number.isFinite(raw.settings[key]) || raw.settings[key] < min || raw.settings[key] > max)) issue('settings.' + key, '超出支持范围');
   if (raw.settings?.excludedDomains != null && (!Array.isArray(raw.settings.excludedDomains) || raw.settings.excludedDomains.length>500 || raw.settings.excludedDomains.some(value => typeof value !== 'string'))) issue('settings.excludedDomains','站点列表无效');
   if (issues.length) throw Object.assign(failure('IMPORT_INVALID', '备份校验未通过：' + issues.slice(0,8).join('；') + (issues.length>8 ? '；另有 ' + (issues.length-8) + ' 项错误' : '')), {issues});

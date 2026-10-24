@@ -132,7 +132,7 @@ export function createDemoTransport() {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.3.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.4.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       work: await memory.view({windowId: 1, tasks, tabs, segments: scoped}),
@@ -150,6 +150,8 @@ export function createDemoTransport() {
         case 'SEARCH_MEMORY': result = await memory.createJob(message); break;
         case 'SUGGEST_TASK_PAGES': result = await memory.createJob(message, 'association'); break;
         case 'GET_SEARCH_STATUS': result = await memory.advanceJob(message); break;
+        case 'GET_SEARCH_RESULTS': result = await memory.searchResults(message); break;
+        case 'GET_MEMORY_EVIDENCE': result = await memory.searchResults(message,true); break;
         case 'CANCEL_SEARCH': result = await memory.cancelJob(message); break;
         case 'UPDATE_FOCUS_SUPPORT': settings.focusSupport = message.enabled === true; result = settings; break;
         case 'PROPOSE_GROUPS':
@@ -187,7 +189,7 @@ export function createDemoTransport() {
         case 'OPEN_PAGE': result = {opened: true}; break;
         case 'UPDATE_SETTINGS': settings = {...settings, ...message.patch}; memory.invalidate(); result = settings; break;
         case 'FLUSH_ACTIVITY': result = {saved: true}; break;
-        case 'EXPORT_DATA': result = {schemaVersion: 3, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations, segments, settings}; break;
+        case 'EXPORT_DATA': result = {schemaVersion: 5, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations, segments, settings}; break;
         case 'CLEAR_HISTORY':
           segments = []; workspaceData = {...emptyWorkspace(), context: workspaceData.context}; await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; }); result = {cleared: true}; break;
         case 'CLEAR_ALL':

@@ -3,6 +3,7 @@ import { checkpointPage } from './checkpoints.js';
 import { assertRevision, failure, relationId, TASK_LIMITS } from './task-context.js';
 import { statusOf } from './task-lifecycle.js';
 import { backupStamp } from './backup.js';
+import { normalizeUrl, pageIdForUrl, cleanTitle } from './text.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   tracking: true,
@@ -11,11 +12,13 @@ export const DEFAULT_SETTINGS = Object.freeze({
   retentionDays: 30,
   excludedDomains: [],
   focusSupport: false,
+  historyEnabled: false,
+  historyDays: 30,
 });
 
 const DATABASE_NAME = 'focuence-local-v2';
-export const DATABASE_VERSION = 3;
-const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints'];
+export const DATABASE_VERSION = 4;
+const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints', 'browserHistory', 'historyImports'];
 
 function req(request) {
   return new Promise((resolve, reject) => {
@@ -62,6 +65,8 @@ export function settingsFrom(value = {}) {
     retentionDays: Math.min(365, Math.max(1, finite(value.retentionDays, DEFAULT_SETTINGS.retentionDays))),
     excludedDomains,
     focusSupport: typeof value.focusSupport === 'boolean' ? value.focusSupport : false,
+    historyEnabled: value.historyEnabled === true,
+    historyDays: [7,30,90].includes(value.historyDays) ? value.historyDays : 30,
   };
 }
 
@@ -170,6 +175,13 @@ export function relationFrom(value) {
 
 export function emptyWorkspace() { return { context: null, drafts: {}, support: { shown: [], snoozed: {} }, events: [], undo: {} }; }
 
+export function browserVisitFrom(value) {
+  const url=normalizeUrl(value?.url);
+  if(!url||!value.id||!value.sourceKey||!value.nativeVisitId||value.isLocal!==true||!Number.isFinite(value.visitedAt)||value.visitedAt<0)throw failure('INVALID_HISTORY_RECORD','浏览器历史记录无效。');
+  return{id:String(value.id),sourceKey:String(value.sourceKey),nativeVisitId:String(value.nativeVisitId),historyId:String(value.historyId||''),pageId:pageIdForUrl(url),url,
+    title:cleanTitle(value.title,url),visitedAt:value.visitedAt,transition:String(value.transition||'').slice(0,40),isLocal:true,runId:String(value.runId||''),importedAt:finite(value.importedAt)};
+}
+
 /** @returns {Promise<object>} A small promise-based store API. */
 export async function openStore(options = {}) {
   const factory = options.indexedDB || globalThis.indexedDB;
@@ -194,6 +206,8 @@ export async function openStore(options = {}) {
       }
       const vectors = request.transaction.objectStore('vectors');
       if (!vectors.indexNames.contains('updatedAt')) vectors.createIndex('updatedAt', 'updatedAt', { unique: false });
+      const history=request.transaction.objectStore('browserHistory');
+      for(const field of ['visitedAt','sourceKey','pageId'])if(!history.indexNames.contains(field))history.createIndex(field,field,{unique:false});
     };
     request.onsuccess = () => {
       if (abandoned) { request.result.close(); return; }
@@ -239,7 +253,7 @@ export async function openStore(options = {}) {
       req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()),
       req(stores.segments.getAll()), req(stores.taskRelations.getAll()),
     ]);
-    return {schemaVersion: 4, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,
+    return {schemaVersion: 5, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,
       segments: segments.sort((a, b) => a.startedAt - b.startedAt), settings: settingsFrom(settings?.value)};
   }
 
@@ -250,6 +264,47 @@ export async function openStore(options = {}) {
     getTabOperation(id) { return transaction(['tabOperations'], 'readonly', async ({tabOperations}) => await req(tabOperations.get(id)) || null); },
     putTabOperation(value) { return transaction(['tabOperations'], 'readwrite', ({tabOperations}) => { tabOperations.put(value); return value; }); },
     getRestorePoint() { return transaction(['restorePoints'], 'readonly', async ({restorePoints}) => await req(restorePoints.get('before-import')) || null); },
+    getHistoryImport(){return transaction(['historyImports'],'readonly',async({historyImports})=>await req(historyImports.get('active'))||null);},
+    countBrowserHistory(){return transaction(['browserHistory'],'readonly',({browserHistory})=>req(browserHistory.count()));},
+    listBrowserHistory({since=0,until=Infinity}={}){return transaction(['browserHistory'],'readonly',async({browserHistory})=>{
+      const values=await req(browserHistory.index('visitedAt').getAll(keyRange?keyRange.lowerBound(Math.max(0,since)):undefined));return values.filter(row=>row.visitedAt<=until);
+    });},
+    beginHistoryImport(job){return transaction(['meta','historyImports'],'readwrite',async({meta,historyImports})=>{
+      const settings=settingsFrom({...((await req(meta.get('settings')))?.value||{}),historyEnabled:true,historyDays:job.range.days});
+      meta.put({key:'settings',value:settings});meta.put({key:'historyEpoch',value:job.generation});historyImports.put(job);return settings;
+    });},
+    writeHistoryStep(job,records=[]){return transaction(['meta','historyImports','browserHistory'],'readwrite',async({meta,historyImports,browserHistory})=>{
+      const current=await req(historyImports.get('active')),settings=settingsFrom((await req(meta.get('settings')))?.value);
+      if(!settings.historyEnabled||!current||current.generation!==job.generation||current.revision!==job.revision||!['running','queued'].includes(current.status)
+        ||(await req(meta.get('historyEpoch')))?.value!==job.generation)throw failure('STALE_HISTORY_IMPORT','历史导入已经停止或改变。');
+      const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-settings.historyDays+1);
+      for(const raw of records){const row=browserVisitFrom(raw);if(row.visitedAt>=Math.max(job.range.from,+cutoff)&&row.visitedAt<=job.range.to)browserHistory.put(row);}
+      const next={...job,revision:job.revision+1};historyImports.put(next);
+      if(next.status==='done'){
+        for(const row of await req(browserHistory.getAll()))if(row.runId!==next.runId||row.visitedAt<job.range.from||row.visitedAt>job.range.to)browserHistory.delete(row.id);
+        meta.put({key:'historyCoverage',value:{range:job.range,at:Date.now(),count:await req(browserHistory.count()),invalidated:false}});
+      }
+      return next;
+    });},
+    cancelHistoryImport(reason='已停止导入。'){return transaction(['meta','historyImports'],'readwrite',async({meta,historyImports})=>{
+      const job=await req(historyImports.get('active')),generation=crypto.randomUUID();meta.put({key:'historyEpoch',value:generation});
+      if(job){const value={...job,generation,revision:job.revision+1,status:'cancelled',error:reason};historyImports.put(value);return value;}return null;
+    });},
+    disconnectBrowserHistory(){return transaction(['meta','historyImports','browserHistory','vectors'],'readwrite',async stores=>{
+      const settings=settingsFrom({...((await req(stores.meta.get('settings')))?.value||{}),historyEnabled:false});stores.meta.put({key:'settings',value:settings});
+      stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});stores.meta.delete('historyCoverage');stores.historyImports.clear();stores.browserHistory.clear();stores.vectors.clear();return settings;
+    });},
+    removeBrowserHistory({all=false,sourceKeys=[]}={}){return transaction(['meta','historyImports','browserHistory','vectors'],'readwrite',async stores=>{
+      const generation=crypto.randomUUID(),keys=new Set(sourceKeys),values=await req(stores.browserHistory.getAll()),removed=values.filter(row=>all||keys.has(row.sourceKey));
+      for(const row of removed)stores.browserHistory.delete(row.id);stores.vectors.clear();stores.meta.put({key:'historyEpoch',value:generation});
+      const coverage=(await req(stores.meta.get('historyCoverage')))?.value;if(coverage)stores.meta.put({key:'historyCoverage',value:{...coverage,invalidated:true}});
+      const job=await req(stores.historyImports.get('active'));if(job)stores.historyImports.put({...job,generation,revision:job.revision+1,status:'stale',error:'浏览器历史已经改变，请重新刷新所选范围。'});
+      return{generation,removed};
+    });},
+    reconcileHistorySources(generation,records){return transaction(['meta','browserHistory'],'readwrite',async({meta,browserHistory})=>{
+      const settings=settingsFrom((await req(meta.get('settings')))?.value);if(!settings.historyEnabled||(await req(meta.get('historyEpoch')))?.value!==generation)return false;
+      for(const row of records)browserHistory.put(browserVisitFrom(row));return true;
+    });},
     getSettings() {
       return transaction(['meta'], 'readonly', async ({ meta }) => settingsFrom((await req(meta.get('settings')))?.value));
     },
@@ -379,7 +434,7 @@ export async function openStore(options = {}) {
     },
 
     prune({ now = Date.now(), retentionDays } = {}) {
-      return transaction(['meta', 'segments', 'pages', 'tasks', 'vectors', 'tabOperations'], 'readwrite', async stores => {
+      return transaction(['meta', 'segments', 'pages', 'tasks', 'vectors', 'tabOperations', 'browserHistory'], 'readwrite', async stores => {
         const saved = (await req(stores.meta.get('settings')))?.value;
         const days = retentionDays === undefined ? settingsFrom(saved).retentionDays : Math.max(1, Math.min(365, retentionDays));
         const cutoff = now - days * 86_400_000;
@@ -445,7 +500,9 @@ export async function openStore(options = {}) {
           }
         }
         for (const item of await req(stores.tabOperations.getAll())) if (item.at < now - 30 * 86400000) stores.tabOperations.delete(item.id);
-        return { deletedSegments, clippedSegments, deletedPages, deletedVectors, cutoff, activity: activityState, workspace: workspace || null };
+        const historyCutoff=new Date(now);historyCutoff.setHours(0,0,0,0);historyCutoff.setDate(historyCutoff.getDate()-settingsFrom(saved).historyDays+1);
+        let deletedBrowserHistory=0;for(const item of await req(stores.browserHistory.getAll()))if(item.visitedAt<+historyCutoff){stores.browserHistory.delete(item.id);deletedBrowserHistory++;}
+        return { deletedSegments, clippedSegments, deletedPages, deletedVectors, deletedBrowserHistory, cutoff, activity: activityState, workspace: workspace || null };
       });
     },
 
@@ -465,7 +522,8 @@ export async function openStore(options = {}) {
         for (const id of plan.resetRelations || []) for (const relation of await req(stores.taskRelations.getAll())) if (relation.taskId === id) stores.taskRelations.delete(relation.id);
         putRecords(stores.taskRelations, plan.data.taskRelations, relationFrom);
         putRecords(stores.segments, plan.data.segments, segmentFrom);
-        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom(plan.data.settings)});
+        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom({...plan.data.settings,historyEnabled:false})});
+        stores.browserHistory.clear();stores.historyImports.clear();stores.meta.delete('historyCoverage');stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});
         stores.meta.put({key: 'workspace', value: emptyWorkspace()});
         stores.meta.delete('activity'); stores.vectors.clear();
         return {imported: true, counts: plan.counts};
@@ -473,7 +531,7 @@ export async function openStore(options = {}) {
     },
 
     clearHistory() {
-      return transaction(['meta', 'segments', 'pages', 'vectors', 'restorePoints'], 'readwrite', async stores => {
+      return transaction(['meta', 'segments', 'pages', 'vectors', 'restorePoints', 'browserHistory', 'historyImports'], 'readwrite', async stores => {
         const old = (await req(stores.meta.get('workspace')))?.value;
         if (old) stores.meta.put({ key: 'workspace', value: { ...old, drafts: {}, events: [], support: { shown: [], snoozed: {} }, undo: {} } });
         stores.meta.delete('activity');
@@ -481,6 +539,7 @@ export async function openStore(options = {}) {
         stores.pages.clear();
         stores.vectors.clear();
         stores.restorePoints.clear();
+        stores.browserHistory.clear();stores.historyImports.clear();stores.meta.delete('historyCoverage');stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});
         return { cleared: true };
       });
     },

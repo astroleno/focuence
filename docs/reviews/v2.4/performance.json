@@ -1,0 +1,99 @@
+{
+  "environment": "Actual bundled q8 BGE and native IndexedDB; 1,000 synthetic saved resource URLs across 100 tasks. Single-run timings, not a benchmark guarantee.",
+  "checks": [
+    {
+      "name": "Full 1,000-resource semantic coverage, cold and cached",
+      "status": "passed",
+      "first": {
+        "ms": 23155,
+        "documents": 1100,
+        "completed": 1100,
+        "steps": 46,
+        "initial": 1,
+        "results": [
+          {
+            "title": "网页端本地模型与向量检索",
+            "score": 2.4198662110078,
+            "method": "keywords"
+          },
+          {
+            "title": "研究资料 10",
+            "score": 0.46357333787903465,
+            "method": "semantic"
+          },
+          {
+            "title": "研究资料 54",
+            "score": 0.46107992272733345,
+            "method": "semantic"
+          }
+        ]
+      },
+      "cached": {
+        "ms": 4656,
+        "documents": 1100,
+        "completed": 1100,
+        "steps": 46,
+        "initial": 1,
+        "results": [
+          {
+            "title": "网页端本地模型与向量检索",
+            "score": 2.4198662110078,
+            "method": "keywords"
+          },
+          {
+            "title": "研究资料 10",
+            "score": 0.46357333787903465,
+            "method": "semantic"
+          },
+          {
+            "title": "研究资料 54",
+            "score": 0.46107992272733345,
+            "method": "semantic"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cancellation after one short model batch leaves the remaining corpus unprocessed",
+      "status": "passed",
+      "ms": 28,
+      "completed": 24,
+      "total": 1100
+    },
+    {
+      "name": "Actual UI interprets date-only search and preserves invalid filter drafts with an actionable error",
+      "status": "passed"
+    }
+  ],
+  "errors": [],
+  "memoryBefore": {
+    "processes": 9,
+    "rssKiB": 901904
+  },
+  "memoryAfterFirst": {
+    "processes": 9,
+    "rssKiB": 875248
+  },
+  "memoryAfterCached": {
+    "processes": 9,
+    "rssKiB": 819904
+  },
+  "controlPageMemory": [
+    {
+      "name": "Documents",
+      "value": 4
+    },
+    {
+      "name": "Nodes",
+      "value": 352
+    },
+    {
+      "name": "JSHeapUsedSize",
+      "value": 13500756
+    },
+    {
+      "name": "JSHeapTotalSize",
+      "value": 19021824
+    }
+  ]
+}

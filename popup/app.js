@@ -35,7 +35,7 @@ async function request(type, payload = {}) {
   if (!response?.ok) throw Object.assign(new Error(typeof response?.error === 'string' ? response.error : '操作没有完成，请重试。'), {code: response?.code});
   return response.data;
 }
-const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup'});
+const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh, render, notify: feedback, getWindowId: () => windowId, surface: 'popup',demo:isDemo});
 const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWindowId:()=>windowId,render,refresh,notify:feedback,demo:isDemo});
 function feedback(message, error = false, actionName = '') {
   const regions = [byId('feedback'), byId('error')];

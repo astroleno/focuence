@@ -1,0 +1,11 @@
+{
+  "environment": "Actual bundled q8 BGE and native IndexedDB; 1,000 synthetic saved resource URLs across 100 tasks. Single-run timings, not a benchmark guarantee.",
+  "checks": [],
+  "errors": [
+    "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert(job.results.some(item=>item.title.includes('端侧模型')))\n\n    at run (file:///Users/aitoshuu/Documents/GitHub/focuence/test/native/search-performance.mjs:12:87)\n    at async file:///Users/aitoshuu/Documents/GitHub/focuence/test/native/search-performance.mjs:14:51"
+  ],
+  "memoryBefore": {
+    "processes": 9,
+    "rssKiB": 913664
+  }
+}

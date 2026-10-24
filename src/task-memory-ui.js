@@ -1,17 +1,21 @@
 import { el, icon, duration } from './ui.js';
 import { relationFor, taskText } from './task-context.js';
 import { TASK_STATUSES, statusOf } from './task-lifecycle.js';
+import {SOURCE_LABELS} from './search-sources.js';
+import {createHistoryUI} from './history-ui.js';
 
 const stamp = value => value ? new Date(value).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
 const pending = job => ['queued', 'running'].includes(job?.status);
 
 /** Shared task interactions for the workbench, side panel, and popup. */
-export function createTaskMemoryUI({ getState, request, refresh, render, notify, getWindowId, surface, showEvidence }) {
+export function createTaskMemoryUI({ getState, request, refresh, render, notify, getWindowId, surface, showEvidence,demo=false }) {
   let working = false, dialog = null, returnFocus = '', searchJob = null, searchEpoch = null, expanded = false;
   let query = '', scope = 'all', searchSerial = 0, associationSerial = 0, pollingAssociation = '';
   const shownPrompts = new Set();
   let promptObserver;
   let statusFilter = 'daily';
+  let filters={from:'',until:'',domain:'',taskId:'',taskMode:'associated'},filtersOpen=false,offset=0;
+  const historyUI=createHistoryUI({request,render,refresh,notify,demo,getState});
   const clientId = 'memory-' + surface + '-' + crypto.randomUUID();
   const work = () => getState()?.work || {current: {taskId: null, revision: 0}, relations: [], drafts: {}, undo: {}};
   const taskById = id => getState()?.tasks.find(item => item.id === id);
@@ -22,7 +26,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     return page && relationFor(task, page.pageId, relations).source !== 'excluded';
   };
   const payload = task => ({ id: task.id, revision: task.revision || 0, windowId: getWindowId(), contextRevision: work().current.revision });
-  const action = (label, name, data = {}, primary = false) => el('button', {id: 'memory-' + name + '-' + [data.id, data.pageId, data.decision, data.feedback, data.manage ? 'manage' : '', data.slot].filter(Boolean).map(encodeURIComponent).join('-'), type: 'button', class: 'memory-button' + (primary ? ' primary' : ''), disabled: working,
+  const action = (label, name, data = {}, primary = false) => el('button', {id: 'memory-' + name + '-' + [data.id, data.pageId,data.entryId,data.offset, data.decision, data.feedback, data.manage ? 'manage' : '', data.slot].filter(value=>value!==undefined&&value!==''&&value!==false).map(encodeURIComponent).join('-'), type: 'button', class: 'memory-button' + (primary ? ' primary' : ''), disabled: working,
     'data-action': 'memory-' + name, ...Object.fromEntries(Object.entries(data).map(([key, value]) => ['data-' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()), value]))}, label);
   const small = text => el('p', {class: 'memory-caption'}, text);
 
@@ -199,38 +203,56 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     if (association) pollingAssociation = '';
   }
   async function search() {
-    if (!query.trim()) return;
     if ([...query.trim()].length > 3000) { notify('查找内容最多 3000 个字符。', true); return; }
     const serial = ++searchSerial;
+    offset=0;
     if (pending(searchJob)) request('CANCEL_SEARCH', {jobId: searchJob.id}).catch(() => {});
     searchJob = {status: 'starting', results: [], total: 0, completed: 0}; render();
     try {
-      const job = await request('SEARCH_MEMORY', {query, scope, clientId, windowId: getWindowId()});
+      const job = await request('SEARCH_MEMORY', {query, scope,filters, clientId, windowId: getWindowId()});
       if (serial !== searchSerial) return;
-      searchJob = job; searchEpoch = work().epoch; render(); await poll(job, serial);
+      searchJob = job; searchEpoch = job.sourceEpoch??work().epoch;
+      if(job.explanation&&job.filters){const localDay=value=>value==null?'':new Date(value-new Date(value).getTimezoneOffset()*60000).toISOString().slice(0,10);filters={...filters,from:localDay(job.filters.from),until:localDay(job.filters.until)};filtersOpen=true;}
+      render(); await poll(job, serial);
     } catch (error) { if (serial === searchSerial) { searchJob = {status: 'failed', results: [], error: error.message}; render(); } }
   }
   function searchView() {
-    if (searchJob && searchEpoch != null && work().epoch !== searchEpoch) {
+    if (searchJob && searchEpoch != null && work().epoch > searchEpoch) {
       searchSerial++; searchJob = {status: 'stale', results: [], error: '资料已更新，请重新查找。'}; searchEpoch = work().epoch;
     }
     const job = searchJob;
-    return el('section', {class: 'memory-search'}, el('h1', {}, '找回线索'), small('用一句话找已保存任务、笔记、当前页面和保留期内的访问记录。'),
+    return el('section', {class: 'memory-search'}, el('h1', {}, '找回线索'), small('从当前和其他窗口、任务与两类访问来源找回资料。日期按每条来源的实际时间筛选。'),
       el('form', {id: 'memory-search-form', class: 'memory-search-form'}, el('label', {class: 'sr-only', for: 'memory-query'}, '想找什么'),
-        el('input', {id: 'memory-query', name: 'query', value: query, placeholder: '例如：上次看的浏览器本地推理资料', required: true}),
+        el('input', {id: 'memory-query', name: 'query', value: query, placeholder: '例如：昨天 本机模型资料'}),
         el('label', {class: 'sr-only', for: 'memory-scope'}, '查找范围'), el('select', {id: 'memory-scope', name: 'scope'},
-          [['all', '全部资料'], ['window', '当前窗口'], ['tasks', '已保存任务'], ['history', '访问记录']].map(([value, text]) => el('option', {value, selected: value === scope}, text))),
-        el('button', {type: 'submit', class: 'memory-button primary'}, '查找')),
+          [['all', '全部资料'], ['window', '当前窗口'],['windows','全部窗口'], ['tasks', '已保存任务'], ['history', '自记录访问'],['browser','浏览器历史']].map(([value, text]) => el('option', {value, selected: value === scope}, text))),
+        el('button', {type: 'submit', class: 'memory-button primary'}, '查找'),
+        el('details',{class:'memory-filters',open:filtersOpen},el('summary',{},'日期、站点与任务筛选'),el('div',{class:'memory-filter-grid'},
+          [['from','开始日期','date'],['until','结束日期','date'],['domain','站点域名','text']].map(([key,label,type])=>el('label',{},label,el('input',{id:'memory-filter-'+key,'data-search-filter':key,type,value:filters[key],placeholder:key==='domain'?'例如：developer.chrome.com':undefined}))),
+          el('label',{},'任务',el('select',{id:'memory-filter-task','data-search-filter':'taskId'},el('option',{value:''},'全部任务'),(getState()?.tasks||[]).map(task=>el('option',{value:task.id,selected:filters.taskId===task.id},task.name)))),
+          el('label',{},'任务含义',el('select',{id:'memory-filter-mode','data-search-filter':'taskMode'},[['associated','目前关联此任务'],['observed','访问时正在做此任务']].map(([value,label])=>el('option',{value,selected:filters.taskMode===value},label))))),
+          small('“访问时”只依据自记录片段。“目前关联”依据已保存页面或确认关系；不会把今天的关联写成过去的任务。缺失时间的来源不进入日期结果。'),action('清空筛选','clear-filters'))),
+      job?.explanation&&small(job.explanation+' · '+(job.filters?.from?stamp(job.filters.from):'不限开始')+' — '+(job.filters?.until?stamp(job.filters.until):'不限结束')+'；可在上方修改日期。'),
       small(getState()?.demo ? '示例仅演示关键词查找；真实扩展可使用本机模型。' : getState()?.settings.semantic ? '先显示关键词结果，再用本机模型补充语义结果。' : '语义增强已关闭，当前使用关键词查找。'),
       job && el('div', {role: 'status', class: 'memory-search-status'}, job.status === 'starting' ? '正在读取资料…' : pending(job) ? '本地分析 · ' + job.completed + ' / ' + job.total + ' · 可继续查看已有结果' : job.error || '找到 ' + (job.resultTotal || 0) + ' 条线索',
         pending(job) && action('停止分析', 'cancel-search', {jobId: job.id})),
       el('div', {class: 'memory-results'}, (job?.results || []).map(item => el('article', {class: 'memory-record'},
-        el('h2', {}, item.title), small((item.kind === 'task' ? '任务' : '页面') + ' · ' + (item.method === 'semantic' ? '语义匹配' : '关键词匹配')),
-        small((item.sources || []).map(source => ({window: '当前窗口', saved: '已保存页面', confirmed: '关联记忆', history: '访问记录', task: '任务文字'}[source] || source)).join(' · ') + (item.visitedAt ? ' · ' + stamp(item.visitedAt) : '')),
+        el('h2', {}, item.title), small((item.kind === 'task' ? '任务' : '页面') + ' · ' + (item.method === 'semantic' ? '语义匹配' : item.method==='filtered'?'筛选结果':'关键词匹配')),
+        small((item.sources || []).map(source => SOURCE_LABELS[source]||source).join(' · ') + (item.visitedAt ? ' · '+item.timeType+' · ' + stamp(item.visitedAt) : ' · 时间未知')),
         el('p', {class: 'memory-snippet'}, item.snippet), item.url && small(item.url),
-        item.kind === 'task' ? action('查看任务', 'result-task', {id: item.taskId || item.id.replace(/^task:/, '')}) : action('打开页面', 'result-page', {entryId: item.id, jobId: job.id})))),
+        el('div',{class:'memory-actions'},item.kind === 'task' ? action('查看任务', 'result-task', {id: item.taskId || item.id.replace(/^task:/, '')}) : action(item.sources.some(source=>['window','other-window'].includes(source))?'定位已开页面':'打开页面', 'result-page', {entryId: item.id, jobId: job.id}),
+          action('来源记录 · '+(item.evidenceCount||1),'result-evidence',{entryId:item.id,jobId:job.id}))))),
       job?.status === 'done' && !job.results?.length && small('没有找到匹配的资料。试试任务目标中的词，或切换查找范围。'),
-      job?.resultTotal > 50 && small('按匹配度展示前 50 条，共 ' + job.resultTotal + ' 条。缩小范围可以进一步查找。'));
+      job?.resultTotal > 50 && el('div',{class:'memory-actions'},offset>0&&action('上一页','result-pagination',{offset:Math.max(0,offset-50)}),small((offset+1)+'—'+Math.min(offset+50,job.resultTotal)+' / '+job.resultTotal),offset+50<job.resultTotal&&!pending(job)&&action('下一页','result-pagination',{offset:offset+50})),historyUI.view());
+  }
+  async function resultEvidence(data){
+    const result=await request('GET_MEMORY_EVIDENCE',{jobId:data.jobId,entryId:data.entryId,offset:Number(data.offset)||0});
+    const frame=modal(result.title,'来源时间分别表示访问、保存或修改；浏览器标题是当前元数据。');
+    frame.append(...result.items.map((item,index)=>el('article',{class:'memory-record'},el('h3',{},SOURCE_LABELS[item.source]||item.source),small(item.timeType+' · '+(stamp(item.at)||'时间未知')+(item.endAt?' — '+stamp(item.endAt):'')),
+      item.windowId!=null&&small('窗口 '+item.windowId),item.source==='history'&&small('当时任务：'+(taskById(item.observedTaskId)?.name||'未指定或已删除')),
+      (item.taskIds||[]).length>0&&small('目前关联：'+item.taskIds.map(id=>taskById(id)?.name||'已删除任务').join('、')),item.url&&small(item.url),
+      item.segmentId&&showEvidence&&action('定位访问片段','evidence',{segmentId:item.segmentId,slot:index}),item.taskId&&taskById(item.taskId)&&action('查看任务','result-task',{id:item.taskId,slot:index}))));
+    frame.append(el('div',{class:'memory-actions'},result.offset>0&&action('上一页','result-evidence',{...data,offset:Math.max(0,result.offset-result.limit)}),small((result.offset+1)+'—'+Math.min(result.offset+result.limit,result.total)+' / '+result.total),result.offset+result.limit<result.total&&action('下一页','result-evidence',{...data,offset:result.offset+result.limit})));
   }
   function patterns() {
     const data = work().patterns;
@@ -259,6 +281,9 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     if (name === 'manage') return task && manager(task);
     if (name === 'result-task') return task && taskDetail(task);
     if (name === 'evidence') return showEvidence?.(data.segmentId);
+    if (name === 'result-evidence') return resultEvidence(data);
+    if (name === 'clear-filters') {filters={from:'',until:'',domain:'',taskId:'',taskMode:'associated'};render();return;}
+    if (name === 'result-pagination') {offset=Number(data.offset);searchJob=await request('GET_SEARCH_RESULTS',{jobId:searchJob.id,offset,limit:50});render();return;}
     if (name === 'select') {
       if (!task || data.current) return;
       if (statusOf(task) !== 'active') { notify('请先把任务状态改为进行中，再继续。'); return; }
@@ -304,8 +329,8 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     const target = event.target.closest('[data-action^="memory-"]');
     if (target && !target.disabled) handle(target.dataset.action.slice(7), target).catch(error => notify(error.message, true));
   });
-  document.addEventListener('toggle', event => { if (event.target.matches?.('.memory-association')) expanded = event.target.open; }, true);
-  document.addEventListener('input', event => { if (event.target.id === 'memory-query') query = event.target.value; });
+  document.addEventListener('toggle', event => { if (event.target.matches?.('.memory-association')) expanded = event.target.open;if(event.target.matches?.('.memory-filters'))filtersOpen=event.target.open; }, true);
+  document.addEventListener('input', event => { if (event.target.id === 'memory-query') query = event.target.value;if(event.target.dataset.searchFilter)filters[event.target.dataset.searchFilter]=event.target.value; });
   document.addEventListener('change', event => {
     if (event.target.id === 'memory-task-filter') { statusFilter = event.target.value; render(); }
     if (event.target.dataset.taskStatus) {
@@ -320,5 +345,5 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   const filterTasks = tasks => tasks.filter(task => statusFilter === 'all' || (statusFilter === 'daily' ? statusOf(task) !== 'archived' : statusOf(task) === statusFilter));
   const taskFilter = () => el('select', {id: 'memory-task-filter', class: 'standard-select', 'aria-label': '筛选任务状态'},
     [['daily','日常任务'],['all','全部任务'],...Object.entries(TASK_STATUSES)].map(([value,label]) => el('option', {value,selected:statusFilter===value},label)));
-  return { current, taskActions, searchView, patterns, filterTasks, taskFilter };
+  return { current, taskActions, searchView, patterns, filterTasks, taskFilter,historyView:historyUI.view };
 }

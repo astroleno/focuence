@@ -41,7 +41,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.3.0',
+    version: value?.version || '2.4.0',
     demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
@@ -92,7 +92,7 @@ async function request(type, payload = {}) {
   }
   return response.data;
 }
-const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh: () => refresh({quiet: true}), render,
+const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh: () => refresh({quiet: true}), render,demo:isDemo,
   notify: toast, getWindowId: () => windowId, surface: isPanel ? 'panel' : 'workspace', showEvidence: id => {
     if (!ui.state.segments.some(segment => segment.id === id)) {
       const segment = (ui.state.work?.patterns?.repeatedReturns || []).flatMap(item => item.evidence.flatMap(row => row.evidence)).find(item => item.id === id);
@@ -210,7 +210,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#review', 'aria-label': 'Focuence · 一周回顾'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.3')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.4')));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -661,6 +661,7 @@ function renderSettings() {
   return [
     heading('设置', '按你的节奏记录，由你决定保留什么。'),
     backupUI.view(),
+    memory.historyView(false),
     el('div', {class: 'settings-layout'},
       el('section', {class: 'settings-section'}, el('h2', {}, '浏览记录'),
         settingRow('记录前台浏览', '记录页面的前台停留与切换。暂停后不会新增浏览片段，已有记录仍会保留。', toggle('setting-tracking', settings.tracking, '记录前台浏览')),
@@ -676,7 +677,7 @@ function renderSettings() {
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
-        settingRow('清除浏览历史', '删除访问片段、自动线索、提示记录与内部恢复前快照；保留任务、确认断点及手工关联。', button('清除历史', 'clear-history', {}, 'small danger')),
+        settingRow('清除浏览历史', '删除两类访问缓存、导入作业、自动线索、提示记录与内部恢复前快照；保留任务、确认断点及手工关联。', button('清除历史', 'clear-history', {}, 'small danger')),
         settingRow('清除关联记忆', '清除全部任务的相关和不相关判断，保留任务、断点及保存的页面。无法撤销。', button('清除关联记忆', 'clear-relations', {}, 'small danger')),
         settingRow('清除全部数据', '删除浏览历史、保存的任务并重置设置。不会关闭浏览器页面。这个操作无法撤销。', button('清除全部', 'clear-all', {}, 'small danger'))))
   ];
@@ -1052,7 +1053,7 @@ async function handleAction(action, target) {
       }); break;
     case 'export': await operation('export', exportData); break;
     case 'clear-history':
-      confirmDialog('清除浏览历史？', '删除访问片段、自动线索、查找行为、提示记录及内部恢复前快照。保留任务、确认断点和手工关联。原始访问证据将不可用，此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); await backupUI.reload(); ui.selectedTag = ''; toast('浏览历史及内部恢复点已清除，任务与手工记忆仍保留。'); });
+      confirmDialog('清除浏览历史？', '删除自记录访问、浏览器历史缓存及导入作业、自动线索、查找行为、提示记录及内部恢复前快照。保留任务、确认断点和手工关联，不删除 Chrome 自身历史。扩展的访问证据将不可用，此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); await backupUI.reload(); ui.selectedTag = ''; toast('两类访问缓存及内部恢复点已清除，任务与手工记忆仍保留。'); });
       break;
     case 'clear-relations':
       confirmDialog('清除全部关联记忆？', '清除所有任务的相关和不相关判断。任务目标、断点与保存页面仍保留；此操作无法撤销。', '清除关联记忆', async () => {

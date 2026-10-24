@@ -2,8 +2,9 @@ import { embeddingText, stableHash, normalizeUrl, pageIdForUrl } from './text.js
 import { lexicalAffinity, words } from './task-matching.js';
 import { semanticItem, textChunks } from './semantic.js';
 import { cosineSimilarity } from './grouping.js';
+import {compactMemoryResult} from './search-sources.js';
 
-export const SEARCH_SCOPES = ['all', 'window', 'tasks', 'history'];
+export const SEARCH_SCOPES = ['all', 'window', 'windows', 'tasks', 'history', 'browser'];
 
 export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = [], segments = [], scope = 'all', allowed = () => true }) {
   const entries = new Map(), visits = new Map();
@@ -30,7 +31,7 @@ export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = []
 }
 
 export function searchDocuments(entries) {
-  return entries.flatMap(entry => (entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map((text, index) => ({
+  return entries.flatMap(entry => (entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map((text, index) => ({
     entryId: entry.id, item: semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : `${entry.pageId}:`}${index}:${stableHash(text)}`, text, entry.kind === 'task' ? 'task' : 'search-page'),
   })));
 }
@@ -42,9 +43,9 @@ export function snippetFor(query, text) {
   return (start ? '…' : '') + text.slice(start, start + 180) + (text.length > start + 180 ? '…' : '');
 }
 
-export function rankMemory(entries, query, semanticScores = {}, limit = 50) {
+export function rankMemory(entries, query, semanticScores = {}, limit = 50, browse = false) {
   const normalized = query.trim().toLocaleLowerCase();
-  if (!normalized) return { results: [], total: 0 };
+  if (!normalized) return browse?{results:[...entries].sort((a,b)=>b.visitedAt-a.visitedAt||a.id.localeCompare(b.id)).slice(0,limit).map(entry=>({...compactMemoryResult(entry),method:'filtered',snippet:(entry.text||'').slice(0,180)})),total:entries.length}:{ results: [], total: 0 };
   const ranked = entries.flatMap(entry => {
     const exact = entry.text.toLocaleLowerCase().includes(normalized);
     const lexical = lexicalAffinity(query, entry.text);
@@ -53,7 +54,7 @@ export function rankMemory(entries, query, semanticScores = {}, limit = 50) {
     if (!exact && lexical < .1 && (semantic === null || semantic < .46)) return [];
     const method = exact || lexical >= .45 ? 'keywords' : semantic !== null && semantic >= .46 ? 'semantic' : 'keywords';
     const score = exact ? 1.5 + lexical : Math.max(lexical, semantic || 0) + lexical * .12;
-    return [{ ...entry, text: undefined, score, method, snippet: snippetFor(query, method === 'semantic' && match?.text ? match.text : entry.text) }];
+    return [{ ...compactMemoryResult(entry), score, method, snippet: snippetFor(query, method === 'semantic' && match?.text ? match.text : entry.text) }];
   }).sort((a, b) => b.score - a.score || b.visitedAt - a.visitedAt || a.id.localeCompare(b.id));
   return { results: ranked.slice(0, limit), total: ranked.length };
 }

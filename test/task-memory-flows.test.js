@@ -47,6 +47,16 @@ function fixture() {
   };
 }
 
+test('unified result pages expose all matches and can focus a surviving tab in another window',async()=>{
+  const f=fixture();const tabs=Array.from({length:105},(_,id)=>({id:id+1000,windowId:2,url:'https://cross.test/'+id,title:'完整范围资源 '+id,lastAccessed:1700000000000-id}));
+  let focused;const memory=createWorkspace({...f.deps,allTabs:async()=>tabs,focusResult:async evidence=>{focused=evidence;return{focused:true};}});await memory.initialize();
+  const job=await memory.createJob({query:'完整范围资源',scope:'windows'});assert.equal(job.resultTotal,105);
+  const page=await memory.searchResults({jobId:job.id,offset:100,limit:50});assert.equal(page.results.length,5);
+  const entry=page.results[4],evidence=await memory.searchResults({jobId:job.id,entryId:entry.id},true);assert.equal(evidence.items[0].source,'other-window');
+  await memory.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId:entry.id});assert.equal(focused.windowId,2);
+  memory.invalidate();await assert.rejects(memory.searchResults({jobId:job.id}),{code:'STALE_SUGGESTION'});
+});
+
 test('current intent is independent per window and old window revisions are rejected', async () => {
   const f = fixture(); await f.memory.initialize();
   await f.message('SET_CURRENT_TASK'); await f.message('SET_CURRENT_TASK', 'b', {windowId: 2, contextRevision: 0});
