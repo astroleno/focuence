@@ -1,0 +1,126 @@
+{
+  "release": "focuence-site-7e1b2add0bb6",
+  "hosts": [
+    {
+      "host": "aitoshuu.me",
+      "release": "focuence-site-7e1b2add0bb6",
+      "checks": [
+        {
+          "path": "/Focuence",
+          "status": 200,
+          "preservesHost": true,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/",
+          "status": 200,
+          "preservesHost": true,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/release.json",
+          "status": 200,
+          "releaseMatches": true
+        },
+        {
+          "path": "/Focuence/assets/icon.png",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/assets/main.fdcd570cebd8.js",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/assets/styles.76524319681e.css",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/.env",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/.git/config",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/assets/missing.js",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/missing",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "host": "tongye.me",
+      "release": "focuence-site-7e1b2add0bb6",
+      "checks": [
+        {
+          "path": "/Focuence",
+          "status": 200,
+          "preservesHost": true,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/",
+          "status": 200,
+          "preservesHost": true,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/release.json",
+          "status": 200,
+          "releaseMatches": true
+        },
+        {
+          "path": "/Focuence/assets/icon.png",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/assets/main.fdcd570cebd8.js",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/assets/styles.76524319681e.css",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "path": "/Focuence/.env",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/.git/config",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/assets/missing.js",
+          "status": 404
+        },
+        {
+          "path": "/Focuence/missing",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "existingRoots": [
+    {
+      "host": "aitoshuu.me",
+      "status": 200,
+      "originalReleasePreserved": true
+    },
+    {
+      "host": "tongye.me",
+      "status": 302,
+      "originalRedirectPreserved": true
+    }
+  ],
+  "passed": true
+}

@@ -6,6 +6,7 @@
   "description": "Local-first tab grouping, task recovery and attention timeline for Chrome and Edge.",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:website": "python3 scripts/build-website.py",
     "test": "node --test --test-concurrency=1 test/*.test.js",
     "models": "python3 scripts/download-model.py",
     "package": "python3 scripts/package-release.py"

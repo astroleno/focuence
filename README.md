@@ -18,6 +18,10 @@
 
 浏览器扩展：写下当前目标，记住相关资料与工作断点，用一句话找回线索。
 
+官网与交互示例：[aitoshuu.me/Focuence](https://aitoshuu.me/Focuence)、[tongye.me/Focuence](https://tongye.me/Focuence)。官网以注意力地图、聚焦与断点继续为核心；扩展仍为开发预览，核心流程的已确认问题见 [三方评审复核](docs/reviews/v2.5/core-review-2026-10-24/README.md)。
+
+官网独立构建：`npm run build:website`，输出 `dist/website/`，不需要扩展模型或新依赖。部署结构见 [官网部署](docs/WEBSITE_DEPLOYMENT.md)，验证见 [官网验收](docs/reviews/website-2026-10-25/README.md)。
+
 2.5 增加研究资料库：手动保存链接、粘贴摘录和自己的笔记，可关联多个任务。按需启用右键选文，先核对实际来源再保存；原文和笔记独立保存与检索，不随历史保留期删除。保留跨窗口工作区、保存断点后关闭与恢复、按需浏览器历史及来源/日期/站点/任务筛选。设计见 [实施计划](docs/plans/2026-10-23-002-feat-browser-workspace-memory-plan.md)，证据见 [2.5 验收](docs/reviews/v2.5/README.md)。
 
 弹窗点“窗口”，侧栏/完整页进入“页面 → 跨窗口与收起”。先勾选页面、填写任务和下一步，核对预览后才保存并关闭。固定、当前、播放和已分组页面默认不选，需逐项确认。先持久保存任务和恢复日志，保存失败不会关闭页面。批次日志保留 30 天；中断后不会自动继续关闭。恢复网址不包含网页中未保存的表单或完整运行状态。
