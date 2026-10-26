@@ -44,6 +44,8 @@ macOS arm64，Chrome for Testing 156.0.8078.47，实际 MV3 扩展、原生 Inde
 
 另见[真实工具栏弹窗](screenshots/actual-toolbar-popup.png)及 [400×520 材料表单](screenshots/popup-400-520-library.png)。原文与笔记独立，长表单可滚动，键盘可关闭；错误反馈保留全文。
 
+其他尺寸：[360 像素侧栏](screenshots/panel-360-760-library.png)、[400×600 弹窗](screenshots/popup-400-600-library.png)、[1440×950 完整页](screenshots/app-1440-950-library.png)。
+
 ## 检查方式与限制
 
 菜单验证最初遇到多个同名 Chrome 实例的原生定位问题。最终在临时目录使用原有官方浏览器应用的 APFS 克隆，文件内容未修改、未重签名、未全局安装；原生工具按唯一应用路径定位并实际点击“保存选文到 Focuence”，没有用伪造事件替代。测试结束清理本次配置与临时应用副本。
@@ -51,3 +53,5 @@ macOS arm64，Chrome for Testing 156.0.8078.47，实际 MV3 扩展、原生 Inde
 配额检查在真实 IDB 写入点注入 QuotaExceededError，验证实际事务连同恢复点回滚；没有耗尽用户磁盘。过期检查把合成草稿设为已到期，然后通过真实 Chrome alarm 触发清理，没有声称等待了 15 分钟。Chrome 120 的菜单回调、History.isLocal 等接口边界依据[官方菜单文档](https://developer.chrome.com/docs/extensions/reference/api/contextMenus)与[历史文档](https://developer.chrome.com/docs/extensions/reference/api/history)核对；实际运行环境为 Chrome 156。
 
 Windows/Edge、最低 Chrome 120 的实际运行和长期真实用户收益未实测。语义匹配仍需核对来源；[2.4 的宽泛查询排序限制](../v2.4/README.md)继续适用，本轮没有把合成流程验证当作真实召回率或效率收益。浏览器删除事件的即时粒度、最近关闭的有界列表，以及仅恢复网址/可恢复组织信息的限制保持有效。
+
+2026-10-24 后续进行了以注意力地图和聚焦为核心的[三方独立评审与主线程复核](core-review-2026-10-24/README.md)，新增确认了检索连续操作、返回提示和自动候选的问题，尚未修复。原阶段验收输出保留，新增问题状态以该复核记录为准。

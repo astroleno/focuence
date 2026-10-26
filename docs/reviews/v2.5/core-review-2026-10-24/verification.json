@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-24",
+  "baseline": "4c7ff64bcfe6eaddcfb4fc6942a8a00e32bbde8c",
+  "coreTests": {
+    "files": 9,
+    "tests": 77,
+    "pass": 77,
+    "fail": 0,
+    "skipped": 0,
+    "durationMs": 446.283458
+  },
+  "kimiRecordedFullTests": {
+    "tests": 148,
+    "pass": 148,
+    "fail": 0,
+    "skipped": 0,
+    "durationMs": 1316.431167,
+    "source": "kimi-cli stream-json tool result"
+  },
+  "nativeSearchContinuity": {
+    "environment": "Chrome for Testing, actual MV3, isolated profile, synthetic data; tracking and semantic model disabled to isolate tab-event invalidation.",
+    "checks": [
+      {
+        "name": "Saved-task search returns both synthetic resources before opening",
+        "resultTotal": 3,
+        "resources": [
+          "核心复核资料B",
+          "核心复核资料A"
+        ]
+      },
+      {
+        "name": "Opening the first result makes the completed task-only search stale and blocks results, evidence and the second open",
+        "opened": {
+          "opened": true,
+          "reused": false
+        },
+        "status": "stale",
+        "remainingResults": 0,
+        "failed": {
+          "page": {
+            "code": "STALE_SUGGESTION",
+            "message": "资料已经更新，请重新查找。"
+          },
+          "evidence": {
+            "code": "STALE_SUGGESTION",
+            "message": "资料已经更新，请重新查找。"
+          },
+          "secondOpen": {
+            "code": "STALE_SUGGESTION",
+            "message": "结果已经更新，请重新查找。"
+          }
+        }
+      }
+    ],
+    "errors": []
+  },
+  "focusHorizon": {
+    "type": "Synthetic function execution and real createWorkspace with in-memory store and synthetic persisted activity; no two-hour real browser wait",
+    "viewSource": "src/workspace.js:249-256",
+    "feedbackSource": "src/workspace.js:409-414",
+    "fixture": {
+      "windowId": 1,
+      "sessionId": "s",
+      "currentTask": "goal",
+      "assignedTask": "other",
+      "segments": 6,
+      "minutesPerSegment": 20,
+      "distinctPages": 2,
+      "supportShown": 0
+    },
+    "view": {
+      "id": "return_f5586e0db929694a",
+      "durationMs": 7200000
+    },
+    "feedback": {
+      "id": "return_0777ac0dc3a7475c",
+      "durationMs": 4800000
+    },
+    "matchingId": false,
+    "observedFeedbackCode": "STALE_CONTEXT"
+  },
+  "counterexamples": {
+    "mapFallback": {
+      "topic": "A",
+      "relation": "",
+      "invalidTopic": true,
+      "invalidRelation": false
+    },
+    "restartBoundary": {
+      "observedReturns": 0,
+      "taskSwitches": 1
+    },
+    "unknownSourceDraft": true,
+    "saveWithoutSource": {
+      "code": "INVALID_LIBRARY_URL",
+      "message": "请核对材料的 HTTP(S) 来源地址。"
+    },
+    "crossWindowMoveChangesSourceFingerprint": true
+  },
+  "focusCoordinator": {
+    "checks": [
+      {
+        "case": "window",
+        "method": "Real createWorkspace and previewActivity, in-memory store and synthetic persisted activity; no elapsed-time browser wait",
+        "requestedWindow": 1,
+        "foregroundWindow": 2,
+        "currentIntent": {
+          "taskId": "goal",
+          "revision": 1,
+          "startedAt": 1700007639000
+        },
+        "promptWindow": 2,
+        "promptDurationMs": 360000,
+        "feedback": {
+          "code": "STALE_CONTEXT",
+          "message": "这条提示已失效。"
+        }
+      },
+      {
+        "case": "over-one-hour",
+        "method": "Real createWorkspace and previewActivity, in-memory store and synthetic persisted activity; no elapsed-time browser wait",
+        "requestedWindow": 1,
+        "foregroundWindow": 1,
+        "currentIntent": {
+          "taskId": "goal",
+          "revision": 1,
+          "startedAt": 1700000799000
+        },
+        "promptWindow": 1,
+        "promptDurationMs": 7200000,
+        "feedback": {
+          "code": "STALE_CONTEXT",
+          "message": "这条提示已失效。"
+        }
+      }
+    ],
+    "errors": []
+  },
+  "nativeRefreshAndExclusion": {
+    "environment": {
+      "browser": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.47",
+        "revision": "@1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.19"
+      },
+      "isolated": true,
+      "synthetic": true,
+      "semanticModel": false
+    },
+    "checks": [
+      {
+        "name": "GET_STATE alone invalidates a completed task-only search while tracking a stable foreground page",
+        "before": {
+          "status": "done",
+          "results": 2
+        },
+        "after": {
+          "status": "stale",
+          "results": 0
+        },
+        "sourceChanged": false
+      },
+      {
+        "name": "A previously saved page still becomes an automatic continuation suggestion after its domain is excluded",
+        "excludedDomains": [
+          "excluded.fixture.test"
+        ],
+        "suggestions": [
+          {
+            "url": "https://excluded.fixture.test/entry",
+            "title": "合成已保存资料",
+            "method": "task"
+          }
+        ]
+      }
+    ],
+    "errors": []
+  }
+}
