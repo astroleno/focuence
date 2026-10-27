@@ -618,7 +618,7 @@ chrome.commands.onCommand.addListener(async command => {
   if (command === 'open_side_panel' && chrome.sidePanel?.open) {
     await chrome.sidePanel.open({ windowId }); return;
   }
-  await chrome.tabs.create({ url: chrome.runtime.getURL(`app/index.html?windowId=${windowId}#review`), windowId });
+  await chrome.tabs.create({ url: chrome.runtime.getURL(`app/index.html?windowId=${windowId}#tasks`), windowId });
 });
 registerHistoryListener();registerCaptureListener();
 init().catch(error => console.error('Focuence initialization:', error.message));

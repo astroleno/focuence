@@ -10,11 +10,12 @@ import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 import { createBackupUI } from '../src/backup-ui.js';
 import {createLibraryUI} from '../src/library-ui.js';
+import {resolveRelationEvidence} from '../src/map-evidence.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
 const isDemo = params.get('demo') === '1';
-const viewNames = isPanel ? {tasks: '任务', search: '查找',library:'资料', pages: '页面', timeline: '路径', map: '地图'} : {review: '一周回顾', tasks: '任务工作台', search: '找回线索',library:'研究资料库', pages: '当前页面', timeline: '访问路径', map: '注意力地图', settings: '数据与设置'};
+const viewNames = isPanel ? {tasks: '聚焦', map: '地图', search: '查找',library:'资料', pages: '页面', timeline: '路径'} : {tasks: '当前聚焦', map: '注意力地图', search: '找回线索',library:'研究资料库', pages: '当前页面', timeline: '访问路径', review: '一周回顾', settings: '数据与设置'};
 const viewIcons = {review: 'clock', pages: 'layers', tasks: 'folder', search: 'search',library:'page', timeline: 'clock', map: 'nodes', settings: 'settings'};
 const palette = {grey: '#929889', gray: '#929889', blue: '#8a9eb3', red: '#bd8579', yellow: '#c0a56c', green: '#8caa8c', pink: '#b492a4', purple: '#a494b3', cyan: '#7ba9a4', orange: '#d89068'};
 function button(label, action, attributes = {}, className = '', iconName) {
@@ -60,11 +61,11 @@ function normalizeState(value) {
   };
 }
 const ui = {
-  view: Object.hasOwn(viewNames, location.hash.slice(1)) ? location.hash.slice(1) : isPanel ? 'tasks' : 'review',
+  view: Object.hasOwn(viewNames, location.hash.slice(1)) ? location.hash.slice(1) : 'tasks',
   range: ['today', 'yesterday', 'week'].includes(params.get('range')) ? params.get('range') : isPanel ? 'today' : 'week',
   state: null, error: '', busy: new Set(), selected: new Set(), applied: new Set(),
   queries: {pages: '', tasks: ''}, pageFilter: 'all', sort: 'recent', pagesMode: 'list', listScroll: 0, members: new Map(), expandedPages: new Set(), expandedSegments: new Set(),
-  timelineStatus: 'all', timelineLimit: 60, timelineTag: '', selectedTag: params.get('topic') || '',
+  timelineStatus: 'all', timelineLimit: 60, timelineTag: '', timelineRelation: null, selectedTag: params.get('topic') || '',
   selectedEdge: params.get('from') && params.get('to') ? params.get('from') + '\u0000' + params.get('to') : '',
   mapScope: 'related', mapNotice: '', expandedNotes: new Set(), pendingRange: null, failedRange: null, refreshAfterRange: false,
   canUndo: false, settingsDraft: null, settingsDirty: false, lastRefresh: 0
@@ -105,7 +106,7 @@ const memory = createTaskMemoryUI({getState: () => ui.state, request, refresh: (
         button('打开页面', 'open-page', {'data-url': segment.url}, 'small')));
       return;
     }
-    ui.timelineStatus = 'all'; ui.timelineTag = ''; ui.timelineLimit = ui.state.segments.length; ui.expandedSegments.add(id);
+    ui.timelineRelation = null; ui.timelineStatus = 'all'; ui.timelineTag = ''; ui.timelineLimit = ui.state.segments.length; ui.expandedSegments.add(id);
     ui.view = 'timeline'; render();
     const target = document.getElementById('segment-toggle-' + encodeURIComponent(id)); target?.scrollIntoView({block: 'center'}); target?.focus({preventScroll: true});
   }});
@@ -200,7 +201,7 @@ function buildShell() {
     app.replaceChildren(
       el('header', {class: 'panel-header'},
         el('a', {class: 'brand', href: '#tasks', 'aria-label': 'Focuence · 浏览侧栏'}, el('img', {src: '../icons/icon-48.png', width: 24, height: 24, alt: ''}), el('strong', {}, 'Focuence')),
-        el('div', {class: 'button-cluster'}, el('span', {id: 'top-status', class: 'sr-only'}), el('div', {id: 'sidebar-tracking'}), iconButton('打开完整回顾', 'open-workspace', 'external'))),
+        el('div', {class: 'button-cluster'}, el('span', {id: 'top-status', class: 'sr-only'}), el('div', {id: 'sidebar-tracking'}), iconButton('打开完整工作台', 'open-workspace', 'external'))),
       el('nav', {class: 'panel-nav', id: 'navigation', 'aria-label': '侧栏导航'}),
       el('p', {class: 'sr-only', id: 'panel-current'}, '正在读取当前窗口…'),
       el('span', {id: 'breadcrumb', class: 'sr-only'}),
@@ -210,7 +211,7 @@ function buildShell() {
     return;
   }
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
-    el('a', {class: 'brand', href: '#review', 'aria-label': 'Focuence · 一周回顾'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
+    el('a', {class: 'brand', href: '#tasks', 'aria-label': 'Focuence · 当前聚焦'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
     el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.5')));
   const workspace = el('div', {class: 'workspace'},
@@ -226,7 +227,7 @@ function renderNavigation() {
   const count = ui.state?.tasks.length || 0;
   document.getElementById('navigation').replaceChildren(...Object.keys(viewNames).map(view => el('button', {
     id: 'nav-' + view, type: 'button', class: 'nav-button' + (ui.view === view ? ' active' : ''),
-    'data-action': 'navigate', 'data-view': view, 'aria-current': ui.view === view ? 'page' : undefined
+    'data-action': 'navigate', 'data-view': view, 'aria-label': view === 'tasks' ? '当前聚焦' : view === 'map' ? '注意力地图' : viewNames[view], 'aria-current': ui.view === view ? 'page' : undefined
   }, icon(viewIcons[view]), viewNames[view], !isPanel && view === 'tasks' && count > 0 && el('span', {class: 'nav-count'}, count))));
   document.getElementById('breadcrumb').textContent = viewNames[ui.view];
   const tracking = ui.state?.settings.tracking !== false;
@@ -362,29 +363,30 @@ function taskCard(task, {featured = false} = {}) {
     el('div', {class: 'task-card-head'},
       el('h3', {class: 'task-name'}, task.name),
       iconButton('编辑 ' + task.name, 'edit-task', 'edit', {'data-id': task.id})),
+    memory.taskActions(task),
     task.resumePage && el('div', {class: 'resume-context'}, icon('page'),
       el('button', {id: 'resume-page-' + encodeURIComponent(task.id), type: 'button', class: 'resume-page-link', title: task.resumePage.title || task.resumePage.url, 'data-action': 'open-page', 'data-url': task.resumePage.url}, task.resumePage.title || domainOf(task.resumePage.url))),
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
-    el('div', {class: 'task-footer'},
+    pages.length > 0 && el('div', {class: 'task-footer'},
       el('div', {class: 'task-count'}, el('span', {}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
         el('span', {class: 'task-date'}, dateLabel(task.lastActivityAt || task.updatedAt || task.createdAt))),
-      button(busy('restore-' + task.id) ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: !pages.length || (task.status&&task.status!=='active') || busy('restore-' + task.id)}, 'small' + (featured ? ' primary' : ''), 'arrow')),
-    taskPages(task, ui.expandedPages.has(task.id), busy('restore-' + task.id)),
-    task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加笔记', 'edit-task', {'data-id': task.id}, 'text-button'), memory.taskActions(task));
+      button(busy('restore-' + task.id) ? '恢复中…' : '恢复全部 ' + pages.length + ' 页', 'restore-task', {'data-id': task.id, disabled: !pages.length || (task.status&&task.status!=='active') || busy('restore-' + task.id)}, 'small', 'arrow')),
+    pages.length > 0 && taskPages(task, ui.expandedPages.has(task.id), busy('restore-' + task.id)),
+    task.notes ? taskNotes(task, ui.expandedNotes.has(task.id)) : button('添加笔记', 'edit-task', {'data-id': task.id}, 'text-button'));
 }
 function renderTasks() {
   const query = ui.queries.tasks.trim().toLocaleLowerCase();
   const tasks = memory.filterTasks(ui.state.tasks).filter(task => !query || [task.name, task.goal, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
   return [
-    heading(isPanel ? '任务' : '任务工作台', '保存下一步，回到正在做的事。', [
+    heading('当前聚焦', '选择眼前要推进的任务，留断点，从一页继续。', [
       button('新建任务', 'new-task', {id: 'task-create'}, isPanel ? 'small' : '', 'plus'),
       button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
     memory.current({support: isPanel}),
     el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
-      emptyState(query ? '没有找到这个任务' : '保存一件正在做的事', query ? '试试任务名、备注或页面标题。' : '选择相关页面，再写下一步。回来时就能继续。', query ? null : 'nav-pages', '去选择页面', false, 'folder'),
+      emptyState(query ? '没有找到这个任务' : '先给眼前的事一个目标', query ? '试试任务名、备注或页面标题。' : '可以先写目标，再关联资料；不需要先打开或选择页面。', query ? null : 'new-task', '新建任务', false, 'folder'),
     !isPanel && continuationSuggestions(),
-    el('p', {class: 'list-footnote'}, '优先复用已打开页面，每个任务最多保存 30 页。')
+    el('p', {class: 'list-footnote'}, '任务是你决定推进的事，主题描述浏览内容。修改目标不改变地图主题，关联资料也不会自动移动浏览器分组。每个任务最多保存 30 页。')
   ];
 }
 function rangeControl(id) {
@@ -450,6 +452,7 @@ function tagStats(segments) {
   return [...entries.values()].sort((a, b) => b.foregroundMs - a.foregroundMs);
 }
 function visibleSegments() {
+  if (ui.timelineRelation) return resolveRelationEvidence(ui.state.segments, ui.timelineRelation.example).segments;
   return ui.state.segments.filter(segment => {
     if (ui.timelineStatus !== 'all' && segment.status !== ui.timelineStatus) return false;
     return !ui.timelineTag || tagsOf(segment).includes(ui.timelineTag);
@@ -459,7 +462,8 @@ function timelineEntry(segment) {
   const statusLabel = {active: '前台停留', idle: '暂离', unknown: '记录缺口'}[segment.status] || '未知状态';
   const elapsed = duration(segment.status === 'active' ? segment.foregroundMs : segment.endedAt - segment.startedAt, true);
   const id = encodeURIComponent(segment.id), expanded = ui.expandedSegments.has(segment.id);
-  return el('article', {class: 'timeline-entry ' + segment.status},
+  const evidenceRole = ui.timelineRelation && (segment.id === ui.timelineRelation.example.fromSegmentId ? '先访问' : '接着访问');
+  return el('article', {class: 'timeline-entry ' + segment.status + (evidenceRole ? ' evidence-selected' : ''), 'data-segment-id': segment.id},
     el('div', {class: 'timeline-clock'}, timeLabel(segment.startedAt)),
     el('div', {class: 'timeline-track'}, el('span', {class: 'timeline-point'})),
     el('div', {class: 'timeline-content'},
@@ -467,6 +471,7 @@ function timelineEntry(segment) {
         el('button', {id: 'timeline-page-' + id, type: 'button', class: 'timeline-title', 'data-action': 'open-page', 'data-url': segment.url, disabled: !/^https?:\/\//.test(segment.url || '')}, segment.title || domainOf(segment.url)),
         !isPanel && el('span', {class: 'timeline-duration'}, elapsed)),
       el('div', {class: 'timeline-meta'},
+        evidenceRole && el('strong', {class: 'evidence-role'}, evidenceRole),
         isPanel && el('span', {class: 'timeline-duration'}, elapsed),
         segment.status !== 'active' && el('span', {class: 'timeline-status'}, statusLabel),
         tagsOf(segment).slice(0, 3).map((tag, index) => tagChip(tag, 'timeline-tag', {id: 'timeline-tag-' + id + '-' + index})),
@@ -491,15 +496,18 @@ function renderTimeline() {
     if (day !== previousDay) { timeline.push(el('h3', {class: 'timeline-day'}, dateLabel(segment.startedAt))); previousDay = day; }
     timeline.push(timelineEntry(segment));
   }
-  const summary = !['all', 'active'].includes(ui.timelineStatus) ? [] : ui.timelineTag
+  const summary = ui.timelineRelation ? tagStats(segments) : !['all', 'active'].includes(ui.timelineStatus) ? [] : ui.timelineTag
     ? ui.state.attention.nodes.filter(entry => entry.tag === ui.timelineTag) : ui.state.attention.nodes;
-  const empty = ui.state.segments.length && (ui.timelineTag || ui.timelineStatus !== 'all')
+  const empty = ui.timelineRelation
+    ? emptyState('当前列表没有这次切换的原始片段', '地图例证仍列在上方。可调整时间范围，或返回地图核对保留的来源。', 'return-map-relation', '返回地图', false, 'clock')
+    : ui.state.segments.length && (ui.timelineTag || ui.timelineStatus !== 'all')
     ? emptyState('没有符合筛选的记录', '这个范围内有其他记录，可以清除主题和状态筛选后查看。', 'clear-timeline-filters', '查看全部记录', false, 'clock')
     : !ui.state.settings.tracking
       ? emptyState('浏览记录已暂停', isPanel ? '点击顶部的恢复按钮，或在这里恢复记录。已有任务仍可继续。' : '恢复后会继续记录前台浏览，已有历史仍会保留。', 'toggle-tracking', '恢复记录', false, 'clock')
       : emptyState('这段时间还没有记录', '正常浏览网页后，返回这里刷新。暂离与未知时段会单独显示。', null, null, false, 'clock');
   return [
     header,
+    ui.timelineRelation && relationTimelineContext(),
     ui.state.timelineTruncated && el('p', {class: 'panel-intro'}, '这里展示所选范围内最新 2,000 条记录，图表使用该范围的完整记录。更早的历史可在设置中导出。'),
     el('div', {class: 'timeline-tools'},
       el('div', {class: 'filter-row'}, [['all', '全部记录'], ['active', '前台'], ['idle', '暂离'], ['unknown', '未知']].map(([value, label]) => el('button', {id: 'timeline-filter-' + value, type: 'button', class: 'filter-button' + (ui.timelineStatus === value ? ' active' : ''), 'data-action': 'timeline-status', 'data-status': value, 'aria-pressed': ui.timelineStatus === value}, label)))),
@@ -510,6 +518,29 @@ function renderTimeline() {
       el('aside', {class: 'insight-aside'}, el('h3', {}, '这段时间，停留在哪里'), summary.length ? tagBars(summary) : el('p', {class: 'subtle-label'}, '有前台记录后显示主题分布。'),
         el('p', {class: 'insight-note'}, '前台时长不等于实际注意力。', el('br'), '同一页面的时长在多个主题之间分摊，避免重复累计。')))
   ];
+}
+function relationTimelineContext() {
+  const {from, to, example} = ui.timelineRelation;
+  const resolved = resolveRelationEvidence(ui.state.segments, example);
+  return el('section', {class: 'relation-context', 'aria-label': '正在核对的地图切换'},
+    el('h2', {id: 'relation-context-title', tabindex: '-1'}, from + ' → ' + to),
+    el('p', {}, dateLabel(example.at) + ' ' + timeLabel(example.at) + ' · 核对这次切换的两端记录'),
+    !resolved.complete && el('p', {class: 'map-context-notice', role: 'status'}, '部分原始片段不在当前范围或最新 2,000 条列表中，也可能已过期。下方保留地图例证，未用其他访问替代；可返回地图调整范围。'),
+    el('div', {class: 'relation-source-pages'},
+      el('p', {}, '先访问 · ', button(example.fromTitle || domainOf(example.fromUrl), 'open-page', {'data-url': example.fromUrl}, 'text-button')),
+      el('p', {}, '接着访问 · ', button(example.toTitle || domainOf(example.toUrl), 'open-page', {'data-url': example.toUrl}, 'text-button'))),
+    el('div', {class: 'button-cluster'}, button('返回所选地图关系', 'return-map-relation', {}, 'small', 'nodes'), button('查看全部路径', 'clear-timeline-filters', {}, 'small subtle')));
+}
+function showRelationTimeline(index) {
+  const edge = mapData().edges.find(item => item.from + '\u0000' + item.to === ui.selectedEdge);
+  const example = edge?.examples?.[index];
+  if (!example) { toast('这条关系例证已不可用，请重新选择。', true); return; }
+  ui.timelineRelation = {from: edge.from, to: edge.to, example};
+  ui.timelineTag = ''; ui.timelineStatus = 'all';
+  for (const id of [example.fromSegmentId, example.toSegmentId].filter(Boolean)) ui.expandedSegments.add(id);
+  navigate('timeline');
+  const target = document.getElementById('relation-context-title');
+  target?.scrollIntoView({block: 'start'}); target?.focus({preventScroll: true});
 }
 function normalizedTransitions() {
   return ui.state.transitions.filter((edge) => typeof edge.from === 'string' && typeof edge.to === 'string' && edge.from !== edge.to && Number(edge.count) > 0).map((edge) => ({
@@ -562,6 +593,7 @@ function graph(entries, edges) {
     topology.isolated.length > 0 && el('div', {class: 'isolated-topics'}, el('h3', {}, '尚无跨主题接续'), el('div', {class: 'isolated-list'}, topology.isolated.map(node => mapNode(node, 'isolated')))));
   const draw = () => {
     if (!board.isConnected) return;
+    const focusedEdgeId = wire.contains(document.activeElement) ? document.activeElement.id : '';
     const rect = board.getBoundingClientRect();
     wire.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
     wire.replaceChildren(svgEl('defs', {}, ['normal', 'active'].map(name => svgEl('marker', {id: 'map-arrow-' + name, viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 5, markerHeight: 5, orient: 'auto', markerUnits: 'userSpaceOnUse'}, svgEl('path', {d: 'M1 1L7 4L1 7', fill: 'none', stroke: name === 'active' ? '#2d63cf' : '#8a99af', 'stroke-width': 1.3})))));
@@ -590,6 +622,9 @@ function graph(entries, edges) {
       }
       wire.append(group);
     }
+    // ResizeObserver may run again after a focused edge has been mounted.
+    // Replacing the SVG children must not send keyboard focus back to BODY.
+    if (focusedEdgeId) document.getElementById(focusedEdgeId)?.focus({preventScroll: true});
   };
   requestAnimationFrame(() => {
     if (!board.isConnected) return;
@@ -609,13 +644,14 @@ function mapDetail(entries, edges) {
     edge ? el('div', {class: 'selected-relation'},
       el('h3', {}, edge.from, icon('arrow'), edge.to),
       el('p', {class: 'relation-count'}, '观察到 ' + edge.count + ' 次' + (edge.count < 5 ? ' · 样本较少' : '')),
-      edge.examples?.length > 0 && el('div', {class: 'edge-examples'}, edge.examples.map(example => el('div', {class: 'edge-example'},
+      edge.examples?.length > 0 && el('div', {class: 'edge-examples'}, edge.examples.map((example, index) => el('div', {class: 'edge-example'},
         el('span', {}, dateLabel(example.at) + ' ' + timeLabel(example.at)),
         el('button', {type: 'button', 'data-action': 'open-page', 'data-url': example.fromUrl}, example.fromTitle || domainOf(example.fromUrl)),
         icon('arrow'),
-        el('button', {type: 'button', 'data-action': 'open-page', 'data-url': example.toUrl}, example.toTitle || domainOf(example.toUrl))))))
+        el('button', {type: 'button', 'data-action': 'open-page', 'data-url': example.toUrl}, example.toTitle || domainOf(example.toUrl)),
+        button('在路径中核对这次切换', 'relation-timeline', {'data-example-index': index}, 'small subtle', 'clock')))))
       : edges.some(item => item.from === selected.tag || item.to === selected.tag) && el('p', {class: 'panel-intro'}, isPanel ? '点选次数按钮，查看发生在何时、哪些页面。' : '点选次数或连线，查看发生在何时、哪些页面。'),
-    button('在路径中回看', 'tag-timeline', {'data-tag': selected.tag}, 'small subtle', 'clock'));
+    button('回看此主题记录', 'tag-timeline', {'data-tag': selected.tag}, 'small subtle', 'clock'));
 }
 function transitionTable(edges) {
   return el('div', {class: 'table-scroll'}, el('table', {class: 'transition-table'},
@@ -626,7 +662,7 @@ function transitionTable(edges) {
       el('td', {}, edge.count + ' 次'), el('td', {}, Math.round(edge.probability * 100) + '%' + (edge.count < 5 ? ' · 样本较少' : '')))))));
 }
 function renderMap() {
-  const header = heading(isPanel ? '主题地图' : '注意力地图', '从真实访问的先后关系，回到当时的页面。', [rangeControl('map-range'), isPanel ? iconButton('展开完整地图', 'open-full-map', 'external', {disabled: busy('range')}) : iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush') || busy('range')})]);
+  const header = heading('注意力地图', '从真实访问的先后关系，回到当时的页面。', [rangeControl('map-range'), isPanel ? iconButton('展开完整地图', 'open-full-map', 'external', {disabled: busy('range')}) : iconButton('刷新记录', 'flush-refresh', 'refresh', {disabled: busy('flush') || busy('range')})]);
   if (ui.pendingRange) return [header, rangeLoading()];
   const {entries, edges} = mapData();
   const context = resolveMapContext(entries, edges, ui.selectedTag, ui.selectedEdge);
@@ -637,6 +673,9 @@ function renderMap() {
     header,
     ui.mapNotice && el('p', {class: 'map-context-notice', role: 'status'}, ui.mapNotice),
     el('p', {class: 'map-summary'}, entries.length + ' 个主题 · ' + edges.length + ' 条已观察关系'),
+    el('details', {class: 'concept-help'}, el('summary', {}, '主题、任务与分组有什么不同？'),
+      el('p', {}, '主题描述页面内容，任务是你决定推进的事，分组只整理打开的页面。同一篇音频文档可以属于“声音与硬件”主题，并关联到你的音箱任务；改任务目标不改变主题，确认相关也不会自动移动分组。'),
+      button('回到当前聚焦', 'review-tasks', {}, 'small subtle', 'arrow')),
     !isPanel && edges.length > 0 && el('div', {class: 'map-visibility'},
       el('div', {class: 'filter-row', 'aria-label': '地图显示范围'}, [['related', '选中主题'], ['all', '全部关系']].map(([scope, label]) => el('button', {id: 'map-scope-' + scope, type: 'button', class: 'filter-button' + (ui.mapScope === scope ? ' active' : ''), 'data-action': 'map-scope', 'data-scope': scope, 'aria-pressed': ui.mapScope === scope}, label))),
       el('span', {}, ui.mapScope === 'all' ? '显示全部 ' + edges.length + ' 条连线' : '显示 ' + relatedCount + ' 条直接关联，全部主题位置保持不变')),
@@ -741,8 +780,8 @@ function navigate(view) {
   if (!Object.hasOwn(viewNames, view)) return;
   ui.view = view;
   location.hash = view;
-  if (view === 'review' && ui.range !== 'week') chooseRange('week');
-  else { render(); refresh({quiet: true}); }
+  if (view === 'review' && ui.range !== 'week') return chooseRange('week');
+  render(); return refresh({quiet: true});
 }
 let dialogCancelHandler = null, dialogBusy = false, taskEditor = null, dialogReturnFocusId = '';
 function closeDialog() {
@@ -788,7 +827,7 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
   const taskPages = uniqueTaskPages(sourcePages);
   if (!task && !intentOnly && !taskPages.length) return toast('先选择要保存的页面。', true);
   const source = group ? '当前分组' : scope === 'selection' ? '所选页面' : '当前窗口';
-  const {dialog, body} = dialogFrame(task ? '编辑任务' : intentOnly ? '新建任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : intentOnly ? '先写下目标，再设为当前任务寻找相关资料。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
+  const {dialog, body} = dialogFrame(task ? '编辑任务' : intentOnly ? '新建任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : intentOnly ? '先写下目标，保存后设为当前聚焦，再关联资料。任务目标不会改变地图主题。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
   const memberList = intentOnly ? null : task
     ? el('ul', {class: 'dialog-pages'}, taskPages.map(page => el('li', {}, icon('page'), el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url, title: page.title || page.url}, page.title || domainOf(page.url)))))
     : el('div', {class: 'task-member-picker'},
@@ -958,7 +997,7 @@ async function handleAction(action, target) {
     case 'navigate': navigate(target.dataset.view); break;
     case 'review-map': navigate('map'); break;
     case 'review-tasks': navigate('tasks'); break;
-    case 'open-workspace': await openWorkspace({view: 'review', windowId, demo: isDemo}); break;
+    case 'open-workspace': await openWorkspace({view: 'tasks', windowId, demo: isDemo}); break;
     case 'open-full-map': {
       const [from, to] = ui.selectedEdge.split('\u0000');
       await openWorkspace({view: 'map', range: ui.range, windowId, demo: isDemo, topic: ui.selectedTag, from, to}); break;
@@ -1032,12 +1071,21 @@ async function handleAction(action, target) {
         if (ui.settingsDraft) ui.settingsDraft.tracking = tracking;
         await refresh({quiet: true}); toast(tracking ? '已恢复浏览记录。' : '已暂停浏览记录。');
       }); break;
-    case 'timeline-status': ui.timelineStatus = target.dataset.status; ui.timelineLimit = 60; render(); announceResults(); break;
+    case 'timeline-status': ui.timelineRelation = null; ui.timelineStatus = target.dataset.status; ui.timelineLimit = 60; render(); announceResults(); break;
     case 'timeline-more': ui.timelineLimit += 60; render(); break;
-    case 'timeline-tag': ui.timelineTag = target.dataset.tag; ui.timelineLimit = 60; if (ui.view === 'review') navigate('timeline'); else render(); break;
+    case 'timeline-tag': ui.timelineRelation = null; ui.timelineTag = target.dataset.tag; ui.timelineLimit = 60; if (ui.view === 'review') navigate('timeline'); else render(); break;
     case 'clear-timeline-tag': ui.timelineTag = ''; render(); document.getElementById('timeline-filter-' + ui.timelineStatus)?.focus(); announceResults(); break;
-    case 'clear-timeline-filters': ui.timelineTag = ''; ui.timelineStatus = 'all'; ui.timelineLimit = 60; render(); document.getElementById('timeline-filter-all')?.focus(); announceResults(); break;
-    case 'tag-timeline': ui.timelineTag = target.dataset.tag; ui.timelineStatus = 'all'; navigate('timeline'); break;
+    case 'clear-timeline-filters': ui.timelineRelation = null; ui.timelineTag = ''; ui.timelineStatus = 'all'; ui.timelineLimit = 60; render(); document.getElementById('timeline-filter-all')?.focus(); announceResults(); break;
+    case 'tag-timeline': ui.timelineRelation = null; ui.timelineTag = target.dataset.tag; ui.timelineStatus = 'all'; navigate('timeline'); break;
+    case 'relation-timeline': showRelationTimeline(Number(target.dataset.exampleIndex)); break;
+    case 'return-map-relation': {
+      await navigate('map');
+      // Wires are positioned after layout, once the refreshed board is mounted.
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const selected = document.querySelector('[data-action="select-edge"][aria-pressed="true"]') || document.getElementById('nav-map');
+      selected?.scrollIntoView({block: 'center'}); selected?.focus({preventScroll: true});
+      break;
+    }
     case 'select-tag': ui.selectedTag = target.dataset.tag; ui.selectedEdge = ''; ui.mapNotice = ''; render(); break;
     case 'map-scope': ui.mapScope = target.dataset.scope; render(); break;
     case 'select-edge': if (!isPanel) ui.selectedTag = target.dataset.from; ui.selectedEdge = target.dataset.from + '\u0000' + target.dataset.to; ui.mapNotice = ''; render(); break;

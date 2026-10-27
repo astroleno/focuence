@@ -74,6 +74,13 @@ test('workspace URL encodes the exact theme, relation, window and range together
   assert.equal(url.hash, '#map');
 });
 
+test('default workspace opens current focus while explicit review and settings remain addressable', () => {
+  const base = 'chrome-extension://fixture/app/index.html';
+  assert.equal(new URL(workspaceURL(base)).hash, '#tasks');
+  assert.equal(new URL(workspaceURL(base, {view: 'review'})).hash, '#review');
+  assert.equal(new URL(workspaceURL(base, {view: 'settings'})).hash, '#settings');
+});
+
 test('native handoff reuses an existing workspace tab with its new map context', async () => {
   const previous = globalThis.chrome, updates = [], created = [];
   globalThis.chrome = {

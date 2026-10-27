@@ -84,8 +84,18 @@ h3 { font-size: 15px; line-height: 1.5; }
 .filter-button { border: 0; border-radius: 5px; background: transparent; padding: 5px 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .filter-button.active { background: var(--accent-soft); color: #2457b4; font-weight: 550; }
 .filter-button:hover { background: var(--canvas); color: var(--ink); }
-.standard-select, .text-select { border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); min-height: 32px; padding: 5px 25px 5px 9px; font-size: 13px; max-width: 100%; }
+.text-select { border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); min-height: 32px; padding: 5px 28px 5px 9px; font-size: 13px; max-width: 100%; }
 .text-select { border-color: transparent; color: var(--muted); }
+.concept-help { margin: 10px 0 20px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+.concept-help summary { cursor: pointer; }
+.concept-help p { max-width: 75ch; margin: 10px 0; }
+.relation-context { padding: 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); margin-bottom: 22px; overflow-wrap: anywhere; }
+.relation-context h2 { font-size: 18px; margin-bottom: 7px; }
+.relation-context p { font-size: 13px; line-height: 1.7; }
+.relation-source-pages { margin: 10px 0; }
+.relation-source-pages .text-button { white-space: normal; text-align: left; }
+.evidence-selected .timeline-content { padding: 8px 10px; border-left: 2px solid var(--accent); background: var(--accent-soft); border-radius: 4px; }
+.evidence-role { color: var(--accent); font-size: 12px; }
 .stat-strip { display: flex; gap: 38px; padding: 0 0 24px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
 .stat-label { font-size: 13px; color: var(--muted); }
 .stat-value { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }

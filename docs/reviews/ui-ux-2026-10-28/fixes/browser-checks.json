@@ -1,0 +1,571 @@
+[
+  {
+    "id": "R4-popup-default-focus",
+    "passed": true
+  },
+  {
+    "id": "R9-popup-shared-select",
+    "passed": true
+  },
+  {
+    "id": "R1-escape-protects-draft",
+    "passed": true
+  },
+  {
+    "id": "R1-close-protects-draft",
+    "passed": true
+  },
+  {
+    "id": "checkpoint-exit-protection",
+    "screenshot": "screenshots/checkpoint-exit-protection.png"
+  },
+  {
+    "id": "R1-discard-is-explicit",
+    "passed": true
+  },
+  {
+    "id": "R3-relation-focus-0",
+    "passed": true
+  },
+  {
+    "id": "R3-relation-focus-1",
+    "passed": true
+  },
+  {
+    "id": "R3-relation-focus-2",
+    "passed": true
+  },
+  {
+    "id": "R3-manager-returns-to-trigger",
+    "passed": true
+  },
+  {
+    "id": "popup-520-fixed-save-action",
+    "passed": true
+  },
+  {
+    "id": "popup-new-goal-520",
+    "screenshot": "screenshots/popup-new-goal-520.png"
+  },
+  {
+    "id": "R3-nested-editor-returns-to-search-result",
+    "passed": true
+  },
+  {
+    "id": "R4-panel-default-and-map-adjacent",
+    "passed": true
+  },
+  {
+    "id": "R1-pause-editor-guards-unsaved-text",
+    "passed": true
+  },
+  {
+    "id": "R1-direct-pause-also-requires-discard",
+    "passed": true
+  },
+  {
+    "id": "R7-pause-feedback-scope",
+    "passed": true
+  },
+  {
+    "id": "R7-task-lifecycle-remains-active",
+    "passed": true
+  },
+  {
+    "id": "map-clock-fixture",
+    "note": "Only synthetic map demo initialized at 2026-10-28 13:00 +08:00. No system clock or product data changed."
+  },
+  {
+    "id": "R4-workbench-default-focus",
+    "passed": true
+  },
+  {
+    "id": "R5-single-page-primary-before-bulk",
+    "passed": true
+  },
+  {
+    "id": "R2-relation-shows-exact-two-endpoints",
+    "passed": true
+  },
+  {
+    "id": "map-transition-evidence",
+    "screenshot": "screenshots/map-transition-evidence.png"
+  },
+  {
+    "id": "R2-return-keeps-map-relation",
+    "passed": true
+  },
+  {
+    "id": "R2-theme-view-is-separate",
+    "passed": true
+  },
+  {
+    "id": "R8-mobile-320-metrics",
+    "viewport": 320,
+    "documentWidth": 320,
+    "fonts": [
+      {
+        "text": "6 次",
+        "font": 12
+      },
+      {
+        "text": "3 次",
+        "font": 12
+      },
+      {
+        "text": "2 次",
+        "font": 12
+      },
+      {
+        "text": "1 次",
+        "font": 12
+      },
+      {
+        "text": "3 个页面 · 18 分钟",
+        "font": 12
+      },
+      {
+        "text": "2 个页面 · 26 分钟",
+        "font": 12
+      },
+      {
+        "text": "4 个页面 · 12 分钟",
+        "font": 12
+      },
+      {
+        "text": "2 个页面 · 6 分钟",
+        "font": 12
+      },
+      {
+        "text": " 箭头表示观察到的访问先后；时长为前台记录，不等于实际注意力。",
+        "font": 12
+      },
+      {
+        "text": "文产品方案 · 工作稿正在编辑的文档",
+        "font": 13
+      },
+      {
+        "text": "正在编辑的文档",
+        "font": 12
+      },
+      {
+        "text": "纲研究结论与提纲整理过的写作线索",
+        "font": 13
+      },
+      {
+        "text": "整理过的写作线索",
+        "font": 12
+      },
+      {
+        "text": "资料研究 → 方案写作 · 6 次",
+        "font": 12
+      }
+    ],
+    "nodes": [
+      {
+        "text": "↗\n资料研究\n3 个页面 · 18 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "✎\n方案写作\n2 个页面 · 26 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "⌑\n视觉参考\n4 个页面 · 12 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "↳\n临时岔路\n2 个页面 · 6 分钟",
+        "content": 116,
+        "available": 116
+      }
+    ],
+    "counts": [
+      {
+        "left": 146.4921875,
+        "right": 173.5078125
+      },
+      {
+        "left": 219.05078125,
+        "right": 245.94921875
+      },
+      {
+        "left": 256.69140625,
+        "right": 283.30859375
+      },
+      {
+        "left": 112.52734375,
+        "right": 137.47265625
+      }
+    ]
+  },
+  {
+    "id": "R8-mobile-320-readable-without-overflow",
+    "passed": true
+  },
+  {
+    "id": "R8-mobile-390-metrics",
+    "viewport": 390,
+    "documentWidth": 390,
+    "fonts": [
+      {
+        "text": "6 次",
+        "font": 12
+      },
+      {
+        "text": "3 次",
+        "font": 12
+      },
+      {
+        "text": "2 次",
+        "font": 12
+      },
+      {
+        "text": "1 次",
+        "font": 12
+      },
+      {
+        "text": "3 个页面 · 18 分钟",
+        "font": 12
+      },
+      {
+        "text": "2 个页面 · 26 分钟",
+        "font": 12
+      },
+      {
+        "text": "4 个页面 · 12 分钟",
+        "font": 12
+      },
+      {
+        "text": "2 个页面 · 6 分钟",
+        "font": 12
+      },
+      {
+        "text": " 箭头表示观察到的访问先后；时长为前台记录，不等于实际注意力。",
+        "font": 12
+      },
+      {
+        "text": "文产品方案 · 工作稿正在编辑的文档",
+        "font": 13
+      },
+      {
+        "text": "正在编辑的文档",
+        "font": 12
+      },
+      {
+        "text": "纲研究结论与提纲整理过的写作线索",
+        "font": 13
+      },
+      {
+        "text": "整理过的写作线索",
+        "font": 12
+      },
+      {
+        "text": "资料研究 → 方案写作 · 6 次",
+        "font": 12
+      }
+    ],
+    "nodes": [
+      {
+        "text": "↗\n资料研究\n3 个页面 · 18 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "✎\n方案写作\n2 个页面 · 26 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "⌑\n视觉参考\n4 个页面 · 12 分钟",
+        "content": 116,
+        "available": 116
+      },
+      {
+        "text": "↳\n临时岔路\n2 个页面 · 6 分钟",
+        "content": 116,
+        "available": 116
+      }
+    ],
+    "counts": [
+      {
+        "left": 181.4921875,
+        "right": 208.5078125
+      },
+      {
+        "left": 274.34765625,
+        "right": 301.24609375
+      },
+      {
+        "left": 322.48828125,
+        "right": 349.10546875
+      },
+      {
+        "left": 137.72265625,
+        "right": 162.66796875
+      }
+    ]
+  },
+  {
+    "id": "R8-mobile-390-readable-without-overflow",
+    "passed": true
+  },
+  {
+    "id": "website-goal-and-next-step-save",
+    "passed": true
+  },
+  {
+    "id": "website-checkpoint-continues-to-focus",
+    "passed": true
+  },
+  {
+    "id": "R1-failed-save-keeps-fields",
+    "passed": true
+  },
+  {
+    "id": "R1-failed-save-still-guards-close",
+    "passed": true
+  },
+  {
+    "id": "R1-retry-saves-confirmed-checkpoint",
+    "passed": true
+  },
+  {
+    "id": "R1-switch-editor-guards-unsaved-text",
+    "passed": true
+  },
+  {
+    "id": "R1-direct-switch-requires-discard",
+    "passed": true
+  },
+  {
+    "id": "R1-discard-switch-does-not-confirm-draft",
+    "passed": true
+  },
+  {
+    "id": "R1-save-and-switch-confirms-previous-task",
+    "passed": true
+  },
+  {
+    "id": "failure-fixture-boundary",
+    "note": "Actual shared task-memory-ui with existing memory-only demo transport; one SAVE_CHECKPOINT request intentionally fails through a visible test checkbox. Fixture and injected error are test-only, not product settings."
+  },
+  {
+    "id": "R5-popup-first-action-position",
+    "singleTop": 488.0859375,
+    "singleBottom": 520.0859375,
+    "footerTop": 544,
+    "singlePrimary": true,
+    "bulkPrimary": false
+  },
+  {
+    "id": "R5-popup-first-single-page-visible",
+    "passed": true
+  },
+  {
+    "id": "popup-focus-final-400",
+    "screenshot": "screenshots/popup-focus-final-400.png"
+  },
+  {
+    "id": "R3-manager-scroll-1",
+    "before": 0,
+    "scrollTop": 0,
+    "focused": true
+  },
+  {
+    "id": "R3-manager-keeps-scroll-1",
+    "passed": true
+  },
+  {
+    "id": "R3-manager-scroll-2",
+    "before": 0,
+    "scrollTop": 0,
+    "focused": true
+  },
+  {
+    "id": "R3-manager-keeps-scroll-2",
+    "passed": true
+  },
+  {
+    "id": "R3-manager-scroll-3",
+    "before": 22.5,
+    "scrollTop": 22.5,
+    "focused": true
+  },
+  {
+    "id": "R3-manager-keeps-scroll-3",
+    "passed": true
+  },
+  {
+    "id": "R3-scrolled-manager-returns-to-trigger",
+    "passed": true
+  },
+  {
+    "id": "R4-popup-map-opens-directly",
+    "passed": true
+  },
+  {
+    "id": "R6-contextual-concepts-explained",
+    "passed": true
+  },
+  {
+    "id": "R4-brand-returns-to-focus",
+    "passed": true
+  },
+  {
+    "id": "workbench-focus-final",
+    "screenshot": "screenshots/workbench-focus-final.png"
+  },
+  {
+    "id": "preserved-workbench-route-review",
+    "passed": true
+  },
+  {
+    "id": "preserved-workbench-route-search",
+    "passed": true
+  },
+  {
+    "id": "preserved-workbench-route-library",
+    "passed": true
+  },
+  {
+    "id": "preserved-workbench-route-pages",
+    "passed": true
+  },
+  {
+    "id": "preserved-workbench-route-settings",
+    "passed": true
+  },
+  {
+    "id": "panel-map-final-360",
+    "screenshot": "screenshots/panel-map-final-360.png"
+  },
+  {
+    "id": "map-expansion-preserves-selection",
+    "passed": true
+  },
+  {
+    "id": "R2-return-focuses-selected-edge",
+    "passed": false,
+    "resolvedBy": "R2-return-and-resize-focus-final",
+    "resolution": "Resolved by awaiting the refreshed board layout and restoring edge focus during SVG redraw."
+  },
+  {
+    "id": "R2-missing-endpoints-are-explained",
+    "passed": false,
+    "resolvedBy": "R2-missing-endpoints-explained-final",
+    "resolution": "Final source reload confirms the explicit relation-specific empty state and retained evidence."
+  },
+  {
+    "id": "R2-missing-endpoints-explained-final",
+    "passed": true
+  },
+  {
+    "id": "map-unavailable-evidence",
+    "screenshot": "screenshots/map-unavailable-evidence.png"
+  },
+  {
+    "id": "R2-return-and-resize-focus-final",
+    "passed": true
+  },
+  {
+    "id": "R2-final-focus",
+    "activeId": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D"
+  },
+  {
+    "id": "R8-final-320-units-and-layout",
+    "passed": true
+  },
+  {
+    "id": "website-map-units-320",
+    "screenshot": "screenshots/website-map-units-320.png"
+  },
+  {
+    "id": "R8-final-390-units-and-layout",
+    "passed": true
+  },
+  {
+    "id": "website-map-units-390",
+    "screenshot": "screenshots/website-map-units-390.png"
+  },
+  {
+    "id": "website-map-desktop-final",
+    "screenshot": "screenshots/website-map-desktop-final.png"
+  },
+  {
+    "id": "R4-goal-without-pages-saves-explicitly",
+    "passed": true
+  },
+  {
+    "id": "R4-goal-becomes-focus-only-after-selection",
+    "passed": true
+  },
+  {
+    "id": "new-goal-demo-clarification",
+    "note": "At the normalized afternoon fixture time, the existing demo successfully saves and lists a zero-page goal. Earlier review-time visibility limitations were not used as evidence of a real-extension bug."
+  },
+  {
+    "id": "R5-zero-page-goal-has-guidance-without-empty-bulk-controls",
+    "passed": false,
+    "resolvedBy": "R5-zero-page-guidance-final",
+    "resolution": "The fixture must locate the named task rather than assume ordering before the morning synthetic visits. Named-task check passes."
+  },
+  {
+    "id": "zero-page-goal-final-details",
+    "guidance": true,
+    "noBulk": true,
+    "noPageToggle": true,
+    "taskId": "demo-task-1793124544568"
+  },
+  {
+    "id": "R5-zero-page-guidance-final",
+    "passed": true
+  },
+  {
+    "id": "R4-zero-page-focus-final",
+    "passed": true
+  },
+  {
+    "id": "panel-final-320-no-overflow-and-continue-visible",
+    "passed": true
+  },
+  {
+    "id": "panel-focus-final-320",
+    "screenshot": "screenshots/panel-focus-final-320.png"
+  },
+  {
+    "id": "panel-final-360-no-overflow-and-continue-visible",
+    "passed": true
+  },
+  {
+    "id": "panel-focus-final-360",
+    "screenshot": "screenshots/panel-focus-final-360.png"
+  },
+  {
+    "id": "R1-R7-save-and-pause-confirms-checkpoint",
+    "passed": true
+  },
+  {
+    "id": "website-map-select-research",
+    "passed": true
+  },
+  {
+    "id": "website-map-select-writing",
+    "passed": true
+  },
+  {
+    "id": "website-map-select-reference",
+    "passed": true
+  },
+  {
+    "id": "website-map-select-detour",
+    "passed": true
+  },
+  {
+    "id": "browser-acceptance-finished",
+    "note": "All targeted UI scenarios completed in this one TaskSpace using synthetic data. Original review TaskSpace was already closed. No user tabs, real extension storage or browser history accessed."
+  }
+]

@@ -9,9 +9,10 @@ const pending = job => ['queued', 'running'].includes(job?.status);
 
 /** Shared task interactions for the workbench, side panel, and popup. */
 export function createTaskMemoryUI({ getState, request, refresh, render, notify, getWindowId, surface, showEvidence,showLibrary,demo=false }) {
-  let working = false, dialog = null, returnFocus = '', searchJob = null, searchEpoch = null, expanded = false;
+  let working = false, dialog = null, returnFocus = '', beforeClose = null, searchJob = null, searchEpoch = null, expanded = false;
   let query = '', scope = 'all', searchSerial = 0, associationSerial = 0, pollingAssociation = '';
   const shownPrompts = new Set();
+  const openTaskOptions = new Set();
   let promptObserver;
   let statusFilter = 'daily';
   let filters={from:'',until:'',domain:'',taskId:'',taskMode:'associated'},filtersOpen=false,offset=0;
@@ -37,22 +38,35 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     catch (error) { if (/^STALE_|TASK_NOT_FOUND/.test(error.code || '')) await refresh(); notify(error.message, true); }
     finally { working = false; render(); }
   }
-  function close() { if (working) return; dialog?.close(); }
+  function close({force = false} = {}) {
+    if (working || (!force && beforeClose?.() === false)) return;
+    dialog?.close();
+  }
   function modal(title, description) {
-    dialog?.remove(); returnFocus = document.activeElement?.id || '';
-    dialog = el('dialog', {class: 'memory-dialog', 'aria-labelledby': 'memory-dialog-title'},
+    // A nested editor and a refreshed manager belong to the same dialog flow.
+    // Capture the outside trigger before removing any element from that flow.
+    if (!dialog?.open) returnFocus = document.activeElement?.id || '';
+    dialog?.remove(); beforeClose = null;
+    const frame = el('dialog', {class: 'memory-dialog', 'aria-labelledby': 'memory-dialog-title'},
       el('div', {class: 'memory-heading'}, el('h2', {id: 'memory-dialog-title'}, title), action('关闭', 'close')),
       description && small(description));
-    dialog.addEventListener('cancel', event => { if (working) event.preventDefault(); });
-    dialog.addEventListener('close', () => { document.getElementById(returnFocus)?.focus({preventScroll: true}); });
-    document.body.append(dialog); dialog.showModal(); return dialog;
+    dialog = frame;
+    frame.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    frame.addEventListener('close', () => {
+      if (dialog !== frame || frame.open) return;
+      beforeClose = null;
+      const trigger = document.getElementById(returnFocus);
+      (trigger && !trigger.disabled ? trigger : document.getElementById('main') || document.getElementById('popup-main'))?.focus({preventScroll: true});
+    });
+    document.body.append(frame); frame.showModal(); return frame;
   }
   function checkpoint(task, { pause = false, switchTo = null } = {}) {
     const expected = payload(task), current = task.checkpoint || {}, draft = work().drafts?.[task.id];
     const relations = work().relations || [];
     const pages = [...new Map([...task.pages, ...relations.filter(item => item.taskId === task.id && item.decision === 'related').map(item => item.page)]
       .filter(page => relationFor(task, page.pageId, relations).related).map(page => [page.pageId, page])).values()];
-    const frame = modal(switchTo ? '切换前，留一句继续线索' : pause ? '暂停当前任务' : '保存任务断点', '进展、卡点与下一步由你确认。最近访问只提供页面和时间线索。');
+    const frame = modal(switchTo ? '切换前，留一句继续线索' : pause ? '暂停此窗口的聚焦' : '保存任务断点',
+      (pause ? '只解除此窗口的当前任务；任务仍保留原状态，浏览记录由记录开关控制。' : '') + '进展、卡点与下一步由你确认。最近访问只提供页面和时间线索。');
     const form = el('form', {class: 'memory-form'},
       ['progress', 'blocker', 'nextStep'].map((name, index) => el('label', {}, ['已做到哪里', '遇到的卡点（可留空）', '下一步'][index],
         el('textarea', {id: 'checkpoint-' + name, name, rows: 2, placeholder: ['用一句话记下已做的事', '还有什么没有解决', '下次打开时，先做什么'][index]}, current[name] || ''))),
@@ -61,9 +75,28 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       draft && el('div', {class: 'memory-observation'}, small('最近记录 · ' + stamp(draft.at)), el('p', {}, draft.page.title),
         pages.some(page => page.pageId === draft.page.pageId) && el('label', {class: 'memory-checkbox'}, el('input', {type: 'checkbox', name: 'useEvidence'}), '使用这条访问记录作为继续线索')),
       el('p', {class: 'memory-form-error', role: 'alert'}),
-      el('div', {class: 'memory-actions'}, (pause || switchTo) && action(switchTo ? '直接切换' : '只暂停', 'direct-transition', {id: task.id, next: switchTo?.id || '', revision: expected.contextRevision}),
-        el('button', {type: 'submit', class: 'memory-button primary'}, switchTo ? '保存并切换' : pause ? '保存并暂停' : '保存断点')));
+      el('div', {class: 'memory-actions'}, (pause || switchTo) && action(switchTo ? '直接切换' : '只暂停此窗口', 'direct-transition', {id: task.id, next: switchTo?.id || '', revision: expected.contextRevision}),
+        el('button', {type: 'submit', class: 'memory-button primary'}, switchTo ? '保存并切换' : pause ? '保存并暂停此窗口' : '保存断点')));
     frame.append(form);
+    const signature = () => JSON.stringify([...new FormData(form)]);
+    const original = signature();
+    const keepEditing = el('button', {id: 'checkpoint-keep-editing', type: 'button', class: 'memory-button primary'}, '继续编辑');
+    const discard = el('button', {id: 'checkpoint-discard', type: 'button', class: 'memory-button'}, '放弃更改');
+    const exit = el('section', {class: 'memory-unsaved', hidden: true, role: 'alert'},
+      el('p', {}, '断点尚未保存。继续编辑，或明确放弃本次更改。'), el('div', {class: 'memory-actions'}, keepEditing, discard));
+    frame.append(exit);
+    let editFocus = null, discardAction = () => close({force: true});
+    beforeClose = (proceed = () => close({force: true})) => {
+      if (signature() === original) return true;
+      if (exit.hidden) editFocus = document.activeElement;
+      discardAction = proceed;
+      exit.hidden = false; keepEditing.focus(); return false;
+    };
+    keepEditing.addEventListener('click', () => { exit.hidden = true; (editFocus?.isConnected && !editFocus.disabled ? editFocus : form.elements.progress).focus(); });
+    discard.addEventListener('click', () => {
+      const guard = beforeClose; beforeClose = null; discardAction();
+      if (frame.open && dialog === frame) beforeClose = guard;
+    });
     form.elements.useEvidence?.addEventListener('change', event => { if (event.target.checked) form.elements.pageId.value = draft.page.pageId; });
     form.addEventListener('submit', async event => {
       event.preventDefault(); if (working) return;
@@ -76,7 +109,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       try {
         await request(switchTo ? 'SET_CURRENT_TASK' : pause ? 'PAUSE_TASK' : 'SAVE_CHECKPOINT', {
           ...expected, ...(switchTo ? {id: switchTo.id, previousTaskId: task.id, previousRevision: expected.revision} : {}), checkpoint: data });
-        await refresh(); working = false; close(); notify(switchTo ? '断点已保存，已切换任务。' : pause ? '断点已保存，当前任务已暂停。' : '断点已保存。');
+        await refresh(); working = false; close({force: true}); notify(switchTo ? '断点已保存，已切换此窗口的当前聚焦。' : pause ? '断点已保存，已暂停此窗口的聚焦；任务状态和记录开关保持不变。' : '断点已保存。');
       } catch (error) {
         form.querySelector('.memory-form-error').textContent = error.message;
         if (/^STALE_/.test(error.code || '')) {
@@ -111,19 +144,27 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   }
   function taskActions(task) {
     const current = work().current.taskId === task.id;
+    const available = canContinue(task);
     return el('div', {class: 'memory-task-detail'}, task.goal && el('p', {class: 'memory-goal'}, task.goal), checkpointSummary(task),
-      el('label', {class: 'memory-caption', for: 'memory-task-status-' + task.id}, '任务状态'),
-      el('select', {id: 'memory-task-status-' + task.id, class: 'standard-select', 'data-task-status': task.id, disabled: working},
-        Object.entries(TASK_STATUSES).map(([value,label]) => el('option', {value, selected: statusOf(task) === value}, label))),
-      el('div', {class: 'memory-actions'}, statusOf(task)==='active'?action(current ? '正在做' : '设为当前任务', 'select', {id: task.id, ...(current ? {current: true} : {})}):small('改为进行中后可继续任务。'),
-        action('留断点', 'checkpoint', {id: task.id}), action('关联记忆', 'manage', {id: task.id}),
-        canContinue(task) && action('继续一页', 'continue', {id: task.id})));
+      el('div', {class: 'memory-actions memory-primary-actions'},
+        available && action('继续一页', 'continue', {id: task.id}, true),
+        statusOf(task) === 'active' && action(current ? '当前聚焦' : '设为当前聚焦', 'select', {id: task.id, ...(current ? {current: true} : {})}),
+        action('留断点', 'checkpoint', {id: task.id})),
+      !available && small(statusOf(task) === 'active' ? '还没有可继续的页面。先关联并保存资料，或在断点中指定继续页。' : '任务改为进行中后可继续。'),
+      el('details', {class: 'memory-task-options', 'data-task-options': task.id, open: openTaskOptions.has(task.id)}, el('summary', {}, '任务管理'),
+        el('label', {class: 'memory-caption', for: 'memory-task-status-' + task.id}, '任务状态'),
+        el('select', {id: 'memory-task-status-' + task.id, class: 'standard-select', 'data-task-status': task.id, disabled: working},
+          Object.entries(TASK_STATUSES).map(([value,label]) => el('option', {value, selected: statusOf(task) === value}, label))),
+        el('div', {class: 'memory-actions'}, action('关联记忆', 'manage', {id: task.id}))));
   }
 
-  function manager(task) {
+  function manager(task, {preserve = false} = {}) {
+    const scrollTop = preserve ? dialog?.scrollTop || 0 : 0;
+    const active = preserve && dialog?.contains(document.activeElement) ? document.activeElement : null;
+    const position = active && {id: active.id, action: active.dataset.action, pageId: active.dataset.pageId};
     const relations = work().relations || [], known = relations.filter(item => item.taskId === task.id);
     const pages = [...new Map([...task.pages, ...known.map(item => item.page)].map(page => [page.pageId, page])).values()];
-    const frame = modal('「' + task.name + '」的关联记忆', '相关判断用于任务识别；保存的页面用于恢复任务，最多 30 页。标记不相关不会自动移出保存列表。');
+    const frame = modal('「' + task.name + '」的关联记忆', '相关判断用于任务识别；保存的页面用于恢复任务，最多 30 页。标记不相关不会自动移出保存列表；确认相关不改变地图主题，也不会移动浏览器分组。');
     frame.append(el('div', {class: 'memory-record-list'}, pages.length ? pages.map(page => {
       const decision = relationFor(task, page.pageId, relations), saved = task.pages.some(item => item.pageId === page.pageId);
       return el('article', {class: 'memory-record'}, el('h3', {}, page.title), small((saved ? '已保存 · ' : '') + ({confirmed: '已确认相关', excluded: '已标记不相关', saved: '来自保存列表'}[decision.source] || '未确认')),
@@ -131,6 +172,13 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
           saved ? action('移出保存列表', 'remove-page', {id: task.id, pageId: page.pageId}) : decision.related && action('保存到任务', 'save-page', {id: task.id, pageId: page.pageId})));
     }) : small('还没有保存页面或关联判断。')),
     el('div', {class: 'memory-actions'}, work().undo?.[task.id] && action('撤销上次判断', 'undo', {id: task.id, manage: true}), known.length > 0 && action('重置关联记忆', 'reset-confirm', {id: task.id})));
+    if (position) {
+      const replacement = position.pageId
+        ? [...frame.querySelectorAll('button')].find(node => node.dataset.action === position.action && node.dataset.pageId === position.pageId)
+        : frame.querySelector('[id="' + CSS.escape(position.id) + '"]');
+      (replacement || frame.querySelector('[data-action="memory-close"]'))?.focus({preventScroll: true});
+    }
+    frame.scrollTop = scrollTop;
   }
   function taskDetail(task) {
     const frame = modal(task.name, '已保存的任务与继续线索');
@@ -175,8 +223,8 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       });
     }
     return el('section', {class: 'memory-current', 'aria-label': '当前任务'},
-      el('div', {class: 'memory-heading'}, el('div', {}, small('这个窗口 · 当前任务'), el('h2', {}, task?.name || '现在想推进哪件事？')),
-        task && action('暂停', 'pause', {id: task.id})),
+      el('div', {class: 'memory-heading'}, el('div', {}, small('这个窗口 · 当前聚焦'), el('h2', {}, task?.name || '现在想推进哪件事？')),
+        task && action('暂停此窗口', 'pause', {id: task.id})),
       task ? el('div', {}, task.goal && el('p', {class: 'memory-goal'}, task.goal), checkpointSummary(task),
         el('div', {class: 'memory-actions'}, canContinue(task) && action('继续一页', 'continue', {id: task.id, slot: 'current'}, true), action('留断点', 'checkpoint', {id: task.id, slot: 'current'})),
         !canContinue(task) && small('关联并保存一页资料，或在断点中选择新的继续页面。'),
@@ -187,7 +235,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
           association.error && small(association.error), pending(association) && small('本地分析 · ' + association.completed + ' / ' + association.total),
           candidates.length ? candidates.map(item => candidateRow(task, item)) : small('暂时没有匹配的页面。可以补充任务目标后重新分析。'),
           work().undo?.[task.id] && action('撤销上次判断', 'undo', {id: task.id}))) :
-        small('新建任务写下目标，或在下方选择“设为当前任务”。'), promptNode,
+        small('新建任务或选择已有任务，开始当前聚焦。'), promptNode,
       support && el('label', {class: 'memory-checkbox'}, el('input', {id: 'memory-support', type: 'checkbox', checked: state.settings.focusSupport}), '在侧栏提供低频返回提示'));
   }
 
@@ -275,6 +323,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
 
   async function handle(name, target) {
     const data = target.dataset, task = taskById(data.id);
+    if (name === 'direct-transition' && beforeClose?.(() => handle(name, target).catch(error => notify(error.message, true))) === false) return;
     if (name === 'close') return close();
     if (name === 'checkpoint') return task && checkpoint(task);
     if (name === 'pause') return task && checkpoint(task, {pause: true});
@@ -299,6 +348,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       if (name === 'direct-transition') {
         await request(data.next ? 'SET_CURRENT_TASK' : 'PAUSE_TASK', {id: data.next || data.id, contextRevision: Number(data.revision), windowId: getWindowId()});
         dialog?.close();
+        notify(data.next ? '已切换此窗口的当前聚焦。' : '已暂停此窗口的聚焦；任务状态和浏览记录开关保持不变。');
       } else if (name === 'select') await request('SET_CURRENT_TASK', payload(task));
       else if (name === 'continue') {
         const result = await request('RESTORE_TASK', {...payload(task), mode: 'page'});
@@ -324,13 +374,21 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       else return;
       await refresh();
     });
-    if (dialog?.open && task && (data.manage || name === 'remove-page' || name === 'save-page')) manager(taskById(task.id));
+    if (dialog?.open && task && (data.manage || name === 'remove-page' || name === 'save-page')) manager(taskById(task.id), {preserve: true});
   }
   document.addEventListener('click', event => {
     const target = event.target.closest('[data-action^="memory-"]');
     if (target && !target.disabled) handle(target.dataset.action.slice(7), target).catch(error => notify(error.message, true));
   });
-  document.addEventListener('toggle', event => { if (event.target.matches?.('.memory-association')) expanded = event.target.open;if(event.target.matches?.('.memory-filters'))filtersOpen=event.target.open; }, true);
+  document.addEventListener('toggle', event => {
+    if (!event.target.isConnected) return;
+    if (event.target.matches?.('.memory-association')) expanded = event.target.open;
+    if (event.target.matches?.('.memory-filters')) filtersOpen = event.target.open;
+    if (event.target.dataset?.taskOptions) {
+      if (event.target.open) openTaskOptions.add(event.target.dataset.taskOptions);
+      else openTaskOptions.delete(event.target.dataset.taskOptions);
+    }
+  }, true);
   document.addEventListener('input', event => { if (event.target.id === 'memory-query') query = event.target.value;if(event.target.dataset.searchFilter)filters[event.target.dataset.searchFilter]=event.target.value; });
   document.addEventListener('change', event => {
     if (event.target.id === 'memory-task-filter') { statusFilter = event.target.value; render(); }

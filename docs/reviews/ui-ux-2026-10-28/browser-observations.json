@@ -1,0 +1,1694 @@
+[
+  {
+    "id": "website-round-01",
+    "screenshots": [
+      "screenshots/website-map-desktop.png",
+      "screenshots/website-focus-desktop.png",
+      "screenshots/website-checkpoint-desktop.png",
+      "screenshots/website-map-mobile.png"
+    ],
+    "note": "Captured before an intentional connect-src none CSP blocked an attempted manifest fetch. The screenshots completed. Goal: 整理注意力地图评审结论; next step: 把主题、任务和断点的区别写清楚; checkpoint: 已完成地图说明，接着核对侧栏里的任务入口。 Clicked continue, then reset. The blocked manifest fetch is an audit harness limitation, not a product defect."
+  },
+  {
+    "id": "popup-default-400",
+    "note": "Popup-equivalent viewport using existing memory-only demo transport; not a native toolbar popover.",
+    "screenshot": "screenshots/popup-default-400.png",
+    "url": "http://127.0.0.1:8769/popup/index.html?demo=1",
+    "title": "Focuence · 接着做",
+    "viewport": [
+      400,
+      600
+    ],
+    "pageWidth": 400,
+    "scrollY": 0,
+    "text": "Focuence\n打开侧栏\n\n示例模式 · 仅在本页内存中演示\n\n整理页面\n最近任务\n查找\n资料\n窗口\n整理当前窗口\n\n12 页打开 · 10 页待整理\n\n重新整理\n声音与硬件\n3 / 3 页\nESP32-S3 音频开发指南\nI2S 音频输出与麦克风采集\n便携音箱的结构与材料参考\n存为任务\n应用分组\n本地浏览工具\n4 / 4 页\n端侧语义模型 · 模型卡\nTransformers.js 浏览器推理文档\nChrome 标签页 API\n网页前台时间记录的设计\n存为任务\n应用分组\n产品视觉\n3 / 3 页\n自然光下的产品摄影参考\n电商详情页 · 信息层级研究\n色彩与材质的表达笔记\n存为任务\n应用分组\n保存窗口\n撤销分组\n需要更细的建议？使用本机模型\n暂停记录\n完整回顾",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "group-member-demo-group-audio-101",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-audio-102",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-audio-103",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-browser-104",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-browser-105",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-browser-106",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-browser-107",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-visual-108",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-visual-109",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "group-member-demo-group-visual-110",
+        "text": "",
+        "height": 16
+      }
+    ]
+  },
+  {
+    "id": "popup-tasks-400",
+    "note": "Recent tasks initial viewport in memory-only demo.",
+    "screenshot": "screenshots/popup-tasks-400.png",
+    "url": "http://127.0.0.1:8769/popup/index.html?demo=1",
+    "title": "Focuence · 接着做",
+    "viewport": [
+      400,
+      600
+    ],
+    "pageWidth": 400,
+    "scrollY": 0,
+    "text": "Focuence\n打开侧栏\n\n示例模式 · 仅在本页内存中演示\n\n整理页面\n最近任务\n查找\n资料\n窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n新建任务\n从上次继续\n3 个任务\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n恢复保存页\n查看 4 个页面\n任务笔记\n展开\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n保存当前窗口 · 12 页\n暂停记录\n完整回顾",
+    "activeElement": {
+      "id": "action-view-tasks",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-task-filter",
+        "text": "日常任务全部任务进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-local",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "memory-task-status-demo-task-local",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-audio",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "memory-task-status-demo-task-audio",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-visual",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "memory-task-status-demo-task-visual",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      }
+    ]
+  },
+  {
+    "id": "popup-new-task-400",
+    "note": "New task without a saved page: initial form.",
+    "screenshot": "screenshots/popup-new-task-400.png",
+    "url": "http://127.0.0.1:8769/popup/index.html?demo=1",
+    "title": "Focuence · 接着做",
+    "viewport": [
+      400,
+      600
+    ],
+    "pageWidth": 400,
+    "scrollY": 0,
+    "text": "Focuence\n打开侧栏\n保存任务\n返回\n\n先记录目标，稍后关联资料 · 已选 0 页\n\n任务名称\n任务目标\n任务笔记\n保存目标后再关联资料\n保存任务",
+    "activeElement": {
+      "id": "task-name",
+      "tag": "INPUT"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      }
+    ]
+  },
+  {
+    "id": "popup-task-created-400",
+    "note": "Saved a named goal with zero pages. Current task remained unset; the new task was not displayed by the demo adapter list. This observation is an environment limitation, not a real-extension defect.",
+    "url": "http://127.0.0.1:8769/popup/index.html?demo=1",
+    "title": "Focuence · 接着做",
+    "viewport": [
+      400,
+      600
+    ],
+    "pageWidth": 400,
+    "scrollY": 0,
+    "text": "Focuence\n打开侧栏\n\n示例模式 · 仅在本页内存中演示\n\n整理页面\n最近任务\n查找\n资料\n窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n新建任务\n从上次继续\n4 个任务\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n恢复保存页\n查看 4 个页面\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n保存当前窗口 · 12 页\n「评审演示目标」已保存，共 0 页。\n暂停记录\n完整回顾",
+    "activeElement": {
+      "id": "popup-main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-task-filter",
+        "text": "日常任务全部任务进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-local",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-audio",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-visual",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Adapter-only create-state inconsistency, not used as a real-extension finding."
+  },
+  {
+    "id": "popup-task-actions-400",
+    "note": "Scrolled first task card actions; the initial viewport did not expose current-task selection or continue controls.",
+    "screenshot": "screenshots/popup-task-actions-400.png",
+    "url": "http://127.0.0.1:8769/popup/index.html?demo=1",
+    "title": "Focuence · 接着做",
+    "viewport": [
+      400,
+      600
+    ],
+    "pageWidth": 400,
+    "scrollY": 0,
+    "text": "Focuence\n打开侧栏\n\n示例模式 · 仅在本页内存中演示\n\n整理页面\n最近任务\n查找\n资料\n窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n新建任务\n从上次继续\n4 个任务\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n恢复保存页\n查看 4 个页面\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n保存当前窗口 · 12 页\n「评审演示目标」已保存，共 0 页。\n暂停记录\n完整回顾",
+    "activeElement": {
+      "id": "popup-main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-task-filter",
+        "text": "日常任务全部任务进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-local",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-audio",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "memory-task-status-demo-task-visual",
+        "text": "进行中等待已完成已归档",
+        "height": 20.5
+      }
+    ]
+  },
+  {
+    "id": "checkpoint-unsaved-dismissal",
+    "surface": "popup-demo",
+    "steps": [
+      "Open local task checkpoint",
+      "Type unique progress text 未保存草稿核对-20261028",
+      "Press Escape",
+      "Reopen the same task checkpoint"
+    ],
+    "observed": {
+      "progress": "",
+      "activeId": "checkpoint-progress",
+      "dialogText": "保存任务断点\n关闭\n\n进展、卡点与下一步由你确认。最近访问只提供页面和时间线索。\n\n已做到哪里\n遇到的卡点（可留空）\n下一步\n继续页面\n暂不指定页面\n端侧语义模型 · 模型卡\nTransformers.js 浏览器推理文档\nChrome 标签页 API\n网页前台时间记录的设计\n\n保存断点"
+    }
+  },
+  {
+    "id": "relation-manager-before",
+    "observed": {
+      "activeId": "memory-close-",
+      "dialogText": "「让浏览器更轻一点」的关联记忆\n关闭\n\n相关判断用于任务识别；保存的页面用于恢复任务，最多 30 页。标记不相关不会自动移出保存列表。\n\n端侧语义模型 · 模型卡\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\nTransformers.js 浏览器推理文档\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\nChrome 标签页 API\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\n网页前台时间记录的设计\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表"
+    }
+  },
+  {
+    "id": "relation-manager-after-action",
+    "observed": {
+      "activeId": "memory-close-",
+      "activeTag": "BUTTON",
+      "dialogText": "「让浏览器更轻一点」的关联记忆\n关闭\n\n相关判断用于任务识别；保存的页面用于恢复任务，最多 30 页。标记不相关不会自动移出保存列表。\n\n端侧语义模型 · 模型卡\n\n已保存 · 已标记不相关\n\n确认相关\n移出保存列表\nTransformers.js 浏览器推理文档\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\nChrome 标签页 API\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\n网页前台时间记录的设计\n\n已保存 · 来自保存列表\n\n标记不相关\n移出保存列表\n撤销上次判断\n重置关联记忆"
+    }
+  },
+  {
+    "id": "relation-manager-after-close",
+    "observed": {
+      "activeId": "",
+      "activeTag": "BODY",
+      "dialogOpen": false
+    }
+  },
+  {
+    "id": "panel-tasks-360",
+    "note": "Side panel default tasks, 360px; synthetic memory-only data, not native browser sidePanel host.",
+    "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today#tasks",
+    "title": "Focuence · 浏览侧栏",
+    "viewport": [
+      360,
+      760
+    ],
+    "pageWidth": 360,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n示例模式\n任务\n查找\n资料\n页面\n路径\n地图\n\nESP32-S3 音频开发指南\n\n任务\n\n示例数据，仅用于演示\n\n任务\n新建任务\n保存窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n在侧栏提供低频返回提示\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n3 个任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 4 个页面\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n\n优先复用已打开页面，每个任务最多保存 30 页。",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-support",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "tasks-search",
+        "text": "搜索任务或页面",
+        "height": 21
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-local",
+        "text": "编辑 让浏览器更轻一点",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-audio",
+        "text": "编辑 声音陪伴小装置",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-visual",
+        "text": "编辑 产品视觉参考",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Near-duplicate of retained 320px panel default."
+  },
+  {
+    "id": "panel-tasks-320",
+    "note": "Side panel narrow 320px initial task view.",
+    "screenshot": "screenshots/panel-tasks-320.png",
+    "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today#tasks",
+    "title": "Focuence · 浏览侧栏",
+    "viewport": [
+      320,
+      760
+    ],
+    "pageWidth": 320,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n示例模式\n任务\n查找\n资料\n页面\n路径\n地图\n\nESP32-S3 音频开发指南\n\n任务\n\n示例数据，仅用于演示\n\n任务\n新建任务\n保存窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n在侧栏提供低频返回提示\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n3 个任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 4 个页面\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n\n优先复用已打开页面，每个任务最多保存 30 页。",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-support",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "tasks-search",
+        "text": "搜索任务或页面",
+        "height": 21
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-local",
+        "text": "编辑 让浏览器更轻一点",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-audio",
+        "text": "编辑 声音陪伴小装置",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-visual",
+        "text": "编辑 产品视觉参考",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      }
+    ]
+  },
+  {
+    "id": "workbench-default-review",
+    "note": "Full workbench default weekly review, synthetic data.",
+    "screenshot": "screenshots/workbench-default-review.png",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week#review",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n一周回顾\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n一周回顾\n\n10月22日 — 10月28日\n\n刷新记录\n17 分钟\n前台停留\n1 页\n访问页面\n0 次\n页面切换\n1 天\n有记录\n时间流向了哪些主题\n地图\n产品摄影\n8 分钟\n视觉创作\n8 分钟\n\n按前台停留排序；同一页面的时长在多个主题间均分。\n\n下次，从这里继续\n全部任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n恢复保存页\n查看 4 个页面\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n恢复保存页\n查看 3 个页面\n任务笔记\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n每天的前台停留\n同一基线 · 分钟\n0\n周四\n10/22\n0\n周五\n10/23\n0\n周六\n10/24\n0\n周日\n10/25\n0\n周一\n10/26\n17\n周二\n10/27\n0\n周三\n10/28\n任务之间的往返\n\n根据已确认的任务关系统计；前台停留不代表工作完成。\n\n任务内换页 0 次\n\n跨任务切换 0 次\n\n恢复任务 0 次\n\n至少有 3 段独立记录呈现同一种往返，才会在这里显示模式。\n\n查看任务切换依据 · 0 条\n\n前台停留不等于实际注意力。以上来自访问记录，不判断工作是否完成。",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "",
+        "text": "产品摄影",
+        "height": 21
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 21
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      }
+    ]
+  },
+  {
+    "id": "workbench-tasks",
+    "note": "Tasks first viewport with current-task empty state.",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week#tasks",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n任务工作台\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n任务工作台\n\n保存下一步，回到正在做的事。\n\n新建任务\n保存当前窗口\n\n这个窗口 · 当前任务\n\n现在想推进哪件事？\n\n新建任务写下目标，或在下方选择“设为当前任务”。\n\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n3 个任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 4 个页面\n任务笔记\n展开\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n继续的线索\n由最近记录生成，按需选择\n自然光下的产品摄影参考\n\n保存在「产品视觉参考」，可用于恢复工作。\n\n继续看看\n电商详情页 · 信息层级研究\n\n保存在「产品视觉参考」，可用于恢复工作。\n\n继续看看\n色彩与材质的表达笔记\n\n保存在「产品视觉参考」，可用于恢复工作。\n\n继续看看\n\n优先复用已打开页面，每个任务最多保存 30 页。",
+    "activeElement": {
+      "id": "nav-tasks",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "tasks-search",
+        "text": "搜索任务或页面",
+        "height": 21
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-local",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-audio",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-visual",
+        "text": "展开",
+        "height": 28
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Duplicate task/current-empty structure already retained in panel evidence."
+  },
+  {
+    "id": "workbench-map-week",
+    "note": "Default weekly map; fixture only has one recent segment, therefore no transition in this range.",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E4%BA%A7%E5%93%81%E6%91%84%E5%BD%B1#map",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n注意力地图\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n注意力地图\n\n从真实访问的先后关系，回到当时的页面。\n\n今天\n昨天\n最近 7 天\n\n2 个主题 · 0 条已观察关系\n\n尚无跨主题接续\n产品摄影\n8 分钟\n视觉创作\n8 分钟\n\n左列为先访问、右列为接着访问，按该方向的切换次数排序。线宽表示次数，位置不表示语义距离，主题大小不编码时长。完整关系始终保留在下表。\n\n产品摄影\n8 分钟\n曾经接着去\n\n还没有观察到后续切换。\n\n在路径中回看\n完整关系\n0 条关系\n\n暂离与未知时段不会被连接成主题关系。\n\n占比基于已观察的后续切换，不代表未来会发生。",
+    "activeElement": {
+      "id": "nav-map",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Clock-dependent sparse fixture state; not a product defect."
+  },
+  {
+    "id": "website-focus-mobile-after-save",
+    "note": "Mobile goal save: submit-area viewport and updated preview, without an extra scroll.",
+    "screenshot": "screenshots/website-focus-mobile-after-save.png",
+    "url": "https://aitoshuu.me/Focuence",
+    "title": "Focuence · 把注意力，带回眼前这件事",
+    "viewport": [
+      390,
+      844
+    ],
+    "pageWidth": 390,
+    "scrollY": 557,
+    "text": "跳到正文\nFocuence.\n开始了解\n↗\n\n浏览器里的注意力地图\n\n把注意力，\n带回眼前这件事。\n\n页面越开越多，\n也别弄丢自己正在做的事。\n\n看见浏览去向，明确当前目标。被打断时，留一条能接着走的线索。\n\n试试注意力地图\n↓\n安装说明\n↗\n\nChrome / Edge 扩展 · 开发预览\n\n从看见，到继续\n一个可操作的小例子\nFocuence / 我的工作\n示例数据\n01 注意力地图\n02 当前聚焦\n03 断点继续\n\n当前窗口 · 一个明确的方向\n\n现在，先做这一件。\n\n把“还要做很多”换成一个可以继续的动作。\n\n我正在做什么\n接下来的一小步\n设为示例目标\n→\n只在本页演示\n\n留在视线里的方向\n\n核对手机保存反馈\n\n保留目标后继续核对地图\n\n目标由你决定。\n地图帮你回看，下一步由你选择。\n\n被打断之前，留个断点\n→\n\n示例目标已更新。需要中断时，可以切到「断点继续」留下线索。\n\n重置示例 ↺\n\n本页不会读取你的标签或浏览历史。示例输入仅保留到本页刷新。\n\n让工作有一条回去的路\n\n看清去向。接着往前。\n\n不是把每一分钟填满。\n是在需要的时候，找回自己的方向。\n\n01 / 看见\n浏览很多，也能看清来路。\n\n把分散的浏览片段放回主题与访问路径里。从地图回看刚才去了哪里，哪些页面值得再打开。\n\n看注意力地图\n↗\n02 / 聚焦\n给眼前的窗口，一个目标。\n\n写下正在做的事和接下来的一步。需要切回工作时，先看到自己留下的方向。\n\n试着写下目标\n↗\n03 / 继续\n中断一下，思路不用重来。\n\n离开前留一个断点，把任务、下一步和继续页放在一起。回来时，顺着线索接着做。\n\n留一个示例断点\n↗\n\n工作留在自己的浏览器里\n\n看见自己的节奏，\n也掌握自己的数据。\n\nFocuence 扩展在本机处理记录与分析。\n你可以决定什么时候记录、保留哪些线索。\n\n↙ 本机运行\n扩展的浏览记录、任务和分析保存在本机，不需要注册账号。\n○ 自己决定\n可暂停记录、排除站点，并管理与清理已经保存的资料。\n↗ 线索能带走\n支持显式导出与恢复备份。请自行保管包含浏览资料的备份文件。\n开发预览 · 2.5\n从下一次打开浏览器开始，\n给注意力一个落点。\n\n官网已可体验交互示例。扩展目前通过源码安装，适合愿意尝试、反馈问题的早期使用者。\n\n查看源码与安装说明\n↗\n\n检索与返回提示仍有已确认的待修复问题。\n当前版本不作为稳定版发布。\n\n开始之前，你可能想知道\n这是网页应用，还是浏览器扩展？\n安装需要做什么？\n地图能知道我是否专注吗？\n这里会收集浏览数据吗？\n遇到问题，怎么反馈？\nFocuence.\n\n看见去向，回到当下。\n\nGitHub ↗",
+    "activeElement": {
+      "id": "",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence.",
+        "height": 28
+      },
+      {
+        "id": "reset-demo",
+        "text": "重置示例 ↺",
+        "height": 29
+      },
+      {
+        "id": "",
+        "text": "打开安装说明 ↗",
+        "height": 30.3984375
+      },
+      {
+        "id": "",
+        "text": "前往问题反馈 ↗",
+        "height": 30.3984375
+      },
+      {
+        "id": "",
+        "text": "Focuence.",
+        "height": 24
+      },
+      {
+        "id": "",
+        "text": "GitHub ↗",
+        "height": 18.6953125
+      }
+    ]
+  },
+  {
+    "id": "website-mobile-goal-feedback",
+    "observed": {
+      "#focus-form button": {
+        "text": "设为示例目标 →",
+        "top": 414.51531982421875,
+        "bottom": 460.51531982421875,
+        "inViewport": true
+      },
+      "#focus-preview-goal": {
+        "text": "核对手机保存反馈",
+        "top": 542.5546875,
+        "bottom": 578.25,
+        "inViewport": true
+      },
+      "#demo-status": {
+        "text": "示例目标已更新。需要中断时，可以切到「断点继续」留下线索。",
+        "top": 766.140625,
+        "bottom": 800.140625,
+        "inViewport": true
+      }
+    }
+  },
+  {
+    "id": "website-checkpoint-mobile-after-save",
+    "note": "Mobile checkpoint save without additional scroll.",
+    "screenshot": "screenshots/website-checkpoint-mobile-after-save.png",
+    "url": "https://aitoshuu.me/Focuence",
+    "title": "Focuence · 把注意力，带回眼前这件事",
+    "viewport": [
+      390,
+      844
+    ],
+    "pageWidth": 390,
+    "scrollY": 588,
+    "text": "跳到正文\nFocuence.\n开始了解\n↗\n\n浏览器里的注意力地图\n\n把注意力，\n带回眼前这件事。\n\n页面越开越多，\n也别弄丢自己正在做的事。\n\n看见浏览去向，明确当前目标。被打断时，留一条能接着走的线索。\n\n试试注意力地图\n↓\n安装说明\n↗\n\nChrome / Edge 扩展 · 开发预览\n\n从看见，到继续\n一个可操作的小例子\nFocuence / 我的工作\n示例数据\n01 注意力地图\n02 当前聚焦\n03 断点继续\n\n不用每次都从头想起\n\n给下次的自己，留句话。\n\n记下停在哪里、下一步是什么，再放心离开。\n\n这次停在这里\n保存示例断点\n↗\n↳\n上一次，做到这里\n核对手机保存反馈\n\n手机断点已保存测试20261028\n\n文\n产品方案 · 工作稿\n示例继续页\n继续这个示例\n→\n演示恢复目标与线索，不打开真实页面。\n\n示例断点已保存到本页。点「继续这个示例」可带着线索回到目标。\n\n重置示例 ↺\n\n本页不会读取你的标签或浏览历史。示例输入仅保留到本页刷新。\n\n让工作有一条回去的路\n\n看清去向。接着往前。\n\n不是把每一分钟填满。\n是在需要的时候，找回自己的方向。\n\n01 / 看见\n浏览很多，也能看清来路。\n\n把分散的浏览片段放回主题与访问路径里。从地图回看刚才去了哪里，哪些页面值得再打开。\n\n看注意力地图\n↗\n02 / 聚焦\n给眼前的窗口，一个目标。\n\n写下正在做的事和接下来的一步。需要切回工作时，先看到自己留下的方向。\n\n试着写下目标\n↗\n03 / 继续\n中断一下，思路不用重来。\n\n离开前留一个断点，把任务、下一步和继续页放在一起。回来时，顺着线索接着做。\n\n留一个示例断点\n↗\n\n工作留在自己的浏览器里\n\n看见自己的节奏，\n也掌握自己的数据。\n\nFocuence 扩展在本机处理记录与分析。\n你可以决定什么时候记录、保留哪些线索。\n\n↙ 本机运行\n扩展的浏览记录、任务和分析保存在本机，不需要注册账号。\n○ 自己决定\n可暂停记录、排除站点，并管理与清理已经保存的资料。\n↗ 线索能带走\n支持显式导出与恢复备份。请自行保管包含浏览资料的备份文件。\n开发预览 · 2.5\n从下一次打开浏览器开始，\n给注意力一个落点。\n\n官网已可体验交互示例。扩展目前通过源码安装，适合愿意尝试、反馈问题的早期使用者。\n\n查看源码与安装说明\n↗\n\n检索与返回提示仍有已确认的待修复问题。\n当前版本不作为稳定版发布。\n\n开始之前，你可能想知道\n这是网页应用，还是浏览器扩展？\n安装需要做什么？\n地图能知道我是否专注吗？\n这里会收集浏览数据吗？\n遇到问题，怎么反馈？\nFocuence.\n\n看见去向，回到当下。\n\nGitHub ↗",
+    "activeElement": {
+      "id": "",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence.",
+        "height": 28
+      },
+      {
+        "id": "reset-demo",
+        "text": "重置示例 ↺",
+        "height": 29
+      },
+      {
+        "id": "",
+        "text": "打开安装说明 ↗",
+        "height": 30.3984375
+      },
+      {
+        "id": "",
+        "text": "前往问题反馈 ↗",
+        "height": 30.3984375
+      },
+      {
+        "id": "",
+        "text": "Focuence.",
+        "height": 24
+      },
+      {
+        "id": "",
+        "text": "GitHub ↗",
+        "height": 18.6953125
+      }
+    ]
+  },
+  {
+    "id": "website-mobile-checkpoint-feedback",
+    "observed": {
+      "#checkpoint-form button": {
+        "text": "保存示例断点 ↗",
+        "top": 400.24627685546875,
+        "bottom": 446.24627685546875,
+        "inViewport": true
+      },
+      "#saved-checkpoint": {
+        "text": "手机断点已保存测试20261028",
+        "top": 572.546875,
+        "bottom": 592.9453125,
+        "inViewport": true
+      },
+      "#demo-status": {
+        "text": "示例断点已保存到本页。点「继续这个示例」可带着线索回到目标。",
+        "top": 801.234375,
+        "bottom": 835.234375,
+        "inViewport": true
+      }
+    }
+  },
+  {
+    "id": "synthetic-clock-fixture",
+    "note": "Only isolated local demo page instrumented. Existing synthetic segments start at 08:40 while actual audit clock is earlier. Date fixed to 2026-10-28 13:00 +08:00 so map/evidence fixture is visible. No product file, real data, or system clock changed.",
+    "instrumentation": {
+      "identifier": "1"
+    }
+  },
+  {
+    "id": "workbench-map-populated",
+    "note": "Existing synthetic fixture, audit clock fixed at 13:00; source app unmodified.",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C#map",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n注意力地图\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n注意力地图\n\n从真实访问的先后关系，回到当时的页面。\n\n今天\n昨天\n最近 7 天\n\n8 个主题 · 5 条已观察关系\n\n选中主题\n全部关系\n显示 2 条直接关联，全部主题位置保持不变\n1 次\n1 次\n先访问\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n17 分钟\n接着访问\n浏览工具\n11 分钟\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n17 分钟\n尚无跨主题接续\n产品设计\n8 分钟\n产品摄影\n15 分钟\n开源代码\n12 分钟\nESP32\n6 分钟\n\n左列为先访问、右列为接着访问，按该方向的切换次数排序。线宽表示次数，位置不表示语义距离，主题大小不编码时长。完整关系始终保留在下表。\n\n视觉创作\n17 分钟\n曾经接着去\n声音与硬件\n1 次\n\n点选次数或连线，查看发生在何时、哪些页面。\n\n在路径中回看\n完整关系\n5 条关系\n从这个主题\t接着去\t观察次数\t占该主题后续切换\n声音与硬件\t浏览工具\t1 次\t17% · 样本较少\n视觉创作\t声音与硬件\t1 次\t25% · 样本较少\n本地模型\t视觉创作\t1 次\t33% · 样本较少\n本地模型\t浏览工具\t1 次\t33% · 样本较少\n声音与硬件\t本地模型\t1 次\t17% · 样本较少\n\n占比基于已观察的后续切换，不代表未来会发生。",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "map-scope-related",
+        "text": "选中主题",
+        "height": 29.5
+      },
+      {
+        "id": "map-scope-all",
+        "text": "全部关系",
+        "height": 29.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Unselected map duplicated by retained selected-relation evidence."
+  },
+  {
+    "id": "workbench-map-selected-relation",
+    "note": "Selected observed transition 视觉创作 → 声音与硬件 in existing synthetic data; audit clock 13:00.",
+    "screenshot": "screenshots/workbench-map-selected-relation.png",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n注意力地图\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n注意力地图\n\n从真实访问的先后关系，回到当时的页面。\n\n今天\n昨天\n最近 7 天\n\n8 个主题 · 5 条已观察关系\n\n选中主题\n全部关系\n显示 2 条直接关联，全部主题位置保持不变\n先访问\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n17 分钟\n接着访问\n浏览工具\n11 分钟\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n17 分钟\n尚无跨主题接续\n产品设计\n8 分钟\n产品摄影\n15 分钟\n开源代码\n12 分钟\nESP32\n6 分钟\n\n左列为先访问、右列为接着访问，按该方向的切换次数排序。线宽表示次数，位置不表示语义距离，主题大小不编码时长。完整关系始终保留在下表。\n\n视觉创作\n17 分钟\n视觉创作\n声音与硬件\n\n观察到 1 次 · 样本较少\n\n10月28日 09:45\n自然光下的产品摄影参考\nESP32-S3 音频开发指南\n在路径中回看\n完整关系\n5 条关系\n从这个主题\t接着去\t观察次数\t占该主题后续切换\n声音与硬件\t浏览工具\t1 次\t17% · 样本较少\n视觉创作\t声音与硬件\t1 次\t25% · 样本较少\n本地模型\t视觉创作\t1 次\t33% · 样本较少\n本地模型\t浏览工具\t1 次\t33% · 样本较少\n声音与硬件\t本地模型\t1 次\t17% · 样本较少\n\n占比基于已观察的后续切换，不代表未来会发生。",
+    "activeElement": {
+      "id": "main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "map-scope-related",
+        "text": "选中主题",
+        "height": 29.5
+      },
+      {
+        "id": "map-scope-all",
+        "text": "全部关系",
+        "height": 29.5
+      },
+      {
+        "id": "",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      }
+    ]
+  },
+  {
+    "id": "map-relation-before-path",
+    "observed": {
+      "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+      "detail": "视觉创作\n17 分钟\n视觉创作\n声音与硬件\n\n观察到 1 次 · 样本较少\n\n10月28日 09:45\n自然光下的产品摄影参考\nESP32-S3 音频开发指南\n在路径中回看"
+    }
+  },
+  {
+    "id": "workbench-path-from-relation",
+    "note": "Clicked 在路径中回看 from selected relation; observe preserved topic versus transition endpoints.",
+    "screenshot": "screenshots/workbench-path-from-relation.png",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#timeline",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n访问路径\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n访问路径\n\n回到当时看过的页面。\n\n今天\n昨天\n最近 7 天\n全部记录\n前台\n暂离\n未知\n正在回看：视觉创作\n10月28日\n09:42\n自然光下的产品摄影参考\n3 分钟\n视觉创作\n产品摄影\n09:36\n色彩与材质的表达笔记\n6 分钟\n视觉创作\n产品摄影\n09:31\n电商详情页 · 信息层级研究\n5 分钟\n视觉创作\n产品设计\n09:27\n自然光下的产品摄影参考\n4 分钟\n视觉创作\n产品摄影\n10月27日\n15:00\n自然光下的产品摄影参考\n17 分钟\n视觉创作\n产品摄影\n这段时间，停留在哪里\n视觉创作\n17 分钟\n\n前台时长不等于实际注意力。\n同一页面的时长在多个主题之间分摊，避免重复累计。",
+    "activeElement": {
+      "id": "main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "timeline-filter-all",
+        "text": "全部记录",
+        "height": 29.5
+      },
+      {
+        "id": "timeline-filter-active",
+        "text": "前台",
+        "height": 29.5
+      },
+      {
+        "id": "timeline-filter-idle",
+        "text": "暂离",
+        "height": 29.5
+      },
+      {
+        "id": "timeline-filter-unknown",
+        "text": "未知",
+        "height": 29.5
+      },
+      {
+        "id": "timeline-page-demo-segment-12",
+        "text": "自然光下的产品摄影参考",
+        "height": 21
+      },
+      {
+        "id": "timeline-tag-demo-segment-12-0",
+        "text": "视觉创作",
+        "height": 21.1953125
+      },
+      {
+        "id": "timeline-tag-demo-segment-12-1",
+        "text": "产品摄影",
+        "height": 21.1953125
+      },
+      {
+        "id": "segment-toggle-demo-segment-12",
+        "text": "查看时间详情：自然光下的产品摄影参考",
+        "height": 23
+      },
+      {
+        "id": "timeline-page-demo-segment-11",
+        "text": "色彩与材质的表达笔记",
+        "height": 21
+      },
+      {
+        "id": "timeline-tag-demo-segment-11-0",
+        "text": "视觉创作",
+        "height": 21.1953125
+      },
+      {
+        "id": "timeline-tag-demo-segment-11-1",
+        "text": "产品摄影",
+        "height": 21.1953125
+      },
+      {
+        "id": "segment-toggle-demo-segment-11",
+        "text": "查看时间详情：色彩与材质的表达笔记",
+        "height": 23
+      },
+      {
+        "id": "timeline-page-demo-segment-10",
+        "text": "电商详情页 · 信息层级研究",
+        "height": 21
+      },
+      {
+        "id": "timeline-tag-demo-segment-10-0",
+        "text": "视觉创作",
+        "height": 21.1953125
+      },
+      {
+        "id": "timeline-tag-demo-segment-10-1",
+        "text": "产品设计",
+        "height": 21.1953125
+      },
+      {
+        "id": "segment-toggle-demo-segment-10",
+        "text": "查看时间详情：电商详情页 · 信息层级研究",
+        "height": 23
+      },
+      {
+        "id": "timeline-page-demo-segment-9",
+        "text": "自然光下的产品摄影参考",
+        "height": 21
+      },
+      {
+        "id": "timeline-tag-demo-segment-9-0",
+        "text": "视觉创作",
+        "height": 21.1953125
+      },
+      {
+        "id": "timeline-tag-demo-segment-9-1",
+        "text": "产品摄影",
+        "height": 21.1953125
+      },
+      {
+        "id": "segment-toggle-demo-segment-9",
+        "text": "查看时间详情：自然光下的产品摄影参考",
+        "height": 23
+      },
+      {
+        "id": "timeline-page-demo-yesterday",
+        "text": "自然光下的产品摄影参考",
+        "height": 21
+      },
+      {
+        "id": "timeline-tag-demo-yesterday-0",
+        "text": "视觉创作",
+        "height": 21.1953125
+      },
+      {
+        "id": "timeline-tag-demo-yesterday-1",
+        "text": "产品摄影",
+        "height": 21.1953125
+      },
+      {
+        "id": "segment-toggle-demo-yesterday",
+        "text": "查看时间详情：自然光下的产品摄影参考",
+        "height": 23
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 21
+      }
+    ]
+  },
+  {
+    "id": "map-relation-after-path",
+    "observed": {
+      "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#timeline",
+      "text": "示例数据，仅用于演示\n\n访问路径\n\n回到当时看过的页面。\n\n今天\n昨天\n最近 7 天\n全部记录\n前台\n暂离\n未知\n正在回看：视觉创作\n10月28日\n09:42\n自然光下的产品摄影参考\n3 分钟\n视觉创作\n产品摄影\n09:36\n色彩与材质的表达笔记\n6 分钟\n视觉创作\n产品摄影\n09:31\n电商详情页 · 信息层级研究\n5 分钟\n视觉创作\n产品设计\n09:27\n自然光下的产品摄影参考\n4 分钟\n视觉创作\n产品摄影\n10月27日\n15:00\n自然光下的产品摄影参考\n17 分钟\n视觉创作\n产品摄影\n这段时间，停留在哪里\n视觉创作\n17 分钟\n\n前台时长不等于实际注意力。\n同一页面的时长在多个主题之间分摊，避免重复累计。"
+    }
+  },
+  {
+    "id": "workbench-settings",
+    "note": "Settings view shared by options entry; extension-only redirect itself inspected from source.",
+    "screenshot": "screenshots/workbench-settings.png",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week&topic=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#settings",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n数据与设置\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n设置\n\n按你的节奏记录，由你决定保留什么。\n\n导入与恢复\n\n示例数据留在当前页面；安装后的扩展可预览备份冲突并原子恢复。\n\n浏览器历史\n\n主动导入本设备访问。与前台记录分别管理；暂停记录期间不会自动补采。标题使用浏览器当前元数据，不提供停留时长。\n\n请在真实扩展中启用；示例页面不会读取浏览器历史。\n\n刷新会完整核对所选范围，取消后保留已导入部分。断开、撤销权限或清除扩展历史会清理此缓存；主动保存的任务和材料不受影响。\n\n浏览记录\n记录前台浏览\n\n记录页面的前台停留与切换。暂停后不会新增浏览片段，已有记录仍会保留。\n\n暂离判断\n\n连续没有设备活动时，后续时间单独标记为暂离，不计入前台时长。\n\n1 分钟\n2 分钟\n5 分钟\n10 分钟\n历史保留时间\n\n到期的浏览历史会清理，手动保存的任务会继续保留。\n\n7 天\n30 天\n90 天\n365 天\n不记录这些站点\n\n每行一个域名，或用逗号分隔。隐身页面默认不记录。\n\n本地智能\n启用语义增强\n\n用本机模型补充页面分组、任务关联和资料查找。关闭后仍可使用规则与关键词。\n\n低频返回提示\n\n仅在侧栏显示。连续 5 分钟、至少 2 个已确认的其他页面才会提示；每天最多 3 次。\n\n模型状态\n\nBGE-small-zh-v1.5 · 本地\n\n准备本地模型\n快速规则已就绪\n保存设置\n所有分析均在本机完成，无需 API 密钥。\n数据与迁移\n导出本机数据\n\n导出页面、任务、访问片段、资料库与设置为 JSON，便于备份和后续分析。\n\n导出数据\n清理本机数据\n清除浏览历史\n\n删除两类访问缓存、导入作业、自动线索、提示记录与内部恢复前快照；保留任务、确认断点、手工关联和资料库。\n\n清除历史\n清除关联记忆\n\n清除全部任务的相关和不相关判断，保留任务、断点及保存的页面。无法撤销。\n\n清除关联记忆\n清除全部数据\n\n删除扩展访问记录、任务、资料库和临时选文并重置设置。不会关闭浏览器页面。这个操作无法撤销。\n\n清除全部",
+    "activeElement": {
+      "id": "nav-settings",
+      "tag": "BUTTON"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "setting-tracking",
+        "text": "记录前台浏览",
+        "height": 20
+      },
+      {
+        "id": "setting-semantic",
+        "text": "启用本地语义增强",
+        "height": 20
+      },
+      {
+        "id": "setting-focus-support",
+        "text": "启用低频返回提示",
+        "height": 20
+      }
+    ]
+  },
+  {
+    "id": "panel-current-task-360",
+    "note": "Selected existing synthetic local task as current; active task and continuation controls.",
+    "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today#tasks",
+    "title": "Focuence · 浏览侧栏",
+    "viewport": [
+      360,
+      760
+    ],
+    "pageWidth": 360,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n示例模式\n任务\n查找\n资料\n页面\n路径\n地图\n\nESP32-S3 音频开发指南\n\n任务\n\n示例数据，仅用于演示\n\n任务\n新建任务\n保存窗口\n\n这个窗口 · 当前任务\n\n让浏览器更轻一点\n暂停\n\n在浏览器中实现本地语义分析和任务恢复\n\n继续一页\n留断点\n相关页面 · 4 条\n在侧栏提供低频返回提示\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n3 个任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 4 个页面\n任务笔记\n展开\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n正在做\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n\n优先复用已打开页面，每个任务最多保存 30 页。",
+    "activeElement": {
+      "id": "main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-support",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "tasks-search",
+        "text": "搜索任务或页面",
+        "height": 21
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-local",
+        "text": "编辑 让浏览器更轻一点",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-local",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-audio",
+        "text": "编辑 声音陪伴小装置",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-audio",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-visual",
+        "text": "编辑 产品视觉参考",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-visual",
+        "text": "展开",
+        "height": 28
+      }
+    ],
+    "captureDisposition": "Intermediate or redundant screenshot deleted; original DOM observation retained.",
+    "cleanupReason": "Scrolled position was intermediate; correct first viewport retained separately."
+  },
+  {
+    "id": "panel-map-360",
+    "note": "Side panel local map, initialized with a fixed synthetic clock at13:00 in this round.",
+    "screenshot": "screenshots/panel-map-360.png",
+    "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today&topic=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+    "title": "Focuence · 浏览侧栏",
+    "viewport": [
+      360,
+      760
+    ],
+    "pageWidth": 360,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n示例模式\n任务\n查找\n资料\n页面\n路径\n地图\n\nESP32-S3 音频开发指南\n\n地图\n\n示例数据，仅用于演示\n\n主题地图\n今天\n昨天\n最近 7 天\n\n8 个主题 · 5 条已观察关系\n\n查看主题\n声音与硬件\n开源代码\n浏览工具\n视觉创作\n产品设计\n产品摄影\nESP32\n本地模型\n\n之前访问\n\n视觉创作\n1 次\n声音与硬件\n13 分钟\n\n接着访问\n\n本地模型\n1 次\n浏览工具\n1 次\n\n箭头向下表示访问先后；次数来自实际记录。\n\n点选次数按钮，查看发生在何时、哪些页面。\n\n在路径中回看",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "map-node-%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C-before",
+        "text": "视觉创作9 分钟",
+        "height": 21
+      },
+      {
+        "id": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+        "text": "1 次",
+        "height": 28
+      },
+      {
+        "id": "map-node-%E6%9C%AC%E5%9C%B0%E6%A8%A1%E5%9E%8B-after",
+        "text": "本地模型5 分钟",
+        "height": 21
+      },
+      {
+        "id": "map-edge-%5B%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%2C%22%E6%9C%AC%E5%9C%B0%E6%A8%A1%E5%9E%8B%22%5D",
+        "text": "1 次",
+        "height": 28
+      },
+      {
+        "id": "map-node-%E6%B5%8F%E8%A7%88%E5%B7%A5%E5%85%B7-after",
+        "text": "浏览工具11 分钟",
+        "height": 21
+      },
+      {
+        "id": "map-edge-%5B%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%2C%22%E6%B5%8F%E8%A7%88%E5%B7%A5%E5%85%B7%22%5D",
+        "text": "1 次",
+        "height": 28
+      }
+    ]
+  },
+  {
+    "id": "panel-map-edge-options",
+    "observed": [
+      {
+        "id": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+        "from": "视觉创作",
+        "to": "声音与硬件",
+        "text": "1 次"
+      },
+      {
+        "id": "map-edge-%5B%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%2C%22%E6%9C%AC%E5%9C%B0%E6%A8%A1%E5%9E%8B%22%5D",
+        "from": "声音与硬件",
+        "to": "本地模型",
+        "text": "1 次"
+      },
+      {
+        "id": "map-edge-%5B%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%2C%22%E6%B5%8F%E8%A7%88%E5%B7%A5%E5%85%B7%22%5D",
+        "from": "声音与硬件",
+        "to": "浏览工具",
+        "text": "1 次"
+      }
+    ]
+  },
+  {
+    "id": "panel-before-map-expansion",
+    "observed": {
+      "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today&topic=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+      "detail": "视觉创作\n声音与硬件\n\n观察到 1 次 · 样本较少\n\n10月28日 09:45\n自然光下的产品摄影参考\nESP32-S3 音频开发指南\n在路径中回看"
+    }
+  },
+  {
+    "id": "panel-map-expanded-workbench",
+    "note": "Actual demo sidepanel → full map navigation preserves range/topic/from/to; same-tab handoff in demo, native tab reuse is source-only.",
+    "screenshot": "screenshots/panel-map-expanded-workbench.png",
+    "url": "http://127.0.0.1:8769/app/index.html?range=today&demo=1&windowId=1&topic=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n注意力地图\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n注意力地图\n\n从真实访问的先后关系，回到当时的页面。\n\n今天\n昨天\n最近 7 天\n\n8 个主题 · 5 条已观察关系\n\n选中主题\n全部关系\n显示 3 条直接关联，全部主题位置保持不变\n1 次\n1 次\n1 次\n先访问\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n9 分钟\n接着访问\n浏览工具\n11 分钟\n本地模型\n5 分钟\n声音与硬件\n13 分钟\n视觉创作\n9 分钟\n尚无跨主题接续\n产品设计\n8 分钟\n产品摄影\n6 分钟\n开源代码\n12 分钟\nESP32\n6 分钟\n\n左列为先访问、右列为接着访问，按该方向的切换次数排序。线宽表示次数，位置不表示语义距离，主题大小不编码时长。完整关系始终保留在下表。\n\n声音与硬件\n13 分钟\n视觉创作\n声音与硬件\n\n观察到 1 次 · 样本较少\n\n10月28日 09:45\n自然光下的产品摄影参考\nESP32-S3 音频开发指南\n在路径中回看\n完整关系\n5 条关系\n从这个主题\t接着去\t观察次数\t占该主题后续切换\n声音与硬件\t浏览工具\t1 次\t17% · 样本较少\n视觉创作\t声音与硬件\t1 次\t25% · 样本较少\n本地模型\t视觉创作\t1 次\t33% · 样本较少\n本地模型\t浏览工具\t1 次\t33% · 样本较少\n声音与硬件\t本地模型\t1 次\t17% · 样本较少\n\n占比基于已观察的后续切换，不代表未来会发生。",
+    "activeElement": {
+      "id": "",
+      "tag": "BODY"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      },
+      {
+        "id": "map-scope-related",
+        "text": "选中主题",
+        "height": 29.5
+      },
+      {
+        "id": "map-scope-all",
+        "text": "全部关系",
+        "height": 29.5
+      },
+      {
+        "id": "",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "视觉创作",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "浏览工具",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "声音与硬件",
+        "height": 19.5
+      },
+      {
+        "id": "",
+        "text": "本地模型",
+        "height": 19.5
+      }
+    ]
+  },
+  {
+    "id": "panel-after-map-expansion",
+    "observed": {
+      "url": "http://127.0.0.1:8769/app/index.html?range=today&demo=1&windowId=1&topic=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6&from=%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C&to=%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6#map",
+      "detail": "声音与硬件\n13 分钟\n视觉创作\n声音与硬件\n\n观察到 1 次 · 样本较少\n\n10月28日 09:45\n自然光下的产品摄影参考\nESP32-S3 音频开发指南\n在路径中回看",
+      "range": "today"
+    }
+  },
+  {
+    "id": "panel-current-task-first-viewport",
+    "note": "Current task selected in synthetic sidepanel. Reset actual internal scroll container to top; previous panel-current-task-360 was scrolled, not the first viewport.",
+    "screenshot": "screenshots/panel-current-task-first-viewport.png",
+    "url": "http://127.0.0.1:8769/panel/index.html?demo=1&range=today#tasks",
+    "title": "Focuence · 浏览侧栏",
+    "viewport": [
+      360,
+      760
+    ],
+    "pageWidth": 360,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n示例模式\n任务\n查找\n资料\n页面\n路径\n地图\n\nESP32-S3 音频开发指南\n\n任务\n\n示例数据，仅用于演示\n\n任务\n新建任务\n保存窗口\n\n这个窗口 · 当前任务\n\n让浏览器更轻一点\n暂停\n\n在浏览器中实现本地语义分析和任务恢复\n\n继续一页\n留断点\n相关页面 · 4 条\n在侧栏提供低频返回提示\n日常任务\n全部任务\n进行中\n等待\n已完成\n已归档\n3 个任务\n让浏览器更轻一点\nChrome 标签页 API\n复用 4 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 4 个页面\n任务笔记\n展开\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务状态\n进行中\n等待\n已完成\n已归档\n正在做\n留断点\n关联记忆\n继续一页\n声音陪伴小装置\nESP32-S3 音频开发指南\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n下一次从音频采集和播放链路继续，确认麦克风与扬声器的接线。\n\n验证便携音箱的声音采集与播放方案\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n产品视觉参考\n自然光下的产品摄影参考\n复用 3 页 · 新开 0 页\n10月28日\n恢复保存页\n查看 3 个页面\n任务笔记\n展开\n\n光线、材质与信息层级：留住值得回看的参考。\n\n整理产品摄影的光线、材质与信息层级参考\n\n任务状态\n进行中\n等待\n已完成\n已归档\n设为当前任务\n留断点\n关联记忆\n继续一页\n\n优先复用已打开页面，每个任务最多保存 30 页。",
+    "activeElement": {
+      "id": "main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 24
+      },
+      {
+        "id": "memory-support",
+        "text": "",
+        "height": 16
+      },
+      {
+        "id": "tasks-search",
+        "text": "搜索任务或页面",
+        "height": 21
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-local",
+        "text": "编辑 让浏览器更轻一点",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-local",
+        "text": "Chrome 标签页 API",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-local",
+        "text": "查看 4 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-local",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-audio",
+        "text": "编辑 声音陪伴小装置",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-audio",
+        "text": "ESP32-S3 音频开发指南",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-audio",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-audio",
+        "text": "展开",
+        "height": 28
+      },
+      {
+        "id": "icon-action-edit-task-demo-task-visual",
+        "text": "编辑 产品视觉参考",
+        "height": 27
+      },
+      {
+        "id": "resume-page-demo-task-visual",
+        "text": "自然光下的产品摄影参考",
+        "height": 19.5
+      },
+      {
+        "id": "task-pages-toggle-demo-task-visual",
+        "text": "查看 3 个页面",
+        "height": 30
+      },
+      {
+        "id": "note-toggle-demo-task-visual",
+        "text": "展开",
+        "height": 28
+      }
+    ]
+  },
+  {
+    "id": "current-task-first-viewport",
+    "observed": {
+      "currentText": "这个窗口 · 当前任务\n\n让浏览器更轻一点\n暂停\n\n在浏览器中实现本地语义分析和任务恢复\n\n继续一页\n留断点\n相关页面 · 4 条\n在侧栏提供低频返回提示",
+      "top": 223.5
+    }
+  },
+  {
+    "id": "workbench-search-results",
+    "note": "Keyword search 本地 through actual shared UI and synthetic transport.",
+    "screenshot": "screenshots/workbench-search-results.png",
+    "url": "http://127.0.0.1:8769/app/index.html?demo=1&range=week#search",
+    "title": "Focuence 智序 · 浏览任务工作台",
+    "viewport": [
+      1440,
+      950
+    ],
+    "pageWidth": 1440,
+    "scrollY": 0,
+    "text": "跳到主要内容\nFocuence\n一周回顾\n任务工作台\n3\n找回线索\n研究资料库\n当前页面\n访问路径\n注意力地图\n数据与设置\n暂停记录\n本机保存\nFocuence 2.5\n找回线索\n当前窗口 · 12 个页面\n示例模式\n打开侧栏\n\n示例数据，仅用于演示\n\n找回线索\n\n从当前和其他窗口、任务与两类访问来源找回资料。日期按每条来源的实际时间筛选。\n\n想找什么\n查找范围\n全部资料\n当前窗口\n全部窗口\n已保存任务\n自记录访问\n浏览器历史\n资料库\n查找\n日期、站点与任务筛选\n\n示例仅演示关键词查找；真实扩展可使用本机模型。\n\n找到 1 条线索\n让浏览器更轻一点\n\n任务 · 关键词匹配\n\n任务文字 · 任务修改时间 · 10/27 23:19\n\n让浏览器更轻一点\n在浏览器中实现本地语义分析和任务恢复\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n查看任务\n来源记录 · 1\n浏览器历史 · 按需启用",
+    "activeElement": {
+      "id": "main",
+      "tag": "MAIN"
+    },
+    "smallControls": [
+      {
+        "id": "",
+        "text": "Focuence",
+        "height": 28
+      }
+    ]
+  },
+  {
+    "id": "search-task-dialog-focus",
+    "observed": {
+      "activeId": "memory-close-",
+      "dialogText": "让浏览器更轻一点\n关闭\n\n已保存的任务与继续线索\n\n在浏览器中实现本地语义分析和任务恢复\n\n任务笔记\n\n优先跑通本地语义分组，再把时间记录接到任务恢复。\n\n继续一页\n留断点\n关联记忆"
+    }
+  },
+  {
+    "id": "search-nested-checkpoint-focus",
+    "observed": {
+      "activeId": "checkpoint-progress",
+      "dialogText": "保存任务断点\n关闭\n\n进展、卡点与下一步由你确认。最近访问只提供页面和时间线索。\n\n已做到哪里\n遇到的卡点（可留空）\n下一步\n继续页面\n暂不指定页面\n端侧语义模型 · 模型卡\nTransformers.js 浏览器推理文档\nChrome 标签页 API\n网页前台时间记录的设计\n\n保存断点"
+    }
+  },
+  {
+    "id": "search-nested-checkpoint-after-close",
+    "observed": {
+      "activeId": "",
+      "activeTag": "BODY",
+      "dialogOpen": false,
+      "originalTriggerExists": true
+    }
+  },
+  {
+    "id": "review-source-and-delivery",
+    "sourceCommit": "bbdac61",
+    "extensionVersion": "2.5.0",
+    "websiteRelease": "focuence-site-7e1b2add0bb6",
+    "websiteSource": "https://aitoshuu.me/Focuence/release.json",
+    "independentReports": [
+      "lama-review.md",
+      "emil-review.md"
+    ],
+    "consolidatedReport": "README.md",
+    "note": "Review documents only. No source modifications, product fixes, deployment, commit or push in this request."
+  }
+]

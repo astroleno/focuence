@@ -43,14 +43,15 @@
 
         <div id="panel-map" class="demo-panel map-panel" role="tabpanel" aria-labelledby="tab-map" tabindex="0">
           <div class="map-main"><div class="map-heading"><div><h3>刚才，我去了哪里？</h3><p>点选一个主题，看看它连接着什么。</p></div><span class="map-direction">先访问 <span aria-hidden="true">→</span> 接着访问</span></div>
-            <div class="map-scroll" tabindex="0" role="group" aria-label="示例主题地图，可选择主题。小屏可左右滚动。">
+            <div class="map-scroll" tabindex="0" role="group" aria-label="示例注意力地图，可选择主题。">
               <div class="graph">
                 <svg class="graph-lines" viewBox="0 0 760 310" aria-hidden="true"><defs><marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="currentColor" stroke-width="1.4"/></marker></defs><path data-connect="research writing" d="M181 83 H304"/><path data-connect="writing reference" d="M462 83 H585"/><path data-connect="reference writing" class="return-edge" d="M656 120 C656 166 385 166 385 120"/><path data-connect="writing detour" d="M385 120 V214"/><text x="238" y="69">6 次</text><text x="516" y="69">3 次</text><text x="516" y="155">2 次</text><text x="397" y="180">1 次</text></svg>
-                <svg class="graph-lines graph-lines-mobile" viewBox="0 0 340 330" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-mobile" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="currentColor" stroke-width="1.4"/></marker></defs><path data-connect="research writing" d="M149 66 H190"/><path data-connect="writing reference" d="M264 115 V214"/><path data-connect="reference writing" d="M310 214 C342 180 342 150 310 115"/><path data-connect="writing detour" d="M227 115 C227 170 80 160 80 214"/><text x="162" y="53">6 次</text><text x="269" y="165">3 次</text><text x="312" y="165">2 次</text><text x="122" y="180">1 次</text></svg>
-                <button class="theme-node node-research" type="button" data-theme="research" aria-pressed="false"><span class="node-icon" aria-hidden="true">↗</span><strong>资料研究</strong><span>3 个页面 · 18 分钟</span></button>
-                <button class="theme-node node-writing is-selected" type="button" data-theme="writing" aria-pressed="true"><span class="node-icon" aria-hidden="true">✎</span><strong>方案写作</strong><span>2 个页面 · 26 分钟</span></button>
-                <button class="theme-node node-reference" type="button" data-theme="reference" aria-pressed="false"><span class="node-icon" aria-hidden="true">⌑</span><strong>视觉参考</strong><span>4 个页面 · 12 分钟</span></button>
-                <button class="theme-node node-detour" type="button" data-theme="detour" aria-pressed="false"><span class="node-icon" aria-hidden="true">↳</span><strong>临时岔路</strong><span>2 个页面 · 6 分钟</span></button>
+                <svg class="graph-lines graph-lines-mobile" viewBox="0 0 340 330" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-mobile" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="currentColor" stroke-width="1.4"/></marker></defs><path data-connect="research writing" d="M149 66 H190"/><path data-connect="writing reference" d="M264 125 V205"/><path data-connect="reference writing" d="M310 205 C342 180 342 150 310 125"/><path data-connect="writing detour" d="M227 125 C227 170 80 160 80 205"/></svg>
+                <div class="mobile-map-counts" aria-hidden="true"><span class="count-research" data-connect="research writing">6 次</span><span class="count-reference" data-connect="writing reference">3 次</span><span class="count-return" data-connect="reference writing">2 次</span><span class="count-detour" data-connect="writing detour">1 次</span></div>
+                <button class="theme-node node-research" type="button" data-theme="research" aria-pressed="false"><span class="node-icon" aria-hidden="true">↗</span><strong>资料研究</strong><span class="node-meta"><span>3 个页面</span><span>18 分钟</span></span></button>
+                <button class="theme-node node-writing is-selected" type="button" data-theme="writing" aria-pressed="true"><span class="node-icon" aria-hidden="true">✎</span><strong>方案写作</strong><span class="node-meta"><span>2 个页面</span><span>26 分钟</span></span></button>
+                <button class="theme-node node-reference" type="button" data-theme="reference" aria-pressed="false"><span class="node-icon" aria-hidden="true">⌑</span><strong>视觉参考</strong><span class="node-meta"><span>4 个页面</span><span>12 分钟</span></span></button>
+                <button class="theme-node node-detour" type="button" data-theme="detour" aria-pressed="false"><span class="node-icon" aria-hidden="true">↳</span><strong>临时岔路</strong><span class="node-meta"><span>2 个页面</span><span>6 分钟</span></span></button>
               </div>
             </div><p class="map-scroll-hint">左右滑动查看完整地图 <span aria-hidden="true">↔</span></p>
             <p class="map-footnote"><span class="legend-line" aria-hidden="true"></span> 箭头表示观察到的访问先后；时长为前台记录，不等于实际注意力。</p>
@@ -69,6 +70,7 @@
         </div>
         <div class="demo-footer"><p id="demo-status" role="status" aria-live="polite">这是合成的浏览片段。试着点选一个主题。</p><button type="button" id="reset-demo" class="reset-button">重置示例 <span aria-hidden="true">↺</span></button></div>
       </div>
+      <p class="demo-concept">主题描述浏览内容，任务是你决定推进的事，分组只整理打开的页面。安装扩展后，从「当前聚焦」选择任务，留断点并继续一页；「注意力地图」可随时回看访问线索。</p>
       <p class="demo-disclaimer">本页不会读取你的标签或浏览历史。示例输入仅保留到本页刷新。</p>
       <noscript><p class="noscript-note">开启 JavaScript 可操作上面的示例；下方介绍和安装说明仍可直接阅读。</p></noscript>
     </section>

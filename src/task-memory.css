@@ -10,6 +10,11 @@
 .memory-button:not(:disabled):hover { background: var(--canvas); border-color: var(--muted); }
 .memory-button.primary:not(:disabled):hover { background: #414956; }
 .memory-task-detail { border-top: 1px solid var(--line-soft); margin-top: 14px; padding-top: 12px; }
+.task-card > .memory-task-detail, .recent-task > .memory-task-detail { border-top: 0; margin-top: 8px; padding-top: 0; }
+.memory-task-options { margin-top: 12px; }
+.memory-task-options > summary { color: var(--muted); font-size: 13px; cursor: pointer; padding: 5px 0; }
+.memory-task-options > label { display: block; margin: 8px 0 4px; }
+.memory-unsaved { margin-top: 18px; padding: 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-soft); font-size: 13px; line-height: 1.65; }
 .memory-checkpoint { background: var(--canvas); border-radius: 6px; padding: 11px 12px; margin: 10px 0; }
 .memory-checkpoint p + p { margin-top: 6px; }
 .memory-checkpoint p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }

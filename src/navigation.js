@@ -1,4 +1,4 @@
-export function workspaceURL(base, {view = 'review', windowId, range = 'week', demo = false, topic, from, to,item,draft} = {}) {
+export function workspaceURL(base, {view = 'tasks', windowId, range = 'week', demo = false, topic, from, to,item,draft} = {}) {
   const query = new URLSearchParams({ range });
   if (demo) query.set('demo', '1');
   if (Number.isInteger(windowId)) query.set('windowId', windowId);

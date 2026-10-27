@@ -82,6 +82,20 @@ test('observations do not overwrite confirmed text and pause keeps checkpoint', 
   assert.equal((await f.store.getTask('a')).checkpoint.progress, '我已核对接口');
   assert.equal(f.data.drafts.a.page.pageId, f.tabs[0].pageId);
 });
+
+test('pausing one window keeps another window, task lifecycle and recording setting unchanged', async () => {
+  const f = fixture(); await f.memory.initialize();
+  await f.message('SET_CURRENT_TASK');
+  await f.message('SET_CURRENT_TASK', 'b', {windowId: 2, contextRevision: 0});
+  const before = f.snapshot();
+  const settings = structuredClone(f.deps.settings());
+  await f.message('PAUSE_TASK');
+  const after = f.snapshot();
+  assert.equal(after.data.context.windows[1].taskId, null);
+  assert.deepEqual(after.data.context.windows[2], before.data.context.windows[2]);
+  assert.deepEqual(after.tasks.map(task => [task.id, task.status]), before.tasks.map(task => [task.id, task.status]));
+  assert.deepEqual(f.deps.settings(), settings);
+});
 test('relation corrections are revision guarded, undoable and independent of restore membership', async () => {
   const f = fixture(); await f.memory.initialize(); await f.message('SET_CURRENT_TASK');
   const page = f.tabs[0], snapshot = candidateSnapshot(page);

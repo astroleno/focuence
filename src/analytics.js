@@ -337,6 +337,9 @@ export function computeReview({ segments = [], tasks = [], range = 'week', now =
     items.push({
       fromTitle: transition.from.title || transition.from.url, fromUrl: transition.from.url,
       toTitle: transition.to.title || transition.to.url, toUrl: transition.to.url,
+      fromSegmentId: transition.from.id, toSegmentId: transition.to.id,
+      fromStartedAt: transition.from.startedAt, fromEndedAt: transition.from.endedAt,
+      toEndedAt: transition.to.endedAt,
       at: transition.to.startedAt,
     });
     if (items.length > 3) items.shift();

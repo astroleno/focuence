@@ -11,7 +11,7 @@ import {createLibraryUI} from '../src/library-ui.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
-const ui = { state: null, view: 'groups', working: '', analyzing: false, analysisNote: '', analysisError: false, form: null, members: new Map(), expandedNotes: new Set(), expandedPages: new Set(), didPropose: false, readError: '', feedbackAction: '' };
+const ui = { state: null, view: 'tasks', working: '', analyzing: false, analysisNote: '', analysisError: false, form: null, members: new Map(), expandedNotes: new Set(), expandedPages: new Set(), didPropose: false, readError: '', feedbackAction: '' };
 let windowId, transport;
 let fitFrame;
 function fitPopup() {
@@ -75,19 +75,20 @@ function taskCard(task, index) {
   const preview = task.restorePreview || {reused: 0, willOpen: task.pages.length};
   return el('article', {class: 'recent-task'},
     el('h3', {}, task.name),
+    memory.taskActions(task),
     task.resumePage && el('div', {class: 'resume-page'}, icon('page'), el('button', {id: 'resume-page-' + encodeURIComponent(task.id), type: 'button', class: 'resume-page-link', 'data-action': 'open-page', 'data-url': task.resumePage.url, title: task.resumePage.title, 'aria-label': '打开页面：' + (task.resumePage.title || task.resumePage.url), disabled: Boolean(ui.working)}, task.resumePage.title || new URL(task.resumePage.url).hostname)),
     task.lastRestoreResult?.failedCount > 0 && el('p', {class: 'restore-warning'}, '上次有 ' + task.lastRestoreResult.failedCount + ' 页未恢复，可以重试。'),
-    el('div', {class: 'task-actions'},
+    task.pages.length > 0 && el('div', {class: 'task-actions'},
       el('span', {class: 'secondary'}, '复用 ' + preview.reused + ' 页 · 新开 ' + preview.willOpen + ' 页'),
-      action(ui.working === 'restore-' + task.id ? '恢复中…' : '恢复保存页', 'restore-task', {'data-id': task.id, disabled: Boolean(ui.working) || !task.pages.length || (task.status&&task.status!=='active')}, index === 0, 'arrow')),
-    taskPages(task, ui.expandedPages.has(task.id), Boolean(ui.working)),
-    taskNotes(task, ui.expandedNotes.has(task.id)), memory.taskActions(task));
+      action(ui.working === 'restore-' + task.id ? '恢复中…' : '恢复全部 ' + task.pages.length + ' 页', 'restore-task', {'data-id': task.id, disabled: Boolean(ui.working) || !task.pages.length || (task.status&&task.status!=='active')}, false, 'arrow')),
+    task.pages.length > 0 && taskPages(task, ui.expandedPages.has(task.id), Boolean(ui.working)),
+    taskNotes(task, ui.expandedNotes.has(task.id)));
 }
 function saveForm() {
   const form = ui.form, count = form.selected.size;
   return el('form', {id: 'save-task-form'},
     el('div', {class: 'section-heading'}, el('h1', {}, '保存任务'), action('返回', 'cancel-save', {class: 'text-button'})),
-    el('p', {class: 'form-scope secondary'}, form.scope + ' · 已选 ' + count + ' 页' + (form.deduplicated ? ' · 同一地址只保留一份' : '')),
+    el('p', {class: 'form-scope secondary'}, form.scope + ' · 已选 ' + count + ' 页' + (form.deduplicated ? ' · 同一地址只保留一份' : '') + (form.intentOnly ? '。保存后设为当前聚焦；目标不会改变地图主题。' : '')),
     el('label', {class: 'field'}, el('span', {}, '任务名称'), el('input', {id: 'task-name', name: 'name', required: true, value: form.name, placeholder: '正在做的这件事', disabled: Boolean(ui.working)})),
     el('label', {class: 'field'}, el('span', {}, '任务目标'), el('textarea', {id: 'task-goal', name: 'goal', rows: 2, placeholder: '这件事想达到什么目标？', disabled: Boolean(ui.working)}, form.goal)),
     el('label', {class: 'field'}, el('span', {}, '任务笔记'), el('textarea', {id: 'task-notes', name: 'notes', rows: 2, placeholder: '保留资料和上下文', disabled: Boolean(ui.working)}, form.notes)),
@@ -147,12 +148,13 @@ function render() {
   const eligible = tabs.filter(tab => !tab.pinned && Number(tab.groupId) < 0);
   const groups = state.groups || [];
   const navigation = el('nav', { class: 'popup-tabs', 'aria-label': '快捷操作' },
-    [['groups', '整理页面'], ['tasks', '最近任务'], ['search', '查找'],['library','资料'],['tabs','窗口']].map(([view, label]) => action(label, 'view', { 'data-view': view, 'aria-pressed': ui.view === view }, false)));
+    [['tasks', '聚焦', '当前聚焦'], ['map', '地图', '注意力地图'], ['search', '查找', '找回线索'], ['groups', '整理', '整理页面'], ['library','资料', '研究资料库'], ['tabs','窗口', '窗口管理']].map(([view, label, full]) => action(label, 'view', { 'data-view': view, 'aria-label': full, title: full, 'aria-pressed': ui.view === view }, false)));
   const content = [isDemo && el('p', { class: 'demo-note' }, '示例模式 · 仅在本页内存中演示'), navigation];
   if (ui.view === 'groups') {
     content.push(el('div', { class: 'window-summary' }, el('div', {},
       el('h1', {}, '整理当前窗口'), el('p', { class: 'secondary' }, tabs.length + ' 页打开 · ' + eligible.length + ' 页待整理')),
       action(ui.working === 'propose' ? '正在整理…' : groups.length ? '重新整理' : '生成建议', 'propose', { disabled: Boolean(ui.working) || ui.analyzing || eligible.length < 2 }, !groups.length, 'layers')));
+    content.push(el('p', {class: 'secondary concept-note'}, '分组只整理打开的页面；存为任务是保留资料，不会自动开始聚焦。'));
     if (ui.analysisNote) content.push(el('p', {class: 'analysis-status' + (ui.analysisError ? ' form-error' : ''), role: 'status'}, ui.analysisNote));
     if (state.proposalNotice) content.push(el('p', {class: 'proposal-notice', role: 'status'}, state.proposalNotice));
     if (groups.length) content.push(el('section', { class: 'proposal-list', 'aria-label': '可直接应用的分组建议' }, groups.map(groupCard)));
@@ -169,6 +171,7 @@ function render() {
   } else if(ui.view==='library'){
     content.push(libraryUI.view());
   } else {
+    content.push(el('h1', {class: 'focus-view-title'}, '当前聚焦'));
     content.push(memory.current({compact: true}));
     content.push(action('新建任务', 'new-task', {}, false, 'plus'));
     content.push(el('div', { class: 'section-heading' }, el('h1', {}, '从上次继续'), el('span', { class: 'secondary' }, state.tasks.length + ' 个任务')));
@@ -237,7 +240,12 @@ async function propose(semantic) {
 async function performAction(actionName, target) {
   const id = target.dataset.id;
   switch (actionName) {
-    case 'view': ui.view = target.dataset.view; feedback(''); render(); break;
+    case 'view':
+      if (target.dataset.view === 'map') {
+        await openWorkspace({windowId, view: 'map', range: 'today', demo: isDemo});
+        if (!isDemo) window.close();
+      } else { ui.view = target.dataset.view; feedback(''); render(); }
+      break;
     case 'retry-read': await operation('read', async () => { try { await refresh(); } catch (error) { ui.readError = error.message; throw error; } }); break;
     case 'propose': await propose(false); break;
     case 'semantic': await propose(true); break;
@@ -318,7 +326,7 @@ byId('open-panel').addEventListener('click', () => {
   openSidePanel({ windowId, demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
 });
 byId('workspace').addEventListener('click', () => {
-  openWorkspace({ windowId, view: 'review', demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
+  openWorkspace({ windowId, view: 'tasks', demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
 });
 byId('toggle-tracking').addEventListener('click', () => operation('tracking', async () => {
   const tracking = !ui.state.settings.tracking;
