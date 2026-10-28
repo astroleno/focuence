@@ -1,0 +1,45 @@
+{
+  "version": "2.6.0",
+  "date": "2026-10-28",
+  "unitTests": {
+    "tests": 170,
+    "pass": 170,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "native": {
+    "passed": 17,
+    "failed": 0,
+    "report": "native.json",
+    "browserVersion": "151.0.7922.34"
+  },
+  "liveProvider": {
+    "passed": [
+      "DeepSeek / Anthropic / deepseek-flash"
+    ],
+    "unavailable": [
+      "OpenCode Go / deepseek-v4.1-flash"
+    ],
+    "report": "ai-live.json",
+    "browserHostGrantManuallyConfirmed": false
+  },
+  "builds": {
+    "extension": "passed",
+    "modelChecksums": "passed",
+    "workerSha256": "484aa5ce9c6f3789a0e87585691972dc48c49a4a706578bb7124f5d7f6c21ddf",
+    "website": "focuence-site-e08cf707cbe2",
+    "websitePayloadHashes": "passed",
+    "publicDeploymentPerformed": false
+  },
+  "sourceFiles": 29,
+  "credentialsScan": {
+    "actualProviderKeyMatches": 0
+  },
+  "browserCleanup": {
+    "egoTaskSpace": 34,
+    "finished": true,
+    "keptPages": 0
+  }
+}

@@ -7,6 +7,7 @@ import { createActivityState } from '../src/activity.js';
 import { emptyWorkspace, taskFrom } from '../src/store.js';
 import { assertRevision } from '../src/task-context.js';
 import { pageIdForUrl } from '../src/text.js';
+import {createPredictions} from '../src/prediction.js';
 
 // Explicit, memory-only preview. This module never reads or writes extension storage.
 // Loaded only when the workbench URL contains ?demo=1.
@@ -134,11 +135,13 @@ export function createDemoTransport() {
   });
   const memoryReady = memory.initialize();
   const library=createLibrary({store:memoryStore,invalidate:()=>memory.invalidate()});
+  const predictions=createPredictions({context:()=>state(),ai:{generate:async()=>{throw Object.assign(Error('示例使用本机线索，不连接 AI 服务。'),{code:'AI_DISABLED'});}},
+    epoch:()=>epoch,allowed:()=>true,openPage:async()=>({opened:true})});
   async function state(range = 'week') {
     const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, range, now: Date.now() });
     const summaries = computeAnalytics({ segments, tasks, pages, now: Date.now() });
     return {
-      version: '2.5.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
+      version: '2.6.0', demo: true, windowId: 1, settings, tabs, tasks: taskViews(tasks, tabs, segments),
       segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000,
       groups, model, undoAvailable: Boolean(lastApply), ...summaries, transitions, attention,
       work: await memory.view({windowId: 1, tasks, tabs, segments: scoped}),
@@ -152,6 +155,9 @@ export function createDemoTransport() {
       if (memory.hasMutation(message.type)) return {ok: true, data: structuredClone(await memory.mutate(message))};
       let result;
       switch (message.type) {
+        case 'PREDICT_NEXT':result=await predictions.next({...message,windowId:1});break;
+        case 'COMPLETE_TEXT':result=await predictions.complete({...message,windowId:1});break;
+        case 'OPEN_NEXT_SUGGESTION':result=await predictions.open({...message,windowId:1});break;
         case 'LIST_LIBRARY': result=await library.list(message);break;
         case 'GET_LIBRARY_ITEM':result=await memoryStore.getLibraryItem(message.id);if(!result)throw Error('材料已删除。');break;
         case 'SAVE_LIBRARY_ITEM':case 'UPDATE_LIBRARY_ITEM':result=await library.save(message);break;

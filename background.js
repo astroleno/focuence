@@ -13,12 +13,16 @@ import { createTabOperations } from './src/tab-operations.js';
 import { decodeBackup, planImport } from './src/backup.js';
 import { recentSessions, restoreRecentSession, createBrowserHistory, historyRange } from './src/browser-history.js';
 import {createLibrary,capturedDraft,validDraft} from './src/library.js';
+import {createAIService} from './src/ai-provider.js';
+import {createPredictions} from './src/prediction.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
 let store, settings, activity, browserSessionId, initPromise, workspace, tabOperations, browserHistory,library;
+const ai=createAIService({storage:chrome.storage.local,permissions:chrome.permissions});
+let predictions;
 const imports = new Map();
 let activityQueue = Promise.resolve();
 let offscreenPromise = null;
@@ -30,7 +34,6 @@ let model = { status: 'idle', name: MODEL_NAME, progress: 0 };
 let lastUndo = null;
 const proposals = new Map();
 const proposalNotices = new Map();
-const tabSources=new Set();
 
 function persistSession() {
   const job = sessionWrites.then(() => chrome.storage.session.set({ focuenceUndo: lastUndo, focuenceProposals: [...proposals.entries()], focuenceProposalNotices: [...proposalNotices.entries()], focuenceDataEpoch: dataEpoch }));
@@ -62,7 +65,7 @@ async function applyActivity(event) {
   await store.saveActivity(result.state, result.segments, nextWorkspace);
   activity = result.state;
   workspace?.replaceState(nextWorkspace);
-  if(result.segments.length)workspace?.invalidate();
+  // Appending an observation does not change the documents of an existing search.
 }
 
 async function rawContext() {
@@ -98,6 +101,7 @@ async function init() {
   initPromise = (async () => {
     store = await openStore();
     settings = await store.getSettings();
+    await ai.load();
     const session = await chrome.storage.session.get(['focuenceBrowserSessionId', 'focuenceUndo', 'focuenceProposals', 'focuenceProposalNotices', 'focuenceDataEpoch']);
     dataEpoch = Number.isInteger(session.focuenceDataEpoch) ? session.focuenceDataEpoch : 0;
     browserSessionId = session.focuenceBrowserSessionId || crypto.randomUUID();
@@ -110,7 +114,7 @@ async function init() {
     else if (activity.sessionId !== browserSessionId) await applyActivity({ type: 'restart', at: Date.now(), sessionId: browserSessionId });
     workspace = createWorkspace({
       store, sessionId: browserSessionId, settings: () => settings, getActivity: () => activity, setActivity: value => { activity = value; },
-      epoch: () => dataEpoch, invalidate: () => { dataEpoch++; persistSession().catch(() => {}); },
+      epoch: () => dataEpoch, invalidate: () => { dataEpoch++; ai.cancel(); predictions?.clear(); persistSession().catch(() => {}); },
       rawContext, idleState: () => chrome.idle.queryState(settings.idleSeconds), tabs: eligibleTabs, targetWindow,
       allowed: url => Boolean(normalizeUrl(url)) && !excluded(url), restorePages, openPage,
       allTabs:async()=>{const tabs=await allNormalTabs();return tabs.flatMap(tab=>{const page=allowedPage(tab);return page?[{...tab,...page,id:tab.id,pageId:page.id}]:[];});},
@@ -126,7 +130,7 @@ async function init() {
       },
     });
     await workspace.initialize();
-    for(const tab of await allNormalTabs())if(allowedPage(tab))tabSources.add(tab.id);
+    predictions=createPredictions({context:windowId=>getState({windowId}),ai,epoch:()=>dataEpoch,allowed:url=>Boolean(normalizeUrl(url))&&!excluded(url),openPage});
     tabOperations = createTabOperations({store,sessionId:browserSessionId,allowed:url=>!!normalizeUrl(url)&&!excluded(url),
       tabs:allNormalTabs,windows:()=>chrome.windows.getAll({windowTypes:['normal']}),group:id=>chrome.tabGroups.get(id),
       save:(task,log,revision)=>workspace.saveTaskAndOperation(task,log,revision),remove:id=>chrome.tabs.remove(id),getTab:id=>chrome.tabs.get(id),
@@ -316,7 +320,7 @@ async function getState(message) {
   const { segments: scoped, transitions, ...attention } = computeReview({ segments, tasks, now, range: message.range });
   const groups = await currentProposals(windowId, tabs);
   const work = await workspace.view({ windowId, tabs, tasks, segments: scoped, from: attention.range.startedAt, to: attention.range.endedAt });
-  return { version: VERSION, windowId, settings, tabs, tasks: taskViews(tasks, tabs, segments), work, segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups, proposalNotice: proposalNotices.get(windowId) || '', ...analytics, transitions, attention, model,
+  return { version: VERSION, windowId, settings, ai:ai.view(), tabs, tasks: taskViews(tasks, tabs, segments), work, segments: scoped.slice(-2000), timelineTruncated: scoped.length > 2000, undoAvailable: Boolean(lastUndo), groups, proposalNotice: proposalNotices.get(windowId) || '', ...analytics, transitions, attention, model,
     trackingState: { status: !settings.tracking ? 'paused' : activity.warning ? 'unknown' : idle !== 'active' ? 'idle' : context ? 'active' : 'unfocused', activeTabId: context?.tabId, lastUpdatedAt: now, warning: activity.warning || null } };
 }
 
@@ -415,7 +419,7 @@ async function restorePages(task, windowId, single = null) {
 async function openPage(value, windowId) {
   const url = normalizeUrl(value); if (!url) throw new Error('只能打开 HTTP(S) 网页');
   const tabs = await chrome.tabs.query({ windowId });
-  const existing = tabs.find(tab => normalizeUrl(tab.url) === url);
+  const existing = tabs.find(tab => normalizeUrl(tab.url) === url && (!tab.pendingUrl || normalizeUrl(tab.pendingUrl) === url));
   if (existing) { await chrome.tabs.update(existing.id, { active: true }); return { opened: false, reused: true }; }
   await chrome.tabs.create({ windowId, url }); return { opened: true, reused: false };
 }
@@ -457,6 +461,7 @@ async function clearData(all) {
   if ((await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length) await chrome.offscreen.closeDocument();
   model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   if (all) await store.clearAll(); else await store.clearHistory();
+  if(all)await ai.clear();
   settings = await store.getSettings();
   if(all){await chrome.storage.session.remove(['focuenceLibraryDrafts','focuenceLibraryCaptureError']);await chrome.alarms.clear('focuence-library-drafts');await syncCaptureMenu();}
   await workspace.reload();
@@ -472,6 +477,12 @@ async function handle(message) {
   await init();
   if (workspace.hasMutation(message.type)) return queueActivity(() => workspace.mutate(message));
   switch (message.type) {
+    case 'GET_AI_SETTINGS':return ai.view();
+    case 'SAVE_AI_SETTINGS':return queueActivity(async()=>{const result=await ai.save(message.config||{});predictions.clear();return result;});
+    case 'CLEAR_AI_SETTINGS':return queueActivity(async()=>{const result=await ai.clear();predictions.clear();return result;});
+    case 'PREDICT_NEXT':return predictions.next({...message,windowId:await targetWindow(message.windowId)});
+    case 'COMPLETE_TEXT':return predictions.complete({...message,windowId:await targetWindow(message.windowId)});
+    case 'OPEN_NEXT_SUGGESTION':return predictions.open({...message,windowId:await targetWindow(message.windowId)});
     case 'LIST_LIBRARY': return library.list(message);
     case 'GET_LIBRARY_ITEM': {const item=await store.getLibraryItem(message.id);if(!item)throw Object.assign(Error('材料已删除，请重新读取。'),{code:'LIBRARY_NOT_FOUND'});return item;}
     case 'SAVE_LIBRARY_ITEM':
@@ -551,13 +562,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 const reconcile = () => queueActivity(recordCurrent).catch(() => {});
-const tabSourceChanged=tab=>{const present=!!(settings&&allowedPage(tab)),affected=tabSources.has(tab.id)||present;if(present)tabSources.add(tab.id);else tabSources.delete(tab.id);if(affected)workspace?.invalidate();reconcile();};
-chrome.tabs.onCreated.addListener(tabSourceChanged);
-chrome.tabs.onActivated.addListener(({tabId})=>chrome.tabs.get(tabId).then(tabSourceChanged).catch(reconcile));
-chrome.tabs.onUpdated.addListener((_id, change,tab) => { if (change.url || change.title)tabSourceChanged(tab);else if(change.status === 'complete')reconcile(); });
-chrome.tabs.onRemoved.addListener(id=>{if(tabSources.delete(id))workspace?.invalidate();reconcile();});
-chrome.tabs.onReplaced.addListener((added,removed)=>{if(tabSources.delete(removed))workspace?.invalidate();chrome.tabs.get(added).then(tabSourceChanged).catch(reconcile);});
-for(const event of [chrome.tabs.onAttached,chrome.tabs.onDetached])event.addListener(id=>{if(tabSources.has(id))workspace?.invalidate();reconcile();});
+// Searches validate captured documents on use; groups validate real tab snapshots
+// before applying. Unrelated tab events must not discard either workflow.
+chrome.tabs.onCreated.addListener(reconcile);
+chrome.tabs.onActivated.addListener(reconcile);
+chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.title || change.status === 'complete')reconcile(); });
+for(const event of [chrome.tabs.onRemoved,chrome.tabs.onReplaced,chrome.tabs.onAttached,chrome.tabs.onDetached])event.addListener(reconcile);
 chrome.windows.onFocusChanged.addListener(reconcile);
 chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); queueActivity(() => workspace.closeWindow(id)).catch(() => {}); });
 chrome.idle.onStateChanged.addListener(state => queueActivity(async () => { await applyActivity({ type: 'idle', at: Date.now(), idleState: state }); await recordCurrent(); }).catch(() => {}));
@@ -609,6 +619,7 @@ function registerHistoryListener(){
 }
 chrome.permissions.onAdded.addListener(change=>{if(change.permissions?.includes('history'))registerHistoryListener();});
 chrome.permissions.onRemoved.addListener(change=>{if(change.permissions?.includes('history'))init().then(()=>browserHistory.disconnect()).catch(error=>console.warn('Focuence history permission:',error.message));});
+chrome.permissions.onRemoved.addListener(change=>{if(change.origins?.length){ai.cancel();predictions?.clear();}});
 chrome.permissions.onRemoved.addListener(change=>{if(change.permissions?.includes('contextMenus'))queueActivity(async()=>{settings=await store.setSettings({captureEnabled:false});}).catch(()=>{});});
 chrome.runtime.onInstalled.addListener(reconcile);
 chrome.runtime.onStartup.addListener(reconcile);

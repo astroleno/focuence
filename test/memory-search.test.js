@@ -33,6 +33,15 @@ test('long notes are indexed in bounded chunks without truncating saved text', (
   const docs=searchDocuments(entries).filter(item=>item.entryId==='task:A');
   assert(docs.length>10); assert(docs.at(-1).item.text.includes('尾部恢复线索'));
 });
+
+test('adding a title variant preserves document identities and equal text in different fields stays distinct', () => {
+  const entry={id:'page:p',kind:'page',pageId:'p',searchTexts:['原来保存的标题']};
+  const original=searchDocuments([entry]);
+  const expanded=searchDocuments([{...entry,searchTexts:['刚打开的标题',...entry.searchTexts]}]);
+  assert(expanded.some(doc=>doc.item.id===original[0].item.id));
+  const fields=searchDocuments([{id:'library:l',kind:'library',libraryId:'l',searchParts:[{field:'quote',text:'同样文字'},{field:'note',text:'同样文字'}]}]);
+  assert.equal(new Set(fields.map(doc=>doc.item.id)).size,2);
+});
 test('semantic note results show the winning passage rather than unrelated opening text', () => {
   const entries = memoryCorpus({tasks: [{...task, notes: '前文没有相关信息。'.repeat(100) + '数字麦克风将声音采样为离散数值。'}], scope: 'tasks'});
   const docs = searchDocuments(entries).filter(item => item.entryId === 'task:A');

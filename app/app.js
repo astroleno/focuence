@@ -12,6 +12,7 @@ import { createBackupUI } from '../src/backup-ui.js';
 import {createLibraryUI} from '../src/library-ui.js';
 import {createDraftGuard, editorSnapshot} from '../src/draft-guard.js';
 import {resolveRelationEvidence} from '../src/map-evidence.js';
+import {createAISettingsUI} from '../src/ai-settings-ui.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -44,7 +45,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.5.0',
+    version: value?.version || '2.6.0',
     demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
@@ -52,6 +53,7 @@ function normalizeState(value) {
     work: value?.work,
     timelineTruncated: Boolean(value?.timelineTruncated),
     settings: {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: [], ...value?.settings},
+    ai:value?.ai||{enabled:false,hasKey:false,baseUrl:'',protocol:'openai',model:''},
     tabs: Array.isArray(value?.tabs) ? value.tabs : [], tasks: Array.isArray(value?.tasks) ? value.tasks : [],
     segments: Array.isArray(value?.segments) ? value.segments : [], groups: Array.isArray(value?.groups) ? value.groups : [],
     stats: {todayForegroundMs: 0, todayPages: 0, todaySwitches: 0, totalTasks: 0, ...value?.stats},
@@ -115,6 +117,7 @@ let toastTimer;
 const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWindowId:()=>windowId,render,refresh:()=>refresh({quiet:true}),notify:toast,demo:isDemo});
 const backupUI = createBackupUI({request,render,refresh:()=>refresh({quiet:true}),notify:toast,demo:isDemo});
 const libraryUI=createLibraryUI({getState:()=>ui.state,request,render,refresh:()=>refresh({quiet:true}),notify:toast,getWindowId:()=>windowId,demo:isDemo,surface:isPanel?'panel':'workspace'});
+const aiSettings=createAISettingsUI({getState:()=>ui.state,request,refresh:()=>refresh({quiet:true}),demo:isDemo});
 function toast(message, error = false, actionName = '') {
   const region = document.getElementById('toast-region');
   const hadFocus = region.contains(document.activeElement);
@@ -214,7 +217,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#tasks', 'aria-label': 'Focuence · 当前聚焦'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.5')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.6')));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -381,8 +384,10 @@ function renderTasks() {
   return [
     heading('当前聚焦', '选择眼前要推进的任务，留断点，从一页继续。', [
       button('新建任务', 'new-task', {id: 'task-create'}, isPanel ? 'small' : '', 'plus'),
+      button('整理分组', 'show-grouping', {id:'task-grouping'}, 'small', 'layers'),
       button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
     memory.current({support: isPanel}),
+    memory.predictionView(),
     el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
       emptyState(query ? '没有匹配的任务' : memory.taskFilterEmpty()?.title || '先给眼前的事一个目标', query ? '当前搜索或状态筛选没有匹配。可查看全部任务后继续。' : memory.taskFilterEmpty()?.description || '可以先写目标，再关联资料；不需要先打开或选择页面。', query || memory.taskFilterEmpty() ? 'clear-task-filters' : 'new-task', query || memory.taskFilterEmpty() ? '查看全部任务' : '新建任务', false, 'folder'),
@@ -720,7 +725,7 @@ function renderSettings() {
     heading('设置', '按你的节奏记录，由你决定保留什么。'),
     el('section', {class: 'settings-save', 'aria-label': '保存设置'},
       button(busy('settings') ? '正在保存…' : '保存设置', 'save-settings', {id: 'settings-save-button', disabled: busy('settings') || !ui.settingsDirty}, 'primary', 'check'),
-      el('div', {}, el('p', {id: 'settings-save-status', role: 'status'}, settingsSaveStatus()), el('p', {class: 'field-help'}, '修改开关后需保存设置；所有分析均在本机完成。'))),
+      el('div', {}, el('p', {id: 'settings-save-status', role: 'status'}, settingsSaveStatus()), el('p', {class: 'field-help'}, '记录与语义分析在本机完成；下方 AI 服务单独保存，按需调用。'))),
     backupUI.view(),
     memory.historyView(false),
     el('div', {class: 'settings-layout'},
@@ -735,6 +740,7 @@ function renderSettings() {
         settingRow('低频返回提示', '仅在侧栏显示。连续 5 分钟、至少 2 个已确认的其他页面才会提示；每天最多 3 次。', toggle('setting-focus-support', settings.focusSupport, '启用低频返回提示')),
         settingRow('模型状态', ui.state.model.name || 'BGE-small-zh-v1.5 · 本地语义模型', button(busy('warmup') ? '正在准备…' : ui.state.model.status === 'ready' ? '模型已就绪' : '准备本地模型', 'warmup', {disabled: busy('warmup') || ui.state.model.status === 'ready'}, 'small', 'spark')),
         modelBar()),
+      el('section',{class:'settings-section'},aiSettings.view()),
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段、资料库与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
@@ -1046,6 +1052,16 @@ async function handleAction(action, target) {
     }
     case 'open-panel': await openSidePanel({windowId, demo: isDemo}); break;
     case 'nav-pages': navigate('pages'); break;
+    case 'show-grouping': {
+      ui.pagesMode='groups';
+      const loading=navigate('pages');
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+      if(ui.view==='pages'&&ui.pagesMode==='groups'){
+        const heading=document.getElementById('grouping-title');
+        heading?.scrollIntoView({block:'start'});heading?.focus({preventScroll:true});
+      }
+      await loading;break;
+    }
     case 'refresh': if (ui.failedRange) await chooseRange(ui.failedRange); else await operation('refresh', () => refresh()); break;
     case 'flush-refresh': await operation('flush', async () => { await request('FLUSH_ACTIVITY'); await refresh(); }); break;
     case 'page-filter': ui.pageFilter = target.dataset.filter; render(); announceResults(); break;
@@ -1156,7 +1172,7 @@ async function handleAction(action, target) {
       break;
     case 'clear-all':
       confirmDialog('清除全部本机数据？', '这将删除扩展访问记录、任务、资料库原文与笔记、临时选文和恢复点，并重置设置。不会删除 Chrome 自身历史或关闭网页。此操作无法撤销。', '清除全部', async () => {
-        await request('CLEAR_ALL'); ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false; toast('全部本机数据已清除。');
+        await request('CLEAR_ALL'); aiSettings.reset(); ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false; toast('全部本机数据已清除。');
       }, true);
       break;
     case 'close-dialog': closeDialog(); break;

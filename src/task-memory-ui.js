@@ -3,6 +3,7 @@ import { relationFor, taskText } from './task-context.js';
 import { TASK_STATUSES, statusOf } from './task-lifecycle.js';
 import {SOURCE_LABELS} from './search-sources.js';
 import {createHistoryUI} from './history-ui.js';
+import {createPredictionUI} from './prediction-ui.js';
 
 const stamp = value => value ? new Date(value).toLocaleString('zh-CN', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
 const pending = job => ['queued', 'running'].includes(job?.status);
@@ -18,6 +19,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   let filters={from:'',until:'',domain:'',taskId:'',taskMode:'associated'},filtersOpen=false,offset=0;
   const historyUI=createHistoryUI({request,render,refresh,notify,demo,getState});
   const clientId = 'memory-' + surface + '-' + crypto.randomUUID();
+  const predictions=createPredictionUI({getState,request,getWindowId,showTask:taskDetail,notify,demo});
   const work = () => getState()?.work || {current: {taskId: null, revision: 0}, relations: [], drafts: {}, undo: {}};
   const taskById = id => getState()?.tasks.find(item => item.id === id);
   const canContinue = task => {
@@ -78,6 +80,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       el('div', {class: 'memory-actions'}, (pause || switchTo) && action(switchTo ? '直接切换' : '只暂停此窗口', 'direct-transition', {id: task.id, next: switchTo?.id || '', revision: expected.contextRevision}),
         el('button', {type: 'submit', class: 'memory-button primary'}, switchTo ? '保存并切换' : pause ? '保存并暂停此窗口' : '保存断点')));
     frame.append(form);
+    form.elements.nextStep.closest('label').after(predictions.completion({inputId:'checkpoint-nextStep',field:'nextStep',task}));
     const signature = () => JSON.stringify([...new FormData(form)]);
     const original = signature();
     const keepEditing = el('button', {id: 'checkpoint-keep-editing', type: 'button', class: 'memory-button primary'}, '继续编辑');
@@ -280,6 +283,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
           el('label',{},'任务',el('select',{id:'memory-filter-task','data-search-filter':'taskId'},el('option',{value:''},'全部任务'),filters.taskId&&!(getState()?.tasks||[]).some(task=>task.id===filters.taskId)&&el('option',{value:filters.taskId,selected:true},'已删除任务（请重新选择）'),(getState()?.tasks||[]).map(task=>el('option',{value:task.id,selected:filters.taskId===task.id},task.name)))),
           el('label',{},'任务含义',el('select',{id:'memory-filter-mode','data-search-filter':'taskMode'},[['associated','目前关联此任务'],['observed','访问时正在做此任务']].map(([value,label])=>el('option',{value,selected:filters.taskMode===value},label))))),
           small('“访问时”只依据自记录片段。“目前关联”依据已保存页面或确认关系；不会把今天的关联写成过去的任务。缺失时间的来源不进入日期结果。'),action('清空筛选','clear-filters'))),
+      predictions.completion({inputId:'memory-query',field:'search'}),
       job?.explanation&&small(job.explanation+' · '+(job.filters?.from?stamp(job.filters.from):'不限开始')+' — '+(job.filters?.until?stamp(job.filters.until):'不限结束')+'；可在上方修改日期。'),
       small(getState()?.demo ? '示例仅演示关键词查找；真实扩展可使用本机模型。' : getState()?.settings.semantic ? '先显示关键词结果，再用本机模型补充语义结果。' : '语义增强已关闭，当前使用关键词查找。'),
       job && el('div', {role: 'status', class: 'memory-search-status'}, job.status === 'starting' ? '正在读取资料…' : pending(job) ? '本地分析 · ' + job.completed + ' / ' + job.total + ' · 可继续查看已有结果' : job.error || '找到 ' + (job.resultTotal || 0) + ' 条线索',
@@ -408,5 +412,5 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     ? {title: '日常任务中没有匹配', description: '日常任务不显示已归档任务。可查看全部任务，找回保存的内容。'}
     : TASK_STATUSES[statusFilter] ? {title: '没有“' + TASK_STATUSES[statusFilter] + '”的任务', description: '当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。'} : null;
   const resetTaskFilter = () => { statusFilter = 'all'; };
-  return { current, taskActions, searchView, patterns, filterTasks, taskFilter, taskFilterEmpty, resetTaskFilter, historyView:historyUI.view };
+  return { current, taskActions, searchView, patterns, filterTasks, taskFilter, taskFilterEmpty, resetTaskFilter, historyView:historyUI.view, predictionView:predictions.nextView };
 }

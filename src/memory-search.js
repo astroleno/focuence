@@ -31,9 +31,16 @@ export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = []
 }
 
 export function searchDocuments(entries) {
-  return entries.flatMap(entry => (entry.searchParts?entry.searchParts.flatMap(part=>textChunks(part.text).map(text=>({text,field:part.field}))):(entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map(text=>({text}))).map(({text,field}, index) => ({
-    entryId: entry.id,field, item: semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : entry.kind==='library'?`${entry.libraryId}:`:`${entry.pageId}:`}${index}:${stableHash(text)}`, text, entry.kind === 'task' ? 'task' : entry.kind==='library'?'library':'search-page'),
-  })));
+  return entries.flatMap(entry => {
+    const occurrences = new Map();
+    return (entry.searchParts?entry.searchParts.flatMap(part=>textChunks(part.text).map(text=>({text,field:part.field}))):(entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map(text=>({text}))).map(({text,field}) => {
+      // New sources must not renumber the documents of an existing search.
+      const key = `${field || 'text'}:${stableHash(text)}`, occurrence = occurrences.get(key) || 0;
+      occurrences.set(key, occurrence + 1);
+      const item = semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : entry.kind==='library'?`${entry.libraryId}:`:`${entry.pageId}:`}${key}:${occurrence}`, text, entry.kind === 'task' ? 'task' : entry.kind==='library'?'library':'search-page');
+      return {entryId:entry.id, field, item};
+    });
+  });
 }
 
 export function snippetFor(query, text) {

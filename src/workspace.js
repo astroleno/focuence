@@ -263,7 +263,7 @@ export function createWorkspace(deps) {
   }
 
   function publicJob(job) {
-    const { query, scores, queryVector, documents, snapshots, epoch, signature, sessionId, seenResults, ...safe } = job;
+    const { query, scores, queryVector, documents, snapshots, epoch, signature, sessionId, seenResults, rankingTimes, textHashes, ...safe } = job;
     return {...safe,sourceEpoch:epoch};
   }
 
@@ -285,6 +285,8 @@ export function createWorkspace(deps) {
     const prepared = await prepareJob(job, data);
     if (job.epoch !== deps.epoch()) throw failure('STALE_SUGGESTION', '资料已经变化，请重新查找或分析。');
     job.documents = prepared.documents.map(item => item.item.id); job.signature = prepared.signature; job.total = job.documents.length;
+    job.rankingTimes = Object.fromEntries(prepared.entries.map(item => [item.id, item.visitedAt]));
+    job.textHashes = Object.fromEntries(prepared.entries.map(item => [item.id, item.searchTexts?.map(stableHash) || []]));
     job.snapshots = kind === 'association' ? prepared.tabs.map(candidateSnapshot) : [];
     if (task) job.candidates = matchTaskPages(task, prepared.tabs, data.relations);
     else { const ranked=rankMemory(prepared.entries,query,{},50,true);job.results=ranked.results;job.resultTotal=ranked.total;job.seenResults=ranked.results.map(item=>item.id); }
@@ -297,7 +299,8 @@ export function createWorkspace(deps) {
 
   async function prepareJob(job, known) {
     const data = known || await bundle();
-    const tabs = job.kind==='search'&&deps.allTabs ? await deps.allTabs() : (await deps.tabs(job.windowId)).map(tab=>({...tab,windowId:tab.windowId??job.windowId}));
+    const tabs = (job.kind==='search'&&deps.allTabs ? await deps.allTabs() : (await deps.tabs(job.windowId)).map(tab=>({...tab,windowId:tab.windowId??job.windowId})))
+      .filter(tab=>!tab.pendingUrl||normalizeUrl(tab.pendingUrl)===normalizeUrl(tab.url));
     if (job.kind === 'association') {
       const task = data.tasks.find(item => item.id === job.taskId);
       if (!task || task.revision !== job.taskRevision || windowContext(state.context, job.windowId).revision !== job.contextRevision) throw failure('STALE_SUGGESTION', '任务已经更新，请重新分析。');
@@ -361,8 +364,27 @@ export function createWorkspace(deps) {
     const documents = job.documents.map(id => byId.get(id));
     if (documents.some(item => !item)) throw failure('STALE_SUGGESTION', '检索中的资料已更新，请重新查找。');
     const ids = new Set(documents.map(item => item.entryId));
-    return { ...prepared, documents, entries: prepared.entries.filter(item => ids.has(item.id)),
+    const byEntry = new Map();
+    for (const doc of documents) { if (!byEntry.has(doc.entryId)) byEntry.set(doc.entryId, []); byEntry.get(doc.entryId).push(doc); }
+    const entries = prepared.entries.filter(item => ids.has(item.id)).map(entry => {
+      const selected = byEntry.get(entry.id);
+      const searchParts = selected.filter(item => item.field).map(item => ({field:item.field, text:item.item.text}));
+      const byHash = new Map((entry.searchTexts || []).map(text => [stableHash(text), text]));
+      const hashes = job.textHashes?.[entry.id];
+      if (hashes?.some(hash => !byHash.has(hash))) throw failure('STALE_SUGGESTION', '检索中的原文已更新，请重新查找。');
+      const searchTexts = hashes?.length ? hashes.map(hash => byHash.get(hash)) : selected.map(item => item.item.text);
+      return {...entry, text:searchTexts.join('\n'), searchTexts,
+        ...(searchParts.length ? {searchParts} : {}), visitedAt:job.rankingTimes?.[entry.id] ?? entry.visitedAt};
+    });
+    return { ...prepared, documents, entries,
       signature: stableHash(JSON.stringify(documents.map(item => [item.item.id, item.item.textHash]))) };
+  }
+
+  async function currentSearch(job) {
+    const prepared = snapshotJob(job, await prepareJob(job));
+    if (jobs.get(job.id) !== job || job.epoch !== deps.epoch() || job.status === 'stale' || prepared.signature !== job.signature)
+      throw failure('STALE_SUGGESTION', '检索中的资料已更新，请重新查找。');
+    return prepared;
   }
 
   async function cancelJob(message) {
@@ -374,7 +396,7 @@ export function createWorkspace(deps) {
   async function openResult(message) {
     const job = jobs.get(message.jobId);
     if (!job || job.epoch !== deps.epoch() || job.status === 'stale' || !(job.seenResults||job.results.map(item=>item.id)).includes(message.entryId)) throw failure('STALE_SUGGESTION', '结果已经更新，请重新查找。');
-    const prepared = await prepareJob(job);
+    const prepared = await currentSearch(job);
     const entry = prepared.entries.find(item => item.id === message.entryId);
     if (!entry || entry.kind !== 'page' || !deps.allowed(entry.url)) throw failure('STALE_SUGGESTION', '这条资料已不可用，请重新查找。');
     const live=entry.evidence?.find(item=>item.tabId!=null);
@@ -390,8 +412,7 @@ export function createWorkspace(deps) {
   async function searchResults(message,evidence=false){
     const job=jobs.get(message.jobId);
     if(!job||job.kind!=='search'||job.epoch!==deps.epoch()||job.status==='stale')throw failure('STALE_SUGGESTION','资料已经更新，请重新查找。');
-    const prepared=await prepareJob(job);
-    if(prepared.signature!==job.signature)throw failure('STALE_SUGGESTION','检索范围已经改变，请重新查找。');
+    const prepared=await currentSearch(job);
     const offset=Math.max(0,Math.floor(Number(message.offset)||0)),limit=Math.min(50,Math.max(1,Math.floor(Number(message.limit)||25)));
     if(evidence){
       if(!(job.seenResults||[]).includes(message.entryId))throw failure('STALE_SUGGESTION','请从当前结果打开来源。');

@@ -63,6 +63,41 @@ test('current intent is independent per window and old window revisions are reje
   assert.equal(f.data.context.windows[1].taskId, 'a'); assert.equal(f.data.context.windows[2].taskId, 'b');
   await assert.rejects(f.message('SET_CURRENT_TASK', 'b', {contextRevision: 0}), {code: 'STALE_CONTEXT'});
 });
+
+test('saved search survives opening, new title evidence and unrelated sources without admitting new matches',async()=>{
+  const f=fixture();let live=[];
+  const memory=createWorkspace({...f.deps,allTabs:async()=>structuredClone(live),openPage:async(url,windowId)=>{
+    live.push({id:100+live.length,windowId,url,title:'新载入页面标题',lastAccessed:1700000001000});return{opened:true};
+  }});await memory.initialize();
+  const job=await memory.createJob({query:'',scope:'tasks'});
+  const pages=job.results.filter(item=>item.kind==='page');assert.equal(pages.length,2);
+  await memory.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId:pages[0].id});
+  live.push({id:999,windowId:1,url:'https://new.test/',title:'额外新页面'});
+  const refreshed=await memory.searchResults({jobId:job.id});
+  assert.deepEqual(refreshed.results.map(item=>item.id),job.results.map(item=>item.id));
+  assert.equal(refreshed.sourceEpoch,job.sourceEpoch);
+  assert((await memory.searchResults({jobId:job.id,entryId:pages[0].id},true)).items.length);
+  await memory.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId:pages[1].id});
+});
+
+test('window search keeps pagination stable after visits but rejects removed or changed original documents',async()=>{
+  const f=fixture();let tabs=Array.from({length:55},(_,i)=>({id:i+100,windowId:1,url:'https://pages.test/'+i,title:'连续资料 '+i,lastAccessed:i}));
+  const memory=createWorkspace({...f.deps,allTabs:async()=>structuredClone(tabs)});await memory.initialize();
+  const job=await memory.createJob({query:'连续资料',scope:'windows'});
+  tabs[0].lastAccessed=999999;tabs.push({id:900,windowId:1,url:'https://new.test',title:'连续资料 新页面'});
+  const first=await memory.searchResults({jobId:job.id});assert.deepEqual(first.results.map(item=>item.id),job.results.slice(0,25).map(item=>item.id));
+  assert.equal((await memory.searchResults({jobId:job.id,offset:50,limit:50})).results.length,5);
+  tabs[0].title='内容已经变更';await assert.rejects(memory.searchResults({jobId:job.id}),{code:'STALE_SUGGESTION'});
+  tabs[0].title='连续资料 0';tabs[0].pendingUrl='https://changed.test/';await assert.rejects(memory.searchResults({jobId:job.id}),{code:'STALE_SUGGESTION'});
+  tabs=tabs.filter(item=>item.id!==100);await assert.rejects(memory.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId:job.results[0].id}),{code:'STALE_SUGGESTION'});
+});
+
+test('a search snapshot preserves full literal phrases across semantic chunk boundaries',async()=>{
+  const f=fixture();await f.memory.initialize();const query='核对连续文字'.repeat(25);
+  await f.message('UPDATE_TASK','a',{notes:query});
+  const job=await f.memory.createJob({query,scope:'tasks'}),fresh=await f.memory.searchResults({jobId:job.id,limit:50});
+  assert.equal(fresh.results.find(item=>item.id==='task:a').score,job.results.find(item=>item.id==='task:a').score);
+});
 test('switch stores the previous task checkpoint and context in one successful commit', async () => {
   const f = fixture(); await f.memory.initialize(); await f.message('SET_CURRENT_TASK'); f.advance(10000);
   const before = f.snapshot(); f.fail(true);

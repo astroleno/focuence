@@ -1,0 +1,24 @@
+{
+  "scope": "Real provider requests with synthetic text using production adapter; not a browser permission-grant test.",
+  "checks": [
+    {
+      "provider": "OpenCode Go",
+      "model": "deepseek-v4.1-flash",
+      "protocol": "openai",
+      "passed": false,
+      "code": "AI_HTTP",
+      "elapsedMs": 1183
+    },
+    {
+      "provider": "DeepSeek",
+      "model": "deepseek-flash",
+      "protocol": "anthropic",
+      "passed": true,
+      "elapsedMs": 1577
+    }
+  ],
+  "notes": [
+    "CC Switch stored DeepSeek-V3.2; production check uses the officially documented deepseek-flash alias.",
+    "OpenCode Go rejected deepseek-v4-flash with HTTP 410 ModelDeprecated; its current deepseek-v4.1-flash preset was also rejected by the service. No account policy, billing or region settings were changed."
+  ]
+}

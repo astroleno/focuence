@@ -51,13 +51,13 @@ def main():
         name = path.relative_to(ROOT).as_posix()
         source_hash.update(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {name}\n'.encode())
     build_info = json.dumps({
-        'version':VERSION,'releaseDate':'2026-10-22','sourceCommit':commit,
+        'version':VERSION,'releaseDate':'2026-10-28','sourceCommit':commit,
         'sourceDirty':dirty,'sourceTreeSha256':source_hash.hexdigest(),
         'baseRepository':'https://github.com/astroleno/focuence',
         'baseCommit':'240eaba9c1b5517b0c3fc96973c195b44042ef32',
         'modelRepository':lock['repository'],'modelRevision':lock['revision'],
         'runtime':'MV3 / bundled ONNX / single-thread WASM',
-        'networkInference':False
+        'networkInference':'optional-user-configured', 'networkInferenceDefault':False
     }, ensure_ascii=False, indent=2).encode()+b'\n'
     artifacts = []
     for suffix, prefix, paths in [('offline',BASE,runtime),('source',BASE+'-source',source)]:

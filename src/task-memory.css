@@ -77,3 +77,20 @@
   .memory-search-form input { grid-column: 1 / -1; }
   .memory-checkpoint { padding: 9px; }
 }
+.prediction-section { display: grid; gap: 10px; margin: 20px 0 28px; padding: 18px 0; border-block: 1px solid var(--line, #e2e5df); }
+.prediction-section h2 { font-size: 16px; margin: 0; }
+.prediction-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.prediction-row > div { min-width: 0; }
+.prediction-row h3 { margin: 0 0 4px; font-size: 14px; overflow-wrap: anywhere; }
+.prediction-row > button { flex-shrink: 0; }
+.prediction-status { color: var(--ink, #28372f); font-size: 13px; line-height: 1.6; margin: 4px 0; overflow-wrap: anywhere; }
+.text-completion { display: grid; justify-items: start; gap: 6px; margin: 8px 0 20px; min-width: 0; }
+.text-completion > .memory-caption { margin: 0; }
+.completion-choice { width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line, #e2e5df); }
+.completion-choice p { min-width: 0; flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; margin: 0; }
+.completion-choice button { flex-shrink: 0; }
+.ai-settings { max-width: 650px; scroll-margin-top: 96px; }
+.ai-settings > label.memory-checkbox { display: flex; align-items: center; gap: 8px; }
+.ai-settings input[type=checkbox] { width: auto; flex-shrink: 0; }
+.ai-settings input:not([type=checkbox]), .ai-settings select { min-width: 0; width: 100%; box-sizing: border-box; }
+@media(max-width:400px) { .prediction-row { align-items: flex-start; gap: 10px; } .prediction-section .memory-heading { align-items: flex-start; flex-wrap: wrap; } }
