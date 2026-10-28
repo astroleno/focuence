@@ -129,7 +129,7 @@ function paint(...content) {
 }
 function render() {
   const state = ui.state;
-  byId('open-panel').disabled = !state;
+  byId('open-panel').disabled = !state || Boolean(ui.working);
   byId('toggle-tracking').disabled = !state || Boolean(ui.working);
   byId('workspace').disabled = Boolean(ui.working);
   renderSaveActions();
@@ -334,11 +334,20 @@ document.addEventListener('submit', event => {
     card?.scrollIntoView({block: 'nearest', behavior: 'instant'}); card?.focus({preventScroll: true});
   });
 });
-byId('open-panel').addEventListener('click', () => {
-  openSidePanel({ windowId, demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
-});
+function handOff(open) {
+  if (ui.working) return;
+  const proceed = () => operation('handoff', async () => {
+    // Invoke before the first await so a confirmed click retains its user gesture.
+    await open();
+    saveGuard?.dispose(); saveGuard = null;
+    if (!isDemo) window.close();
+  });
+  if (ui.form) saveGuard.requestExit(proceed);
+  else proceed();
+}
+byId('open-panel').addEventListener('click', () => handOff(() => openSidePanel({ windowId, demo: isDemo })));
 byId('workspace').addEventListener('click', () => {
-  openWorkspace({ windowId, view: 'tasks', demo: isDemo }).then(() => { if (!isDemo) window.close(); }).catch(error => feedback(error.message, true));
+  handOff(() => openWorkspace({ windowId, view: 'tasks', demo: isDemo }));
 });
 byId('toggle-tracking').addEventListener('click', () => operation('tracking', async () => {
   const tracking = !ui.state.settings.tracking;

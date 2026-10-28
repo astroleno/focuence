@@ -404,7 +404,9 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   const filterTasks = tasks => tasks.filter(task => statusFilter === 'all' || (statusFilter === 'daily' ? statusOf(task) !== 'archived' : statusOf(task) === statusFilter));
   const taskFilter = () => el('select', {id: 'memory-task-filter', class: 'standard-select', 'aria-label': '筛选任务状态'},
     [['daily','日常任务'],['all','全部任务'],...Object.entries(TASK_STATUSES)].map(([value,label]) => el('option', {value,selected:statusFilter===value},label)));
-  const taskFilterEmpty = () => TASK_STATUSES[statusFilter] ? {title: '没有“' + TASK_STATUSES[statusFilter] + '”的任务', description: '当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。'} : null;
+  const taskFilterEmpty = () => statusFilter === 'daily' && getState()?.tasks.length
+    ? {title: '日常任务中没有匹配', description: '日常任务不显示已归档任务。可查看全部任务，找回保存的内容。'}
+    : TASK_STATUSES[statusFilter] ? {title: '没有“' + TASK_STATUSES[statusFilter] + '”的任务', description: '当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。'} : null;
   const resetTaskFilter = () => { statusFilter = 'all'; };
   return { current, taskActions, searchView, patterns, filterTasks, taskFilter, taskFilterEmpty, resetTaskFilter, historyView:historyUI.view };
 }

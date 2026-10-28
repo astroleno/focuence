@@ -1,0 +1,46 @@
+{
+  "reviewer": "correctness",
+  "reviewed_commit": "1e123a1249b92b533f986acf43e03a1e253cc2ad",
+  "overall_verdict": "changes_requested",
+  "findings": [
+    {
+      "id": "SR1",
+      "priority": 2,
+      "confidence": 0.99,
+      "title": "打开侧栏绕过未保存草稿保护",
+      "body": "填写 popup 新任务后，顶部打开侧栏仍直接导航。saveGuard 仅接入返回和 Escape；此入口在 demo 中改变 location，在原生扩展中成功后主动 window.close，既未确认放弃，也未交接草稿。400×600 demo 实测丢失名称和目标。这是可控的产品退出路径，不属于宿主强制销毁的排除项。",
+      "code_location": {"absolute_file_path": "/Users/aitoshuu/Documents/GitHub/focuence/popup/app.js", "line_range": {"start": 337, "end": 338}},
+      "evidence": "SR1-popup-open-panel-discards-draft",
+      "status": "open"
+    },
+    {
+      "id": "SR3",
+      "priority": 2,
+      "confidence": 0.99,
+      "title": "导航返回结果覆盖用户后续滚动",
+      "body": "navigate 立即呈现视图后等待 GET_STATE，用户已能滚动阅读。响应返回时只检查 navigationSerial 和 view，仍无条件 resetViewScroll，覆盖这段时间内的用户滚动。受控读取延迟下，桌面滚动 627.5 → 0，320px 侧栏 620 → 0，期间没有第二次导航。应保留初次导航落点，同时让后续用户滚动优先于迟到的结果。",
+      "code_location": {"absolute_file_path": "/Users/aitoshuu/Documents/GitHub/focuence/app/app.js", "line_range": {"start": 815, "end": 816}},
+      "evidence": ["SR3-late-navigation-overwrites-user-scroll", "SR3-late-navigation-overwrites-panel-scroll"],
+      "status": "open"
+    },
+    {
+      "id": "SR2",
+      "priority": 3,
+      "confidence": 0.99,
+      "title": "日常任务筛选空态没有解释已归档内容",
+      "body": "daily 默认排除归档任务，但 taskFilterEmpty 只识别 TASK_STATUSES 的键。所有任务归档后，导航计数仍为 3，列表回退为首次创建引导且没有查看全部入口。实际切换 all 后三个任务都存在。应将库为空与日常筛选无匹配区分，后者提供查看全部入口。",
+      "code_location": {"absolute_file_path": "/Users/aitoshuu/Documents/GitHub/focuence/src/task-memory-ui.js", "line_range": {"start": 404, "end": 407}},
+      "evidence": "SR2-daily-filter-empty-misclassified",
+      "status": "open"
+    }
+  ],
+  "residual_risks": [
+    "原生扩展宿主生命周期、真实 sidePanel 权限与屏幕阅读器未在本轮重测。",
+    "延迟读取为受控夹具，不代表测得了真实后台响应时间。",
+    "本轮未实施三个 findings 的修复，未更新公网或商店状态。"
+  ],
+  "testing_gaps": [
+    "现有 153 项测试未覆盖 popup 侧栏交接、导航中后续滚动、全部归档后的默认空态这三个浏览器交互组合。",
+    "设置失败和原生目标→断点→继续一页全流程未在本轮重新实验；沿用前轮明确记录的证据范围。"
+  ]
+}

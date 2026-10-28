@@ -18,6 +18,8 @@
 
 浏览器扩展：写下当前目标，记住相关资料与工作断点，用一句话找回线索。
 
+2026-10-28 UI/UX 补充修复：[三项计划](docs/plans/2026-10-28-003-supplemental-ui-fixes.md)、[验收记录](docs/reviews/ui-ux-2026-10-28/supplemental-fixes/README.md)。补齐草稿侧栏交接、延迟导航的用户滚动和默认归档筛选空态。
+
 2026-10-28 UI/UX 第二轮修复：[计划](docs/plans/2026-10-28-002-fix-focus-map-rereview-plan.md)、[验收与独立复审](docs/reviews/ui-ux-2026-10-28/round-2-fixes/README.md)。覆盖编辑退出、创建结果、地图键盘连续性、聚焦导航落点、设置生效反馈和地图时长口径。
 
 官网与交互示例：[aitoshuu.me/Focuence](https://aitoshuu.me/Focuence)、[tongye.me/Focuence](https://tongye.me/Focuence)。官网以注意力地图、聚焦与断点继续为核心；扩展仍为开发预览，核心流程的已确认问题见 [三方评审复核](docs/reviews/v2.5/core-review-2026-10-24/README.md)。

@@ -1,0 +1,111 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "1e123a1249b92b533f986acf43e03a1e253cc2ad",
+  "sourceSnapshot": "source-snapshot.json",
+  "verdict": "passed for the three supplemental UI fixes and related regressions",
+  "findings": {
+    "SR1": "closed",
+    "SR3": "closed",
+    "SR2": "closed",
+    "openRequiredRegressions": 0
+  },
+  "tests": {
+    "command": "npm test",
+    "tests": 153,
+    "passed": 153,
+    "failed": 0,
+    "skipped": 0,
+    "afterFinalSourceChange": true
+  },
+  "builds": {
+    "extension": "passed",
+    "website": "passed",
+    "websiteRelease": "focuence-site-58b4fca30c86",
+    "websitePayloadFilesVerified": 4,
+    "productionDeployed": false
+  },
+  "browser": {
+    "checks": 42,
+    "passed": 42,
+    "failed": 0,
+    "taskSpaceId": 25,
+    "taskSpaceFinished": true,
+    "nativeHostTested": false,
+    "mode": "actual fixed frontend files plus in-memory demo and controlled transport/navigation wrappers",
+    "screenshots": {
+      "map-exact-two-endpoints.png": {
+        "width": 1440,
+        "height": 950,
+        "sha256": "e71026f789272fd72e97384d99f24b6f06517f4dc8243286d766fdddbd257f15"
+      },
+      "focus-confirmed-checkpoint-continue-one.png": {
+        "width": 1440,
+        "height": 950,
+        "sha256": "fc9f7f726ab6d99779f08de58ff56e58c474bc88e888d9d457cbeb0f054df358"
+      },
+      "SR1-popup-handoff-guard.png": {
+        "width": 400,
+        "height": 600,
+        "sha256": "d5f96e8a0953b27fab279900647817c0536c69ee18f3e92814afa0fb52d431b4"
+      },
+      "SR1-handoff-failure-keeps-draft.png": {
+        "width": 400,
+        "height": 600,
+        "sha256": "0b4ef988e76f2669387c79a180e683f8a958afd8b532483e34f73b32e027e0fb"
+      },
+      "SR3-desktop-response-keeps-position.png": {
+        "width": 1440,
+        "height": 950,
+        "sha256": "f2efc3a51273e38fb9ed308a96d09e813ef7ff9199496c3e496ae67cdbed471f"
+      },
+      "SR3-panel-response-keeps-position.png": {
+        "width": 320,
+        "height": 760,
+        "sha256": "22af64085f7cca0242a66faa42f7a3ebba44eee0c8484c75ad88553546ec11fe"
+      },
+      "SR2-panel-archived-empty-state.png": {
+        "width": 320,
+        "height": 760,
+        "sha256": "5efa8ea6b838c5e742b3471f6c630a1da0922a79247ba59465074472c2cc3ed5"
+      }
+    }
+  },
+  "review": {
+    "performedBy": "main agent",
+    "newIndependentSubagents": 0,
+    "scope": "SR1/SR3/SR2 plus draft editor, map evidence, and focus continuation regressions"
+  },
+  "cleanup": {
+    "serverStopped": true,
+    "temporaryFixtureScriptsAndLogsRemoved": true,
+    "processFilesRemoved": [
+      "round-05.mjs",
+      "round-04.mjs",
+      "round-06.mjs",
+      "round-07.mjs",
+      "server.py",
+      "round-03.mjs",
+      "round-02.mjs",
+      "round-01.mjs",
+      "tests.tap",
+      "support.mjs"
+    ],
+    "obsoleteIgnoredGeneratedArchivesRemoved": [
+      "dist/Focuence-2.0.0-offline.zip",
+      "dist/Focuence-2.0.0-source.zip",
+      "dist/Focuence-2.1.0-offline.zip",
+      "dist/Focuence-2.1.0-source.zip"
+    ],
+    "obsoleteArchiveBytes": 50782713
+  },
+  "toolNotes": [
+    "Initial stdin execution could not resolve a relative module; importing the script by absolute file URL resolved it before any browser steps ran.",
+    "Narrow workspace navigation buttons are present but hidden; the already-loaded destination was verified without treating the visible-selector timeout as a product failure.",
+    "ENOSPC during a snapshot recovered after removing obsolete ignored project build archives; the same browser task space continued.",
+    "Final continuation screenshot was captured after controls became available; an earlier busy-state image was replaced."
+  ],
+  "documents": {
+    "markdownFiles": 6,
+    "localReferencesVerified": 70
+  }
+}

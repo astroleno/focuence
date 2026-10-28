@@ -1,0 +1,135 @@
+[
+  {
+    "id": "SR1-popup-open-panel-discards-draft",
+    "escapeGuard": {
+      "guard": "更改尚未保存。继续编辑，或明确放弃本次更改。\n\n继续编辑\n放弃更改",
+      "name": "侧栏交接草稿"
+    },
+    "before": {
+      "url": "http://127.0.0.1:8776/probe/popup/index.html?demo=1&case=handoff-final",
+      "width": 400,
+      "height": 600,
+      "name": "侧栏交接草稿",
+      "goal": "核对地图中的关系，再从当前任务继续",
+      "openPanelEnabled": true,
+      "guardPresent": false
+    },
+    "after": {
+      "url": "http://127.0.0.1:8776/probe/panel/index.html?demo=1&range=today#tasks",
+      "width": 400,
+      "height": 600,
+      "draftVisible": false,
+      "guardPresent": false,
+      "heading": "当前聚焦"
+    }
+  },
+  {
+    "id": "SR2-daily-filter-empty-misclassified",
+    "observed": {
+      "filter": "daily",
+      "navCount": "3",
+      "empty": "先给眼前的事一个目标\n\n可以先写目标，再关联资料；不需要先打开或选择页面。\n\n新建任务",
+      "clearFilters": false,
+      "cards": 0
+    },
+    "recovered": {
+      "cards": 3,
+      "statuses": [
+        "archived",
+        "archived",
+        "archived"
+      ]
+    }
+  },
+  {
+    "id": "save-success-read-failure-recovery",
+    "result": "no-required-finding",
+    "recovery": {
+      "alert": false,
+      "savedTaskPresent": true
+    }
+  },
+  {
+    "id": "SR3-late-navigation-overwrites-user-scroll",
+    "before": {
+      "scrollY": 627.5,
+      "view": "#tasks",
+      "held": true,
+      "focused": "nav-tasks"
+    },
+    "after": {
+      "scrollY": 0,
+      "view": "#tasks",
+      "focused": "nav-tasks"
+    }
+  },
+  {
+    "id": "map-keyboard-path-return-positive",
+    "edgeId": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+    "enter": {
+      "id": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+      "pressed": "true",
+      "caption": "时长为分摊后的前台记录，不等于实际注意力。"
+    },
+    "nextTab": {
+      "id": "map-node-%E6%9C%AC%E5%9C%B0%E6%A8%A1%E5%9E%8B-source",
+      "type": "BUTTON"
+    },
+    "path": {
+      "view": "#timeline",
+      "segmentRows": 0,
+      "text": "示例数据，仅用于演示\n\n访问路径\n\n回到当时看过的页面。\n\n今天\n昨天\n最近 7 天\n视觉创作 → 声音与硬件\n\n10月28日 09:45 · 核对这次切换的两端记录\n\n先访问 · 自然光下的产品摄影参考\n\n接着访问 · ESP32-S3 音频开发指南\n\n返回所选地图关系\n查看全部路径\n全部记录\n前台\n暂离\n未知\n10月28日\n09:42\n自然光下的产品摄影参考\n3 分钟\n先访问\n视觉创作\n产品摄影\n\n09:42–09:45 · 前台停留\n\n09:45\nESP32-S3 音频开发指南\n4 分钟\n接着访问\n声音与硬件\nESP32\n\n09:45–09:49 · 前台停留\n\n这段时间，停留在哪里\n声音与硬件\n2 分钟\nESP32\n2 分钟\n视觉创作\n1 分钟\n产品摄影\n1 分钟\n\n前台时长不等于实际注意力。\n同一页面的时长在多个主题之间分摊，避免重复累计。",
+      "unusedInitialSelector": ".timeline-row does not exist; segmentRows=0 was not an assertion and is superseded by final timeline-entry count",
+      "finalVerification": {
+        "count": 2,
+        "entries": [
+          {
+            "id": "demo-segment-12",
+            "title": "自然光下的产品摄影参考",
+            "role": "先访问",
+            "time": "09:42–09:45 · 前台停留"
+          },
+          {
+            "id": "demo-segment-13",
+            "title": "ESP32-S3 音频开发指南",
+            "role": "接着访问",
+            "time": "09:45–09:49 · 前台停留"
+          }
+        ]
+      }
+    },
+    "returned": {
+      "id": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+      "pressed": "true"
+    }
+  },
+  {
+    "id": "SR3-panel-initial-probe",
+    "result": "strict-zero-wait-timed-out",
+    "laterObservedScroll": 26.5,
+    "usedForConclusion": false,
+    "resolvedBy": "SR3-late-navigation-overwrites-panel-scroll"
+  },
+  {
+    "id": "SR3-late-navigation-overwrites-panel-scroll",
+    "before": {
+      "mainScroll": 620,
+      "view": "#tasks",
+      "width": 320,
+      "height": 760
+    },
+    "after": {
+      "mainScroll": 0,
+      "view": "#tasks"
+    }
+  },
+  {
+    "id": "map-panel-caption-positive",
+    "observed": {
+      "width": 320,
+      "height": 760,
+      "bodyScrollWidth": 320,
+      "caption": "时长为分摊后的前台记录，不等于实际注意力。"
+    }
+  }
+]

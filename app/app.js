@@ -798,23 +798,21 @@ function render() {
     (target || main).focus({preventScroll: true});
   }
 }
-let navigationSerial = 0;
 function resetViewScroll() {
   if (isPanel) document.getElementById('main').scrollTop = 0;
   else window.scrollTo({top: 0, left: 0, behavior: 'instant'});
 }
 async function navigate(view) {
   if (!Object.hasOwn(viewNames, view)) return;
-  const serial = ++navigationSerial;
   pendingMapFocus = '';
   ui.view = view;
   location.hash = view;
   resetViewScroll();
-  let result;
-  if (view === 'review' && ui.range !== 'week') result = await chooseRange('week');
-  else { render(); resetViewScroll(); result = await refresh({quiet: true}); }
-  if (serial === navigationSerial && ui.view === view) resetViewScroll();
-  return result;
+  if (view === 'review' && ui.range !== 'week') return chooseRange('week');
+  render(); resetViewScroll();
+  // Once the view is visible, later scrolls belong to the user. Refreshing
+  // the data must not restore the initial navigation position over them.
+  return refresh({quiet: true});
 }
 let dialogCancelHandler = null, dialogBusy = false, taskEditor = null, dialogReturnFocusId = '';
 function closeDialog() {

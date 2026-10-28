@@ -32,7 +32,13 @@ export function createDraftGuard({root, snapshot, id, description = '更改尚�
         }
         if (position?.scroll != null && scrollRoot()) scrollRoot().scrollTop = position.scroll;
       });
-      discard.addEventListener('click', () => { const action = proceed; dispose(); action?.(); });
+      // The editor owns disposal after a successful exit. A failed handoff
+      // must keep the original baseline and focus tracking for the same draft.
+      discard.addEventListener('click', () => {
+        const action = proceed;
+        prompt.remove(); prompt = null; proceed = null;
+        action?.();
+      });
       root().append(prompt);
     }
     prompt.querySelector('button').focus();

@@ -1,0 +1,389 @@
+[
+  {
+    "id": "SR1-panel-handoff-asks-before-leaving",
+    "passed": true,
+    "url": "http://127.0.0.1:8777/probe/popup/index.html?demo=1",
+    "guard": "更改尚未保存。继续编辑，或明确放弃本次更改。\n\n继续编辑\n放弃更改",
+    "handoffs": 0,
+    "name": "地图与聚焦交接草稿",
+    "goal": "核对地图关系，接回当前任务",
+    "notes": "从已确认断点继续，保留正在写的线索",
+    "width": 400,
+    "height": 600
+  },
+  {
+    "id": "SR1-continue-editing-retains-selection",
+    "elementId": "task-goal",
+    "passed": true,
+    "start": 2,
+    "end": 6,
+    "name": "地图与聚焦交接草稿",
+    "notes": "从已确认断点继续，保留正在写的线索"
+  },
+  {
+    "id": "SR1-handoff-failure-keeps-draft-and-click-activation",
+    "passed": true,
+    "error": "合成验收：侧栏打开失败，请重试。",
+    "name": "地图与聚焦交接草稿",
+    "goal": "核对地图关系，接回当前任务",
+    "notes": "从已确认断点继续，保留正在写的线索",
+    "handoffs": [
+      {
+        "kind": "panel",
+        "userActivation": true
+      }
+    ]
+  },
+  {
+    "id": "SR1-handoff-failure-keeps-original-guard",
+    "passed": true
+  },
+  {
+    "id": "SR1-explicit-discard-retries-handoff",
+    "passed": true,
+    "url": "http://127.0.0.1:8777/probe/panel/index.html?demo=1&range=today#tasks",
+    "heading": "当前聚焦"
+  },
+  {
+    "id": "SR1-unchanged-draft-leaves-directly",
+    "passed": true
+  },
+  {
+    "id": "SR1-saving-locks-handoff-and-fields",
+    "passed": true,
+    "openPanelDisabled": true,
+    "nameDisabled": true,
+    "submitDisabled": true,
+    "handoffs": 0
+  },
+  {
+    "id": "SR1-save-failure-still-protects-draft",
+    "passed": true
+  },
+  {
+    "id": "SR1-save-retry-visible-without-autostart",
+    "passed": true,
+    "savedCard": "聚焦保存与失败重试",
+    "current": "现在想推进哪件事？",
+    "openPanelDisabled": false
+  },
+  {
+    "from": 403,
+    "scroll": 0,
+    "title": "当前聚焦",
+    "width": 1440,
+    "height": 950,
+    "id": "SR3-desktop-initial-navigation-starts-at-top",
+    "passed": true
+  },
+  {
+    "scroll": 0,
+    "id": "SR3-desktop-no-interaction-stays-at-top",
+    "passed": true
+  },
+  {
+    "before": 620,
+    "after": 620,
+    "width": 1440,
+    "height": 950,
+    "id": "SR3-desktop-late-response-keeps-user-scroll",
+    "passed": true
+  },
+  {
+    "view": "#map",
+    "title": "注意力地图",
+    "scroll": 0,
+    "id": "SR3-desktop-old-navigation-cannot-restore-view",
+    "passed": true
+  },
+  {
+    "from": 41.5,
+    "scroll": 0,
+    "title": "当前聚焦",
+    "width": 320,
+    "height": 760,
+    "id": "SR3-panel-initial-navigation-starts-at-top",
+    "passed": true
+  },
+  {
+    "scroll": 0,
+    "id": "SR3-panel-no-interaction-stays-at-top",
+    "passed": true
+  },
+  {
+    "before": 620,
+    "after": 620,
+    "width": 320,
+    "height": 760,
+    "id": "SR3-panel-late-response-keeps-user-scroll",
+    "passed": true
+  },
+  {
+    "view": "#map",
+    "title": "注意力地图",
+    "scroll": 0,
+    "id": "SR3-panel-old-navigation-cannot-restore-view",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "日常任务中没有匹配\n\n日常任务不显示已归档任务。可查看全部任务，找回保存的内容。\n\n查看全部任务",
+    "clear": true,
+    "cards": 0,
+    "width": 1440,
+    "height": 950,
+    "scrollWidth": 1440,
+    "id": "SR2-desktop-archived-only-has-honest-empty-state",
+    "passed": true
+  },
+  {
+    "filter": "all",
+    "cards": 3,
+    "statuses": [
+      "archived",
+      "archived",
+      "archived"
+    ],
+    "id": "SR2-desktop-view-all-recovers-archived-tasks",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "先给眼前的事一个目标\n\n可以先写目标，再关联资料；不需要先打开或选择页面。\n\n新建任务",
+    "clear": false,
+    "cards": 0,
+    "id": "SR2-desktop-true-empty-library-keeps-create-guide",
+    "passed": true
+  },
+  {
+    "empty": "没有“已完成”的任务\n\n当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。\n\n查看全部任务",
+    "clear": true,
+    "id": "SR2-desktop-explicit-status-filter-keeps-explanation",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "日常任务中没有匹配\n\n日常任务不显示已归档任务。可查看全部任务，找回保存的内容。\n\n查看全部任务",
+    "clear": true,
+    "cards": 0,
+    "width": 320,
+    "height": 760,
+    "scrollWidth": 320,
+    "id": "SR2-panel-archived-only-has-honest-empty-state",
+    "passed": true
+  },
+  {
+    "filter": "all",
+    "cards": 3,
+    "statuses": [
+      "archived",
+      "archived",
+      "archived"
+    ],
+    "id": "SR2-panel-view-all-recovers-archived-tasks",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "先给眼前的事一个目标\n\n可以先写目标，再关联资料；不需要先打开或选择页面。\n\n新建任务",
+    "clear": false,
+    "cards": 0,
+    "id": "SR2-panel-true-empty-library-keeps-create-guide",
+    "passed": true
+  },
+  {
+    "empty": "没有“已完成”的任务\n\n当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。\n\n查看全部任务",
+    "clear": true,
+    "id": "SR2-panel-explicit-status-filter-keeps-explanation",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "日常任务中没有匹配\n\n日常任务不显示已归档任务。可查看全部任务，找回保存的内容。\n\n查看全部任务",
+    "clear": true,
+    "cards": 0,
+    "width": 400,
+    "height": 520,
+    "scrollWidth": 400,
+    "id": "SR2-popup-archived-only-has-honest-empty-state",
+    "passed": true
+  },
+  {
+    "filter": "all",
+    "cards": 3,
+    "statuses": [
+      "archived",
+      "archived",
+      "archived"
+    ],
+    "id": "SR2-popup-view-all-recovers-archived-tasks",
+    "passed": true
+  },
+  {
+    "filter": "daily",
+    "empty": "给正在做的事留个位置\n\n保存相关页面，再写一句下次要做什么。",
+    "clear": false,
+    "cards": 0,
+    "id": "SR2-popup-true-empty-library-keeps-create-guide",
+    "passed": true
+  },
+  {
+    "empty": "没有“已完成”的任务\n\n当前状态筛选没有匹配。查看全部任务，或新建一个进行中的目标。\n\n查看全部任务",
+    "clear": true,
+    "id": "SR2-popup-explicit-status-filter-keeps-explanation",
+    "passed": true
+  },
+  {
+    "open": true,
+    "name": "完整页退出保护回归",
+    "goal": "保持地图与聚焦主线",
+    "id": "SR1-workspace-task-keep-editing-regression",
+    "passed": true
+  },
+  {
+    "unchangedEditorClosed": true,
+    "id": "SR1-workspace-task-discard-cleans-up-next-editor",
+    "passed": true
+  },
+  {
+    "title": "资料草稿保护回归",
+    "note": "原文与自己的笔记分开",
+    "quote": "这是一段用于验收的原文",
+    "kind": "excerpt",
+    "id": "SR1-library-kind-redraw-keep-editing-regression",
+    "passed": true
+  },
+  {
+    "unchangedEditorClosed": true,
+    "id": "SR1-library-discard-cleans-up-next-editor",
+    "passed": true
+  },
+  {
+    "url": "http://127.0.0.1:8777/probe/app/index.html?range=week&demo=1&windowId=1#tasks",
+    "title": "当前聚焦",
+    "previousWait": "visible #nav-tasks was hidden by the narrow workspace layout; destination was already loaded",
+    "id": "SR1-workspace-handoff-without-draft-regression",
+    "passed": true
+  },
+  {
+    "elementId": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+    "pressed": "true",
+    "caption": "时长为分摊后的前台记录，不等于实际注意力。",
+    "id": "mainline-map-enter-retains-selected-edge",
+    "passed": true
+  },
+  {
+    "elementId": "map-node-%E6%9C%AC%E5%9C%B0%E6%A8%A1%E5%9E%8B-source",
+    "tag": "BUTTON",
+    "id": "mainline-map-space-and-next-tab-remain-continuous",
+    "passed": true
+  },
+  {
+    "entries": [
+      {
+        "id": "demo-segment-12",
+        "title": "自然光下的产品摄影参考",
+        "role": "先访问",
+        "time": "09:42–09:45 · 前台停留"
+      },
+      {
+        "id": "demo-segment-13",
+        "title": "ESP32-S3 音频开发指南",
+        "role": "接着访问",
+        "time": "09:45–09:49 · 前台停留"
+      }
+    ],
+    "id": "mainline-map-uses-exact-two-endpoint-records",
+    "passed": true
+  },
+  {
+    "view": "#map",
+    "elementId": "map-edge-%5B%22%E8%A7%86%E8%A7%89%E5%88%9B%E4%BD%9C%22%2C%22%E5%A3%B0%E9%9F%B3%E4%B8%8E%E7%A1%AC%E4%BB%B6%22%5D",
+    "pressed": "true",
+    "id": "mainline-return-map-keeps-exact-relation",
+    "passed": true
+  },
+  {
+    "current": "这个窗口 · 当前聚焦\n\n声音陪伴小装置\n暂停此窗口\n\n验证便携音箱的声音采集与播放方案\n\n已确认断点 · 10/28 17:16\n\n进展 · 已核对地图中的同次切换\n\n下一步 · 从 ESP32 文档继续核对采集方案\n\n继续页面 · ESP32-S3 音频开发指南\n\n继续一页\n留断点\n相关页面 · 3 条",
+    "toast": "已接回继续页面。",
+    "completed": [
+      {
+        "type": "RESTORE_TASK",
+        "ok": true,
+        "at": 1793179008415
+      }
+    ],
+    "rect": {
+      "x": 236,
+      "y": 208.3984375,
+      "width": 1164,
+      "height": 359.078125,
+      "top": 208.3984375,
+      "right": 1400,
+      "bottom": 567.4765625,
+      "left": 236
+    },
+    "id": "mainline-confirmed-checkpoint-continues-one-page",
+    "passed": true
+  },
+  {
+    "height": 520,
+    "saveRect": {
+      "x": 269,
+      "y": 469.5,
+      "width": 111,
+      "height": 38,
+      "top": 469.5,
+      "right": 380,
+      "bottom": 507.5,
+      "left": 269
+    },
+    "errorRect": {
+      "x": 0,
+      "y": 417.5,
+      "width": 400,
+      "height": 38.5,
+      "top": 417.5,
+      "right": 400,
+      "bottom": 456,
+      "left": 0
+    },
+    "draft": "交接失败后继续保存",
+    "id": "SR1-handoff-error-save-visible-520",
+    "passed": true
+  },
+  {
+    "height": 600,
+    "saveRect": {
+      "x": 269,
+      "y": 549.5,
+      "width": 111,
+      "height": 38,
+      "top": 549.5,
+      "right": 380,
+      "bottom": 587.5,
+      "left": 269
+    },
+    "errorRect": {
+      "x": 0,
+      "y": 497.5,
+      "width": 400,
+      "height": 38.5,
+      "top": 497.5,
+      "right": 400,
+      "bottom": 536,
+      "left": 0
+    },
+    "draft": "交接失败后继续保存",
+    "id": "SR1-handoff-error-save-visible-600",
+    "passed": true
+  },
+  {
+    "current": "这个窗口 · 当前聚焦\n\n声音陪伴小装置\n暂停此窗口\n\n验证便携音箱的声音采集与播放方案\n\n已确认断点 · 10/28 17:18\n\n进展 · 已核对地图中的同次切换\n\n下一步 · 从 ESP32 文档继续核对采集方案\n\n继续页面 · ESP32-S3 音频开发指南\n\n继续一页\n留断点\n相关页面 · 3 条",
+    "continueEnabled": true,
+    "checkpointEnabled": true,
+    "toast": "已接回继续页面。",
+    "id": "mainline-final-continued-state-ready-for-next-action",
+    "passed": true
+  }
+]
