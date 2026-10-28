@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "ee6a98a624994e9f37c74383ea7887277a42bb43",
+  "state": "working tree after six UI fixes; reviewed source identified by SHA-256",
+  "sourceSHA256": {
+    "app/app.js": "77612e6d74a2dad88cf4c9b996517b785740b4169dea2065288d8d5eb897ceaa",
+    "app/styles.css": "84ae4a9bfa06b3d036e1f7368c220ddf4ad1e944f083a169663ed2a9e44782b1",
+    "popup/app.js": "b1c96635efaad61ce8163d7e7a31a2479c44660d1cfa31c304f52775d853bdd3",
+    "src/library-ui.js": "f1e81a372b7deb281b6a5b58a90eaebe5f1acd68cb999ecbd32d6b6708f6b2b0",
+    "src/task-memory-ui.js": "a27970e8b1be1384617d79aed181d47c584c60cc566aa836646bda556c9a28fe",
+    "src/draft-guard.js": "b895df7e3f1e6bb644718b87ae8117a67453d814130fb90c849e500fd8a327ee",
+    "src/task-memory.css": "cc09fc7297d41a1b04506a2a98f155ed2163555a3c23ceb3f708d54907d02304",
+    "website/index.html": "1f968deac9995439347160b2d1d942e3f7892168dacbce7ee813dd94bb5a03a4",
+    "website/styles.css": "598a4287561f67cfacc2f3090e61f3e6440067ec7fb1999f5e91e590a1ef6fc5",
+    "website/main.js": "fdcd570cebd851119903b20c4d19d10aac5825e2c9c60564b299d89393ef1246"
+  }
+}

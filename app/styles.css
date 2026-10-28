@@ -298,8 +298,11 @@ svg .edge-control:focus-visible .graph-edge { stroke-width: 3; stroke: var(--acc
 .field input, .field textarea { width: 100%; border: 1px solid #cbd2dc; border-radius: 7px; padding: 9px 11px; color: var(--ink); background: var(--surface); }
 .field textarea { resize: vertical; min-height: 85px; }
 .exclusion-field { margin-top: 10px; }
-.settings-save { display: flex; align-items: center; gap: 15px; margin-top: 19px; }
-.settings-save > span { color: var(--muted); font-size: 13px; }
+.settings-save { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 15px; max-width: 920px; padding: 12px 14px; margin: 0 0 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: 0 3px 10px #1a25330a; }
+.settings-save > div { min-width: 0; color: var(--muted); font-size: 13px; }
+.settings-save .field-help { margin-top: 4px; }
+.setting-live-state { color: var(--muted); font-size: 13px; line-height: 1.65; padding: 8px 0 12px; }
+.map-time-note { margin: 6px 0 12px; }
 .danger-section > h2 { color: var(--danger); }
 #toast-region { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 10; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
 .toast { display: flex; align-items: center; gap: 9px; padding: 12px 17px; border-radius: 8px; background: var(--ink); color: white; box-shadow: 0 5px 18px #1b2b3d21; font-size: 13px; overflow-wrap: anywhere; }

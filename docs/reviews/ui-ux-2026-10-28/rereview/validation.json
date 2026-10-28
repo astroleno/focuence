@@ -1,0 +1,183 @@
+{
+  "date": "2026-10-28",
+  "reviewedCommit": "ee6a98a624994e9f37c74383ea7887277a42bb43",
+  "extensionVersion": "2.5.0",
+  "tests": {
+    "command": "npm test",
+    "executedThisReview": true,
+    "tests": 153,
+    "passed": 153,
+    "failed": 0,
+    "skipped": 0
+  },
+  "website": {
+    "release": "focuence-site-58b4fca30c86",
+    "payloadFiles": [
+      {
+        "path": "assets/icon.png",
+        "matches": true
+      },
+      {
+        "path": "assets/main.fdcd570cebd8.js",
+        "matches": true
+      },
+      {
+        "path": "assets/styles.598a4287561f.css",
+        "matches": true
+      },
+      {
+        "path": "index.html",
+        "matches": true
+      }
+    ],
+    "rebuiltThisReview": false,
+    "deployedThisReview": false
+  },
+  "sourceFingerprints": [
+    {
+      "path": "app/app.js",
+      "sha256": "703752c37a7e7d9c0f90415bd1b6c52186853452eab87ad100bddf717cdfe5c1",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "app/styles.css",
+      "sha256": "38264dbe50da64ff442ac6c5e836a5f7190592efd56150aee1493e3f8b86681a",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "background.js",
+      "sha256": "62f31412319c38ead4357a1ec0245734b60e571518cfd52a5a6b023f812e7333",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "popup/app.js",
+      "sha256": "70a0a4ab85b84f8ed984b0683988ae45050b79fa084ab6c685bcdc169ebbf1b7",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "popup/index.html",
+      "sha256": "88f9d02a0400f3e8fb97121f5e5bb2176a31114eda99047afe526a5b9be461e7",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "popup/styles.css",
+      "sha256": "8479e7ef1d356d193cd43b9a5d8a2b3ce8fad8cb448a4100adfae227cba6d83e",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/analytics.js",
+      "sha256": "f9bb6349b887e4c2cab8a4e7724c747fc78348e44f894655f866d430e01872cd",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/navigation.js",
+      "sha256": "16fcc929b59ab6f8076218af95edb58d343949331885c74a230509c75dfd0f08",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/map-evidence.js",
+      "sha256": "f13d3318c2d90957b5d09d34308b2ca3525c6fa0cf40d83f53bd241c70e66142",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/task-memory-ui.js",
+      "sha256": "2a15a67d99cf813d5a9665ba9fb24e712e79c6c817003abeb873fdaa24029431",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/task-memory.css",
+      "sha256": "cc09fc7297d41a1b04506a2a98f155ed2163555a3c23ceb3f708d54907d02304",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "src/tokens.css",
+      "sha256": "b708bbedf0c7408c07d5e0edab242979ad1f7cc7150289101ed606f2b6d7faf9",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "website/index.html",
+      "sha256": "1f968deac9995439347160b2d1d942e3f7892168dacbce7ee813dd94bb5a03a4",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "website/styles.css",
+      "sha256": "598a4287561f67cfacc2f3090e61f3e6440067ec7fb1999f5e91e590a1ef6fc5",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "test/map-evidence.test.js",
+      "sha256": "ffc312b55d284800275de2a508a36e7010e06263ccc2638d078cb259cc31df82",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "test/interface-contracts.test.js",
+      "sha256": "70d1a376c21f2e4656f26c7e55a5a56217a7f3b941851e8ffb452053d7d9bd33",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    },
+    {
+      "path": "test/task-memory-flows.test.js",
+      "sha256": "6fdc5e1c82e1f0d6c1f4dbffa34727e470a6afe3f42153de1a7281f5d9021bc1",
+      "matchesPriorAcceptance": true,
+      "matchesReviewedCommit": true
+    }
+  ],
+  "browser": {
+    "tool": "ego-browser",
+    "taskSpaceId": 8,
+    "finished": true,
+    "independentOperators": 1,
+    "independentReviewers": 2,
+    "syntheticExtensionData": true,
+    "syntheticPageClock": "2026-10-28T13:00:00+08:00",
+    "records": 47,
+    "formalScreenshots": 28,
+    "recordsAreNotAllPassingAssertions": true,
+    "excludedNavigationAttempt": [
+      "navigation-deep-tasks-before",
+      "navigation-deep-tasks-to-map",
+      "navigation-deep-return-focus"
+    ]
+  },
+  "nativeHostLifecycleTested": false,
+  "officialStoreApprovalChecked": false,
+  "productionAccessed": false,
+  "productChanged": false,
+  "gitCommitOrPushPerformed": false,
+  "cleanup": {
+    "temporaryServerStopped": true,
+    "browserTaskSpaceFinished": true,
+    "discardedProcessScreenshots": 2,
+    "temporaryScriptsRemoved": true,
+    "referencedScreenshotsVerified": 28
+  },
+  "documents": {
+    "markdownFiles": 4,
+    "localReferences": 78,
+    "result": "passed"
+  },
+  "reviewVerdict": {
+    "uiUx": "not_passed",
+    "consolidatedP2": 5,
+    "consolidatedP3": 1,
+    "independentReports": [
+      "lama-review.md",
+      "emil-review.md"
+    ]
+  }
+}

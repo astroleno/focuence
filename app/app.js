@@ -10,6 +10,7 @@ import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 import { createBackupUI } from '../src/backup-ui.js';
 import {createLibraryUI} from '../src/library-ui.js';
+import {createDraftGuard, editorSnapshot} from '../src/draft-guard.js';
 import {resolveRelationEvidence} from '../src/map-evidence.js';
 
 const params = new URLSearchParams(location.search);
@@ -359,7 +360,7 @@ function renderPages() {
 }
 function taskCard(task, {featured = false} = {}) {
   const pages = task.pages || [], preview = task.restorePreview || {reused: 0, willOpen: pages.length};
-  return el('article', {class: 'task-card' + (featured ? ' featured' : '')},
+  return el('article', {id: 'task-card-' + encodeURIComponent(task.id), tabindex: -1, class: 'task-card' + (featured ? ' featured' : '')},
     el('div', {class: 'task-card-head'},
       el('h3', {class: 'task-name'}, task.name),
       iconButton('编辑 ' + task.name, 'edit-task', 'edit', {'data-id': task.id})),
@@ -384,7 +385,7 @@ function renderTasks() {
     memory.current({support: isPanel}),
     el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
     tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
-      emptyState(query ? '没有找到这个任务' : '先给眼前的事一个目标', query ? '试试任务名、备注或页面标题。' : '可以先写目标，再关联资料；不需要先打开或选择页面。', query ? null : 'new-task', '新建任务', false, 'folder'),
+      emptyState(query ? '没有匹配的任务' : memory.taskFilterEmpty()?.title || '先给眼前的事一个目标', query ? '当前搜索或状态筛选没有匹配。可查看全部任务后继续。' : memory.taskFilterEmpty()?.description || '可以先写目标，再关联资料；不需要先打开或选择页面。', query || memory.taskFilterEmpty() ? 'clear-task-filters' : 'new-task', query || memory.taskFilterEmpty() ? '查看全部任务' : '新建任务', false, 'folder'),
     !isPanel && continuationSuggestions(),
     el('p', {class: 'list-footnote'}, '任务是你决定推进的事，主题描述浏览内容。修改目标不改变地图主题，关联资料也不会自动移动浏览器分组。每个任务最多保存 30 页。')
   ];
@@ -555,7 +556,7 @@ function mapData() {
   }
   return {entries: entries.sort((a, b) => b.foregroundMs - a.foregroundMs), edges};
 }
-let mapResizeObserver;
+let mapResizeObserver, pendingMapFocus = '';
 function mapNode(node, role = '') {
   return el('button', {id: 'map-node-' + encodeURIComponent(node.tag) + (role ? '-' + role : ''), type: 'button', class: 'graph-node' + (ui.selectedTag === node.tag ? ' selected' : ''), 'data-action': 'select-tag', 'data-tag': node.tag, 'data-map-role': role, 'aria-pressed': ui.selectedTag === node.tag, 'aria-label': node.tag + '，分摊前台时长 ' + duration(node.foregroundMs)},
     el('span', {class: 'graph-node-name'}, node.tag), el('span', {class: 'graph-node-time'}, duration(node.foregroundMs)));
@@ -625,6 +626,12 @@ function graph(entries, edges) {
     // ResizeObserver may run again after a focused edge has been mounted.
     // Replacing the SVG children must not send keyboard focus back to BODY.
     if (focusedEdgeId) document.getElementById(focusedEdgeId)?.focus({preventScroll: true});
+    if (pendingMapFocus) {
+      const target = document.getElementById(pendingMapFocus);
+      const fallback = [document.body, document.getElementById('main')].includes(document.activeElement);
+      if (fallback && wire.contains(target)) target.focus({preventScroll: true});
+      pendingMapFocus = '';
+    }
   };
   requestAnimationFrame(() => {
     if (!board.isConnected) return;
@@ -673,6 +680,7 @@ function renderMap() {
     header,
     ui.mapNotice && el('p', {class: 'map-context-notice', role: 'status'}, ui.mapNotice),
     el('p', {class: 'map-summary'}, entries.length + ' 个主题 · ' + edges.length + ' 条已观察关系'),
+    el('p', {class: 'map-footnote map-time-note'}, '时长为分摊后的前台记录，不等于实际注意力。'),
     el('details', {class: 'concept-help'}, el('summary', {}, '主题、任务与分组有什么不同？'),
       el('p', {}, '主题描述页面内容，任务是你决定推进的事，分组只整理打开的页面。同一篇音频文档可以属于“声音与硬件”主题，并关联到你的音箱任务；改任务目标不改变主题，确认相关也不会自动移动分组。'),
       button('回到当前聚焦', 'review-tasks', {}, 'small subtle', 'arrow')),
@@ -691,8 +699,17 @@ function renderMap() {
 function settingRow(title, description, control) {
   return el('div', {class: 'setting-row'}, el('div', {class: 'setting-text'}, el('h3', {}, title), el('p', {}, description)), control);
 }
-function toggle(id, checked, label) {
-  return el('label', {class: 'toggle'}, el('input', {type: 'checkbox', id, checked, 'aria-label': label}), el('span', {class: 'toggle-track', 'aria-hidden': 'true'}));
+function toggle(id, checked, label, attributes = {}) {
+  return el('label', {class: 'toggle'}, el('input', {type: 'checkbox', id, checked, 'aria-label': label, ...attributes}), el('span', {class: 'toggle-track', 'aria-hidden': 'true'}));
+}
+function recordingSettingStatus() {
+  const current = ui.state.settings.tracking ? '正在记录' : '已暂停记录';
+  if (!ui.settingsDirty) return '当前生效：' + current + '。修改开关后需保存设置。';
+  if (ui.settingsDraft.tracking !== ui.state.settings.tracking) return '当前生效：' + current + '。开关更改尚未保存；保存后' + (ui.settingsDraft.tracking ? '恢复记录。' : '暂停记录。');
+  return '当前生效：' + current + '。其他设置更改待保存。';
+}
+function settingsSaveStatus() {
+  return (busy('settings') ? '正在保存' : ui.settingsDirty ? '更改待保存' : '已保存') + ' · 当前生效：' + (ui.state.settings.tracking ? '正在记录。' : '已暂停记录。');
 }
 function selectOptions(id, value, options, label) {
   return el('select', {id, class: 'standard-select', 'aria-label': label}, options.map(([key, text]) => el('option', {value: key, selected: String(key) === String(value)}, text)));
@@ -701,11 +718,15 @@ function renderSettings() {
   const settings = ui.settingsDraft || ui.state.settings;
   return [
     heading('设置', '按你的节奏记录，由你决定保留什么。'),
+    el('section', {class: 'settings-save', 'aria-label': '保存设置'},
+      button(busy('settings') ? '正在保存…' : '保存设置', 'save-settings', {id: 'settings-save-button', disabled: busy('settings') || !ui.settingsDirty}, 'primary', 'check'),
+      el('div', {}, el('p', {id: 'settings-save-status', role: 'status'}, settingsSaveStatus()), el('p', {class: 'field-help'}, '修改开关后需保存设置；所有分析均在本机完成。'))),
     backupUI.view(),
     memory.historyView(false),
     el('div', {class: 'settings-layout'},
       el('section', {class: 'settings-section'}, el('h2', {}, '浏览记录'),
-        settingRow('记录前台浏览', '记录页面的前台停留与切换。暂停后不会新增浏览片段，已有记录仍会保留。', toggle('setting-tracking', settings.tracking, '记录前台浏览')),
+        settingRow('记录前台浏览', '记录页面的前台停留与切换。保存暂停设置后不再新增浏览片段，已有记录仍会保留。', toggle('setting-tracking', settings.tracking, '记录前台浏览', {'aria-describedby': 'settings-recording-state'})),
+        el('p', {id: 'settings-recording-state', class: 'setting-live-state', role: 'status'}, recordingSettingStatus()),
         settingRow('暂离判断', '连续没有设备活动时，后续时间单独标记为暂离，不计入前台时长。', selectOptions('setting-idle', settings.idleSeconds, [[60, '1 分钟'], [120, '2 分钟'], [300, '5 分钟'], [600, '10 分钟']], '暂离判断时间')),
         settingRow('历史保留时间', '到期的浏览历史会清理，手动保存的任务会继续保留。', selectOptions('setting-retention', settings.retentionDays, [[7, '7 天'], [30, '30 天'], [90, '90 天'], [365, '365 天']], '历史保留时间')),
         el('div', {class: 'field exclusion-field'}, el('label', {for: 'setting-excluded'}, '不记录这些站点'), el('textarea', {id: 'setting-excluded', placeholder: '例如：bank.example.com\n每行一个域名', rows: 3}, (settings.excludedDomains || []).join('\n')), el('p', {class: 'field-help'}, '每行一个域名，或用逗号分隔。隐身页面默认不记录。'))),
@@ -713,8 +734,7 @@ function renderSettings() {
         settingRow('启用语义增强', '用本机模型补充页面分组、任务关联和资料查找。关闭后仍可使用规则与关键词。', toggle('setting-semantic', settings.semantic, '启用本地语义增强')),
         settingRow('低频返回提示', '仅在侧栏显示。连续 5 分钟、至少 2 个已确认的其他页面才会提示；每天最多 3 次。', toggle('setting-focus-support', settings.focusSupport, '启用低频返回提示')),
         settingRow('模型状态', ui.state.model.name || 'BGE-small-zh-v1.5 · 本地语义模型', button(busy('warmup') ? '正在准备…' : ui.state.model.status === 'ready' ? '模型已就绪' : '准备本地模型', 'warmup', {disabled: busy('warmup') || ui.state.model.status === 'ready'}, 'small', 'spark')),
-        modelBar(),
-        el('div', {class: 'settings-save'}, button(busy('settings') ? '正在保存…' : '保存设置', 'save-settings', {disabled: busy('settings')}, 'primary', 'check'), el('span', {id: 'settings-save-status'}, ui.settingsDirty ? '有尚未保存的更改。' : '所有分析均在本机完成，无需 API 密钥。'))),
+        modelBar()),
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段、资料库与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
@@ -727,6 +747,7 @@ function render() {
   if (!document.getElementById('navigation')) return;
   const focused = document.activeElement;
   const focusId = focused?.id;
+  if (focused?.matches?.('g.edge-control')) pendingMapFocus = focusId;
   const hadMainFocus = document.getElementById('main')?.contains(focused);
   const rowIndex = [...document.querySelectorAll('.tab-row')].indexOf(focused?.closest('.tab-row'));
   const wasProposal = Boolean(focused?.closest('.proposal'));
@@ -747,6 +768,7 @@ function render() {
   }
   mapResizeObserver?.disconnect();
   main.replaceChildren(...content.filter(item => item !== null && item !== undefined && item !== false));
+  if (ui.view === 'settings' && busy('settings')) for (const control of main.querySelectorAll('input[id^="setting-"],select[id^="setting-"],textarea[id^="setting-"]')) control.disabled = true;
   if (ui.state && !ui.pendingRange) {
     const url = new URL(location.href);
     url.hash = ui.view; url.searchParams.set('range', ui.range);
@@ -776,17 +798,29 @@ function render() {
     (target || main).focus({preventScroll: true});
   }
 }
-function navigate(view) {
+let navigationSerial = 0;
+function resetViewScroll() {
+  if (isPanel) document.getElementById('main').scrollTop = 0;
+  else window.scrollTo({top: 0, left: 0, behavior: 'instant'});
+}
+async function navigate(view) {
   if (!Object.hasOwn(viewNames, view)) return;
+  const serial = ++navigationSerial;
+  pendingMapFocus = '';
   ui.view = view;
   location.hash = view;
-  if (view === 'review' && ui.range !== 'week') return chooseRange('week');
-  render(); return refresh({quiet: true});
+  resetViewScroll();
+  let result;
+  if (view === 'review' && ui.range !== 'week') result = await chooseRange('week');
+  else { render(); resetViewScroll(); result = await refresh({quiet: true}); }
+  if (serial === navigationSerial && ui.view === view) resetViewScroll();
+  return result;
 }
 let dialogCancelHandler = null, dialogBusy = false, taskEditor = null, dialogReturnFocusId = '';
 function closeDialog() {
   if (dialogBusy) return;
   if (dialogCancelHandler) dialogCancelHandler();
+  else if (taskEditor?.guard) taskEditor.guard.requestExit(() => document.getElementById('dialog').close());
   else document.getElementById('dialog').close();
 }
 function lockDialog() {
@@ -827,7 +861,7 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
   const taskPages = uniqueTaskPages(sourcePages);
   if (!task && !intentOnly && !taskPages.length) return toast('先选择要保存的页面。', true);
   const source = group ? '当前分组' : scope === 'selection' ? '所选页面' : '当前窗口';
-  const {dialog, body} = dialogFrame(task ? '编辑任务' : intentOnly ? '新建任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : intentOnly ? '先写下目标，保存后设为当前聚焦，再关联资料。任务目标不会改变地图主题。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
+  const {dialog, body} = dialogFrame(task ? '编辑任务' : intentOnly ? '新建任务' : group ? '保存这组页面' : scope === 'selection' ? '保存所选页面' : '保存当前窗口', task ? '改个名字，或留下下一次继续的线索。' : intentOnly ? '先写下目标，保存后可设为当前聚焦，再关联资料。任务目标不会改变地图主题。' : source + ' · ' + taskPages.length + ' 个页面，最多保存 30 页。' + (sourcePages.length > taskPages.length ? '同一地址只保留一份。' : ''));
   const memberList = intentOnly ? null : task
     ? el('ul', {class: 'dialog-pages'}, taskPages.map(page => el('li', {}, icon('page'), el('button', {type: 'button', 'data-action': 'open-page', 'data-url': page.url, title: page.title || page.url}, page.title || domainOf(page.url)))))
     : el('div', {class: 'task-member-picker'},
@@ -862,6 +896,7 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
     updateMembers();
   });
   updateMembers();
+  taskEditor.guard = createDraftGuard({root: () => dialog, snapshot: () => editorSnapshot(form), id: 'task-draft', fallback: () => form.querySelector('#task-name')});
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (dialogBusy) return;
@@ -877,9 +912,14 @@ function taskDialog({task = null, group = null, scope = 'window'} = {}) {
     const submit = form.querySelector('[type="submit"]'), label = task ? '保存修改' : '保存任务';
     const unlock = lockDialog(); submit.replaceChildren(icon('save'), '正在保存…');
     try {
-      if (task) await request('UPDATE_TASK', {id: task.id, revision: editorRevision, name, goal, notes});
-      else await request('SAVE_TASK', {windowId, name, goal, notes, ...(intentOnly ? {mode: 'intent'} : group ? {group: {...group, pages}} : {tabIds: pages.map(page => page.id)})});
-      await refresh({quiet: true}); unlock(); dialog.close(); toast(task ? '任务已更新。' : '任务已保存，下次可以从这里继续。');
+      const saved = task ? (await request('UPDATE_TASK', {id: task.id, revision: editorRevision, name, goal, notes}), task) : await request('SAVE_TASK', {windowId, name, goal, notes, ...(intentOnly ? {mode: 'intent'} : group ? {group: {...group, pages}} : {tabIds: pages.map(page => page.id)})});
+      memory.resetTaskFilter(); ui.queries.tasks = '';
+      const closed = new Promise(resolve => dialog.addEventListener('close', resolve, {once: true}));
+      unlock(); dialog.close(); await closed;
+      await navigate('tasks');
+      const card = document.getElementById('task-card-' + encodeURIComponent(saved.id));
+      card?.scrollIntoView({block: 'nearest', behavior: 'instant'}); card?.focus({preventScroll: true});
+      toast(task ? '任务已更新，已显示此任务。' : '任务已保存。选择“设为当前聚焦”后开始。');
     } catch (error) {
       showDialogError(body, error.message);
       if (error.code === 'STALE_TASK') {
@@ -967,9 +1007,13 @@ function captureSettings() {
     idleSeconds: Number(byId('setting-idle').value), retentionDays: Number(byId('setting-retention').value),
     excludedDomains: byId('setting-excluded').value.split(/[\n,，]+/).map((line) => line.trim()).filter(Boolean)
   };
-  ui.settingsDirty = true;
+  ui.settingsDirty = Object.entries(ui.settingsDraft).some(([key, value]) => JSON.stringify(value) !== JSON.stringify(ui.state.settings[key]));
   const status = document.getElementById('settings-save-status');
-  if (status) status.textContent = '有尚未保存的更改。';
+  if (status) status.textContent = settingsSaveStatus();
+  const recording = document.getElementById('settings-recording-state');
+  if (recording) recording.textContent = recordingSettingStatus();
+  const save = document.getElementById('settings-save-button');
+  if (save) save.disabled = busy('settings') || !ui.settingsDirty;
 }
 function cleanDomains(domains) {
   const output = [];
@@ -1044,6 +1088,7 @@ async function handleAction(action, target) {
         await refresh({quiet: true}); toast(result?.restored ? '已撤销最近一次分组。' : '没有可以撤销的本次会话分组。');
       }); break;
     case 'edit-task': { const task = ui.state.tasks.find((item) => String(item.id) === id); if (task) taskDialog({task}); break; }
+    case 'clear-task-filters': memory.resetTaskFilter(); ui.queries.tasks = ''; render(); resetViewScroll(); document.getElementById('memory-task-filter')?.focus({preventScroll: true}); break;
     case 'delete-task': {
       const task = ui.state.tasks.find((item) => String(item.id) === id);
       if (task && !dialogBusy) confirmTaskDeletion(task);
@@ -1093,7 +1138,8 @@ async function handleAction(action, target) {
       captureSettings();
       await operation('settings', async () => {
         const patch = {...ui.settingsDraft, excludedDomains: cleanDomains(ui.settingsDraft.excludedDomains)};
-        await request('UPDATE_SETTINGS', {patch}); ui.settingsDirty = false;
+        await request('UPDATE_SETTINGS', {patch});
+        ui.state.settings = {...ui.state.settings, ...patch}; ui.settingsDraft = {...ui.state.settings, excludedDomains: [...patch.excludedDomains]}; ui.settingsDirty = false;
         await refresh({quiet: true}); toast('设置已保存。');
       }); break;
     case 'warmup':
@@ -1178,9 +1224,10 @@ if (isPanel && !isDemo && globalThis.chrome?.tabs) {
   window.addEventListener('pagehide', () => { clearTimeout(refreshTimer); clearInterval(heartbeat); });
 }
 document.getElementById('dialog').addEventListener('cancel', event => {
-  if (dialogBusy || dialogCancelHandler) { event.preventDefault(); closeDialog(); }
+  event.preventDefault(); closeDialog();
 });
 document.getElementById('dialog').addEventListener('close', () => {
+  taskEditor?.guard?.dispose();
   dialogCancelHandler = null; taskEditor = null;
   const target = document.getElementById(dialogReturnFocusId) || document.getElementById('main');
   target?.focus({preventScroll: true});

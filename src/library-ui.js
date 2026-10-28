@@ -1,12 +1,13 @@
 import {el} from './ui.js';
 import {openWorkspace} from './navigation.js';
+import {createDraftGuard} from './draft-guard.js';
 const stamp=value=>new Date(value).toLocaleString('zh-CN');
 const caption=value=>el('p',{class:'memory-caption'},value);
 
 /** One material form and detail view for full workspace, sidebar and popup. */
 export function createLibraryUI({getState,request,render,refresh,notify,getWindowId,demo=false,surface='workspace'}){
   let listing=null,loading=false,error='',query='',taskId='',kind='',offset=0,loadedEpoch,serial=0,capture=null,initialized=false;
-  let dialog=null,form=null,busy=false,returnFocus='';
+  let dialog=null,form=null,busy=false,returnFocus='',draftGuard=null;
   const tasks=()=>getState()?.tasks||[];
   function button(label,id,callback,primary=false){const node=el('button',{id:'library-'+id,type:'button',class:'memory-button'+(primary?' primary':''),disabled:busy},label);node.addEventListener('click',()=>Promise.resolve(callback()).catch(value=>notify(value.message,true)));return node;}
   async function read(){
@@ -14,13 +15,13 @@ export function createLibraryUI({getState,request,render,refresh,notify,getWindo
     try{const [rows,status]=await Promise.all([request('LIST_LIBRARY',{query,taskId,kind,offset}),request('GET_LIBRARY_CAPTURE')]);if(token!==serial)return;listing=rows;capture=status;}
     catch(value){if(token===serial)error=value.message;}finally{if(token===serial){loading=false;render();}}
   }
-  function close(){if(!busy)dialog?.close();}
+  function close(){if(busy)return;const finish=()=>dialog?.close();if(draftGuard)draftGuard.requestExit(finish);else finish();}
   function frame(title,description){
-    if(!dialog?.open){dialog?.remove();returnFocus=document.activeElement?.id||'';dialog=el('dialog',{class:'memory-dialog library-dialog','aria-labelledby':'library-dialog-title'});document.body.append(dialog);dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});dialog.addEventListener('close',()=>document.getElementById(returnFocus)?.focus({preventScroll:true}));dialog.showModal();}
+    if(!dialog?.open){dialog?.remove();returnFocus=document.activeElement?.id||'';dialog=el('dialog',{class:'memory-dialog library-dialog','aria-labelledby':'library-dialog-title'});document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.addEventListener('close',()=>{draftGuard?.dispose();draftGuard=null;form=null;document.getElementById(returnFocus)?.focus({preventScroll:true});});dialog.showModal();}
     dialog.replaceChildren(el('div',{class:'memory-heading'},el('h2',{id:'library-dialog-title'},title),button('关闭','close',close)),caption(description));return dialog;
   }
   async function detail(id){
-    const item=await request('GET_LIBRARY_ITEM',{id});form=null;
+    const item=await request('GET_LIBRARY_ITEM',{id});draftGuard?.dispose();draftGuard=null;form=null;
     const root=frame(item.title,item.kind==='excerpt'?'已保存在本机的摘录；网页后续变化不会改写这份原文。':'已保存在本机的链接与笔记。');
     root.append(caption(item.url),item.parentUrl?caption('所在页面：'+item.parentUrl):el('span'),caption('保存 '+stamp(item.createdAt)+' · 修改 '+stamp(item.updatedAt)),caption('关联任务：'+(item.taskIds.map(id=>tasks().find(task=>task.id===id)?.name||'已删除任务').join('、')||'未关联')),
       el('div',{class:'library-text-columns'},item.kind==='excerpt'&&el('section',{},el('h3',{},'摘录原文'),el('p',{class:'library-original'},item.quote)),el('section',{},el('h3',{},'自己的笔记'),el('p',{class:'library-original'},item.note||'暂无笔记。'))),
@@ -29,7 +30,9 @@ export function createLibraryUI({getState,request,render,refresh,notify,getWindo
         button('删除材料','delete',()=>{const box=frame('删除这份材料？','将删除这份原文、笔记及其任务关联，任务本身保留。');box.append(caption(item.title),button('确认删除','confirm-delete',async()=>{await request('DELETE_LIBRARY_ITEM',{id:item.id,revision:item.revision});dialog.close();await refresh();await read();notify('材料已删除。');},true));})));
   }
   function editor(item={},draftId=''){
+    draftGuard?.dispose();
     form={kind:'link',url:'',title:'',quote:'',note:'',taskIds:[],source:'manual',sourceVerified:false,...structuredClone(item),...(draftId?{draftId}:{}),error:'',duplicate:null};drawEditor();
+    draftGuard=createDraftGuard({root:()=>dialog,id:'library-draft',snapshot:()=>({kind:form.kind,url:form.url,title:form.title,quote:form.quote,note:form.note,taskIds:form.taskIds.slice().sort(),sourceVerified:form.sourceVerified}),fallback:()=>document.getElementById('library-field-title')});
   }
   function drawEditor(){
     const focused=document.activeElement,focusId=focused?.id,selection=typeof focused?.selectionStart==='number'?[focused.selectionStart,focused.selectionEnd]:null;
