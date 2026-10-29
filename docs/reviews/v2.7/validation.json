@@ -1,0 +1,89 @@
+{
+  "version": "2.7.0",
+  "checkedAt": "2026-10-29T16:47:57.625789+00:00",
+  "sourceBaseline": "c2c9140cb7fa9a7e5b8ac0050733b42a43173e34",
+  "sourceHashes": {
+    "app/app.js": "c6c08017984ae43db763e4aa7abbe29fd23cef6d3aaf0e232ef25c31eb4081e7",
+    "app/demo-data.js": "6b3793b4d73a4a94b1982c5ace0a97b98aa1f2ca02ab76da5b87b5db8446637c",
+    "app/styles.css": "42cb868da9f4c1ed3fb7bccce5989eb7d88a7b0037c92b3cd342ffede3dda5c5",
+    "background.js": "fdcb4a6296e10ccf754c9f89669f659f974b1abeec8e8fd8e1734b4ea9f8096c",
+    "manifest.json": "24f11541e6745df37e0c36ef1c08db22ab557b89656bf010f8c45dd762463b61",
+    "package-lock.json": "79533dfd465b6152b25ff6021f76f408846552f31ee83b0ddbf0ee7693ab41cb",
+    "package.json": "e6ceca042e4e6304e650166880d8f217385361797b21806faa4080936116ab56",
+    "src/ai-provider.js": "bfaea2f4e2892f42842951e098dd13fc8a49b52d1fb99b13937afc6b68876459",
+    "src/diagnostics-service.js": "1689415fa6226afbf316350c62bdf72453fa7766c659f234a212ca7db883c41e",
+    "src/diagnostics-store.js": "69d7669a641f5959f6f3e51ac190ddda47840171b69e5e8c031f3589acdc8d44",
+    "src/diagnostics-ui.js": "ef2170d33b4ed05df7b7baf4cff329fea97c48808299cefcd1cee0c56c86961e",
+    "src/diagnostics.js": "64b919f5f815da7294a465982dc66f173838d3be8e2ecf8754e679fc41570f4b",
+    "src/prediction-ui.js": "a14a9b2d5192fd99f31a32e732efc8be8eb1e6bd554bbc17ab49b059d27b89ca",
+    "src/prediction.js": "8698ab3eeadcceee917f568ee27cfc25a88b9f23dae83269567850361a36823b",
+    "src/task-memory-ui.js": "5fd48c554f762e3e571d53342db4268db9613942bd4058f5166500820908c129",
+    "src/workspace.js": "165c3dc01c914cd69a6a960760d9b6dcac1836170d8a9c16c302225fb8e526df",
+    "test/diagnostics.test.js": "09baf0abe662e751dbb07738a6869f0728e2b39b40e7423398f44e49728d7a7d",
+    "test/native/diagnostics.mjs": "3cbe459c35166eaa0adf46cf50c2a61fb2015b037fb262649a6e3939c1e8d64c"
+  },
+  "builtWorkerSHA256": "484aa5ce9c6f3789a0e87585691972dc48c49a4a706578bb7124f5d7f6c21ddf",
+  "checks": [
+    {
+      "name": "npm test",
+      "status": "passed",
+      "tests": 189,
+      "failed": 0
+    },
+    {
+      "name": "native diagnostics, persistence and UI",
+      "status": "passed",
+      "checks": 15,
+      "report": "diagnostics-native.json"
+    },
+    {
+      "name": "native continuity, grouping and responsive UI",
+      "status": "passed",
+      "checks": 17,
+      "report": "native.json"
+    },
+    {
+      "name": "native BGE, prediction and observed map continuity",
+      "status": "passed",
+      "checks": 6,
+      "report": "prediction-native.json"
+    },
+    {
+      "name": "npm run build",
+      "status": "passed"
+    },
+    {
+      "name": "npm run build:website",
+      "status": "passed",
+      "candidate": "focuence-site-e08cf707cbe2",
+      "publicDeployment": false
+    },
+    {
+      "name": "Ego actual 2.7 runtime and local diagnostics",
+      "status": "passed",
+      "report": "ego.json",
+      "spaceId": 40,
+      "taskFinished": true
+    },
+    {
+      "name": "Ego cross-page foreground to map transition",
+      "status": "not_verified",
+      "report": "ego.json"
+    },
+    {
+      "name": "changed source and evidence credential-pattern scan",
+      "status": "passed",
+      "filesScanned": 30,
+      "credentialMatches": 0
+    },
+    {
+      "name": "isolated fixture/download/database cleanup",
+      "status": "passed"
+    },
+    {
+      "name": "redundant process screenshots removed",
+      "status": "passed",
+      "count": 8
+    }
+  ]
+}

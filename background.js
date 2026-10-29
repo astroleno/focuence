@@ -15,13 +15,17 @@ import { recentSessions, restoreRecentSession, createBrowserHistory, historyRang
 import {createLibrary,capturedDraft,validDraft} from './src/library.js';
 import {createAIService} from './src/ai-provider.js';
 import {createPredictions} from './src/prediction.js';
+import {createDiagnostics} from './src/diagnostics-service.js';
+import {diagnosticCode,emitDiagnostic} from './src/diagnostics.js';
 
 const VERSION = chrome.runtime.getManifest().version;
 const MODEL = 'bge-small-zh-v1.5@75c43b0:q8:cls:128:v1';
 const MODEL_NAME = 'BGE Small · 中文 · q8';
 const COLORS = new Set(['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange']);
 let store, settings, activity, browserSessionId, initPromise, workspace, tabOperations, browserHistory,library;
-const ai=createAIService({storage:chrome.storage.local,permissions:chrome.permissions});
+const diagnostics=createDiagnostics({behaviorAllowed:()=>settings?.tracking===true});
+const telemetry={scope:()=>diagnostics.scope()};
+const ai=createAIService({storage:chrome.storage.local,permissions:chrome.permissions,telemetry});
 let predictions;
 const imports = new Map();
 let activityQueue = Promise.resolve();
@@ -55,7 +59,7 @@ function allowedPage(tab) {
 
 function queueActivity(fn) {
   const result = activityQueue.then(async () => { await init(); return fn(); });
-  activityQueue = result.catch(error => console.warn('Focuence activity:', error.message));
+  activityQueue = result.catch(error => {console.warn('Focuence activity:', error.message);diagnostics.record('runtime.error',{reason:'activity',outcome:/^(STALE_|CANCELLED)/.test(error.code||'')?'cancelled':'error',errorCode:diagnosticCode(error)});});
   return result;
 }
 
@@ -68,15 +72,18 @@ async function applyActivity(event) {
   // Appending an observation does not change the documents of an existing search.
 }
 
-async function rawContext() {
+async function foregroundObservation() {
   const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  const focusedWindows=windows.filter(window=>window.focused).length;
   const focused = windows.find(window => window.focused && !window.incognito);
-  if (!focused) return null;
+  if (!focused)return{raw:null,focusedWindows,status:focusedWindows?'incognito':'unfocused',reason:focusedWindows?'incognito':'no-focused-window'};
   const [tab] = await chrome.tabs.query({ active: true, windowId: focused.id });
+  if(!tab)return{raw:null,focusedWindows,status:'no-tab',reason:'no-tab'};
   const page = allowedPage(tab);
-  if (!page) return null;
-  return { tabId: tab.id, windowId: tab.windowId, pageId: page.id, url: page.url, title: page.title, tags: page.tags };
+  if(!page){const status=tab.incognito?'incognito':pageFromTab(tab)&&excluded(tab.url||tab.pendingUrl)?'excluded':'unsupported';return{raw:null,focusedWindows,status,reason:status};}
+  return{raw:{ tabId: tab.id, windowId: tab.windowId, pageId: page.id, url: page.url, title: page.title, tags: page.tags },focusedWindows,status:'active',reason:focusedWindows>1?'multiple-focused-windows':'foreground'};
 }
+async function rawContext(){return(await foregroundObservation()).raw;}
 
 async function currentContext() {
   const raw = await rawContext();
@@ -90,15 +97,25 @@ function queueSemantic(operation) {
 }
 
 async function recordCurrent() {
-  const context = settings.tracking ? await currentContext() : null;
+  const observation=settings.tracking?await foregroundObservation():{raw:null,status:'paused',reason:'tracking-paused'};
+  const context = observation.raw ? await workspace.contextFor(observation.raw) : null;
   const idleState = await chrome.idle.queryState(settings.idleSeconds);
   if (context) await store.putPages([{ id: context.pageId, url: context.url, title: context.title, tags: context.tags, lastSeen: Date.now() }]);
   await applyActivity({ type: 'context', at: Date.now(), context, idleState, tracking: settings.tracking });
+  const status=!settings.tracking?'paused':idleState!=='active'?idleState:observation.status;
+  diagnostics.capture([status,observation.reason,context?.pageId,context?.windowId].join(':'),{status,reason:idleState!=='active'&&settings.tracking?idleState:observation.reason,focusedWindows:observation.focusedWindows});
+}
+
+async function diagnosticRun(kind,operation,fields={},describe=()=>({})) {
+  const log=diagnostics.scope(),started=performance.now();
+  try{const result=await operation();emitDiagnostic(log,kind,{...fields,outcome:'success',...describe(result),elapsedMs:performance.now()-started});return result;}
+  catch(error){const code=diagnosticCode(error);emitDiagnostic(log,kind,{...fields,outcome:/^(STALE_|CANCELLED|AI_STALE)/.test(code)?'cancelled':'error',errorCode:code,elapsedMs:performance.now()-started});throw error;}
 }
 
 async function init() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
+    await diagnostics.load();
     store = await openStore();
     settings = await store.getSettings();
     await ai.load();
@@ -124,13 +141,17 @@ async function init() {
       loadJobs: async () => { const saved = (await chrome.storage.session.get('focuenceMemoryJobs')).focuenceMemoryJobs; return Array.isArray(saved) ? saved : []; },
       saveJobs: values => chrome.storage.session.set({ focuenceMemoryJobs: values }),
       embed: (items, options = {}) => {
-        const epoch = dataEpoch;
-        return queueSemantic(() => embedItems(items, { store, infer: inputs => infer('INFERENCE_EMBED', inputs, epoch),
-          isCurrent: () => epoch === dataEpoch && settings.semantic && (options.isCurrent?.() ?? true), cache: options.cache !== false }));
+        const epoch = dataEpoch,queuedAt=performance.now(),log=diagnostics.scope();
+        return queueSemantic(async()=>{const started=performance.now();
+          try{const result=await embedItems(items, { store, infer: inputs => infer('INFERENCE_EMBED', inputs, epoch),
+            isCurrent: () => epoch === dataEpoch && settings.semantic && (options.isCurrent?.() ?? true), cache: options.cache !== false });
+            emitDiagnostic(log,'semantic.run',{purpose:options.purpose,count:items.length,cached:result.cached,computed:result.computed,outcome:'success',queueMs:started-queuedAt,elapsedMs:performance.now()-started});return result;
+          }catch(error){emitDiagnostic(log,'semantic.run',{purpose:options.purpose,count:items.length,outcome:epoch!==dataEpoch||error.code==='CANCELLED'?'cancelled':'error',errorCode:error.code==='CANCELLED'?'CANCELLED':'MODEL_ERROR',queueMs:started-queuedAt,elapsedMs:performance.now()-started});throw error;}
+        });
       },
     });
     await workspace.initialize();
-    predictions=createPredictions({context:windowId=>getState({windowId}),ai,epoch:()=>dataEpoch,allowed:url=>Boolean(normalizeUrl(url))&&!excluded(url),openPage});
+    predictions=createPredictions({context:windowId=>getState({windowId}),ai,epoch:()=>dataEpoch,allowed:url=>Boolean(normalizeUrl(url))&&!excluded(url),openPage,telemetry});
     tabOperations = createTabOperations({store,sessionId:browserSessionId,allowed:url=>!!normalizeUrl(url)&&!excluded(url),
       tabs:allNormalTabs,windows:()=>chrome.windows.getAll({windowTypes:['normal']}),group:id=>chrome.tabGroups.get(id),
       save:(task,log,revision)=>workspace.saveTaskAndOperation(task,log,revision),remove:id=>chrome.tabs.remove(id),getTab:id=>chrome.tabs.get(id),
@@ -149,7 +170,7 @@ async function init() {
     await chrome.alarms.create('focuence-checkpoint', { periodInMinutes: .5 });
     await chrome.alarms.create('focuence-prune', { periodInMinutes: 60 });
     await recordCurrent();
-  })().catch(error => { initPromise = null; throw error; });
+  })().catch(error => { initPromise = null;diagnostics.record('runtime.error',{reason:'initialization',outcome:'error',errorCode:diagnosticCode(error)});throw error; });
   return initPromise;
 }
 
@@ -258,7 +279,7 @@ async function propose(message, epoch = dataEpoch) {
   let method = 'rules', metadata = { cachedCount: 0, computedCount: 0 }, embeddings;
   if (message.semantic && settings.semantic && tabs.length > 1) {
     try {
-      const result = await embeddingsFor(tabs);
+      const result = await diagnosticRun('semantic.run',()=>embeddingsFor(tabs),{purpose:'grouping',count:tabs.length},result=>({cached:result.cachedCount,computed:result.computedCount}));
       embeddings = result.vectors; metadata = { cachedCount: result.cachedCount, computedCount: result.computedCount }; method = 'semantic';
     } catch (error) {
       if (epoch !== dataEpoch) throw new Error('本机语义分析已取消');
@@ -470,12 +491,28 @@ async function clearData(all) {
   else await store.saveActivity(activity);
   proposals.clear(); proposalNotices.clear(); lastUndo = null;
   await persistSession();
-  return { cleared: true };
+  let diagnosticsCleared=true;try{await diagnostics.clear({reset:all});}catch{diagnosticsCleared=false;}
+  return { cleared: true,diagnosticsCleared };
 }
 
 async function handle(message) {
+  if(message.type==='GET_DIAGNOSTICS')return diagnostics.view(message.range==='7d'?'7d':'24h');
+  if(message.type==='EXPORT_DIAGNOSTICS')return diagnostics.view('7d',true);
+  if(message.type==='CLEAR_DIAGNOSTICS')return diagnostics.clear();
+  if(message.type==='SET_DIAGNOSTICS'){
+    if(typeof message.enabled!=='boolean')throw Error('请选择是否启用本机运行日志。');
+    return diagnostics.setEnabled(message.enabled);
+  }
   await init();
-  if (workspace.hasMutation(message.type)) return queueActivity(() => workspace.mutate(message));
+  if (workspace.hasMutation(message.type)) return queueActivity(async()=>{
+    const saved=message.checkpoint?predictions.prepareSave(message):null,log=diagnostics.scope();
+    const result=await workspace.mutate(message);
+    if(message.checkpoint){emitDiagnostic(log,'checkpoint.saved',{outcome:'success'});if(saved)await saved();}
+    if(message.type==='RESTORE_TASK')emitDiagnostic(log,'focus.continued',{outcome:'success',opened:result.opened,reused:result.reused,failed:result.failed?.length||0});
+    if(message.type==='SET_CURRENT_TASK')emitDiagnostic(log,'focus.selected',{outcome:'success'});
+    if(message.type==='PAUSE_TASK')emitDiagnostic(log,'focus.paused',{outcome:'success'});
+    return result;
+  });
   switch (message.type) {
     case 'GET_AI_SETTINGS':return ai.view();
     case 'SAVE_AI_SETTINGS':return queueActivity(async()=>{const result=await ai.save(message.config||{});predictions.clear();return result;});
@@ -483,6 +520,7 @@ async function handle(message) {
     case 'PREDICT_NEXT':return predictions.next({...message,windowId:await targetWindow(message.windowId)});
     case 'COMPLETE_TEXT':return predictions.complete({...message,windowId:await targetWindow(message.windowId)});
     case 'OPEN_NEXT_SUGGESTION':return predictions.open({...message,windowId:await targetWindow(message.windowId)});
+    case 'PREDICTION_FEEDBACK':return predictions.feedback({...message,windowId:await targetWindow(message.windowId)});
     case 'LIST_LIBRARY': return library.list(message);
     case 'GET_LIBRARY_ITEM': {const item=await store.getLibraryItem(message.id);if(!item)throw Object.assign(Error('材料已删除，请重新读取。'),{code:'LIBRARY_NOT_FOUND'});return item;}
     case 'SAVE_LIBRARY_ITEM':
@@ -509,13 +547,14 @@ async function handle(message) {
     case 'GET_RESTORE_POINT': { const point=await store.getRestorePoint();return point?{at:point.at}:null; }
     case 'GET_STATE': return getState(message);
     case 'PROPOSE_GROUPS': {
-      if (!message.semantic) return propose(message);
-      const epoch = dataEpoch;
-      return queueSemantic(() => propose(message, epoch));
+      return diagnosticRun('group.preview',async()=>{
+        if(!message.semantic)return propose(message);
+        const epoch=dataEpoch;return queueSemantic(()=>propose(message,epoch));
+      },{},result=>({candidateCount:result.groups.length}));
     }
     case 'APPLY_GROUP':
     case 'UNDO_GROUP': {
-      const job = groupQueue.then(() => message.type === 'APPLY_GROUP' ? applyGroup(message) : undoGroup());
+      const job = groupQueue.then(() => diagnosticRun(message.type==='APPLY_GROUP'?'group.apply':'group.undo',()=>message.type==='APPLY_GROUP'?applyGroup(message):undoGroup(),{},result=>({count:result.count??(result.restored?1:0),...(message.type==='UNDO_GROUP'&&!result.restored?{outcome:'empty'}:{})})));
       groupQueue = job.catch(() => {}); return job;
     }
     case 'SAVE_TASK': return queueActivity(() => saveTask(message));
@@ -543,7 +582,7 @@ async function handle(message) {
       if (!settings.semantic) throw new Error('请先启用本机语义分析');
       model = { status: 'loading', name: MODEL_NAME, progress: 0 };
       const epoch = dataEpoch;
-      try { return await infer('INFERENCE_WARMUP', undefined, epoch); } catch (error) { if (epoch === dataEpoch) model = { status: 'error', name: MODEL_NAME, progress: 0, error: error.message }; throw error; }
+      try { return await diagnosticRun('semantic.run',()=>infer('INFERENCE_WARMUP',undefined,epoch),{purpose:'warmup'}); } catch (error) { if (epoch === dataEpoch) model = { status: 'error', name: MODEL_NAME, progress: 0, error: error.message }; throw error; }
     }
     default: throw new Error('未知操作');
   }
@@ -582,6 +621,7 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }
   if (alarm.name === 'focuence-checkpoint') reconcile();
   if (alarm.name === 'focuence-prune') queueActivity(async () => {
+    await diagnostics.prune();
     const result = await store.prune({ now: Date.now(), retentionDays: settings.retentionDays });
     if (result.activity) activity = result.activity;
     workspace.replaceState(result.workspace);

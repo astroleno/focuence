@@ -13,6 +13,7 @@ import {createLibraryUI} from '../src/library-ui.js';
 import {createDraftGuard, editorSnapshot} from '../src/draft-guard.js';
 import {resolveRelationEvidence} from '../src/map-evidence.js';
 import {createAISettingsUI} from '../src/ai-settings-ui.js';
+import {createDiagnosticsUI} from '../src/diagnostics-ui.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -45,7 +46,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.6.0',
+    version: value?.version || '2.7.0',
     demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
@@ -118,6 +119,7 @@ const tabWorkspace = createTabWorkspaceUI({request,getState:()=>ui.state,getWind
 const backupUI = createBackupUI({request,render,refresh:()=>refresh({quiet:true}),notify:toast,demo:isDemo});
 const libraryUI=createLibraryUI({getState:()=>ui.state,request,render,refresh:()=>refresh({quiet:true}),notify:toast,getWindowId:()=>windowId,demo:isDemo,surface:isPanel?'panel':'workspace'});
 const aiSettings=createAISettingsUI({getState:()=>ui.state,request,refresh:()=>refresh({quiet:true}),demo:isDemo});
+const diagnosticsUI=createDiagnosticsUI({request,demo:isDemo});
 function toast(message, error = false, actionName = '') {
   const region = document.getElementById('toast-region');
   const hadFocus = region.contains(document.activeElement);
@@ -217,7 +219,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#tasks', 'aria-label': 'Focuence · 当前聚焦'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.6')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.7')));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -725,7 +727,7 @@ function renderSettings() {
     heading('设置', '按你的节奏记录，由你决定保留什么。'),
     el('section', {class: 'settings-save', 'aria-label': '保存设置'},
       button(busy('settings') ? '正在保存…' : '保存设置', 'save-settings', {id: 'settings-save-button', disabled: busy('settings') || !ui.settingsDirty}, 'primary', 'check'),
-      el('div', {}, el('p', {id: 'settings-save-status', role: 'status'}, settingsSaveStatus()), el('p', {class: 'field-help'}, '记录与语义分析在本机完成；下方 AI 服务单独保存，按需调用。'))),
+      el('div', {}, el('p', {id: 'settings-save-status', role: 'status'}, settingsSaveStatus()), el('p', {class: 'field-help'}, '记录与语义分析在本机完成；下方 AI 服务与运行日志单独保存。'))),
     backupUI.view(),
     memory.historyView(false),
     el('div', {class: 'settings-layout'},
@@ -741,10 +743,11 @@ function renderSettings() {
         settingRow('模型状态', ui.state.model.name || 'BGE-small-zh-v1.5 · 本地语义模型', button(busy('warmup') ? '正在准备…' : ui.state.model.status === 'ready' ? '模型已就绪' : '准备本地模型', 'warmup', {disabled: busy('warmup') || ui.state.model.status === 'ready'}, 'small', 'spark')),
         modelBar()),
       el('section',{class:'settings-section'},aiSettings.view()),
+      diagnosticsUI.view(),
       el('section', {class: 'settings-section'}, el('h2', {}, '数据与迁移'),
         settingRow('导出本机数据', '导出页面、任务、访问片段、资料库与设置为 JSON，便于备份和后续分析。', button('导出数据', 'export', {disabled: busy('export')}, 'small', 'download'))),
       el('section', {class: 'settings-section danger-section'}, el('h2', {}, '清理本机数据'),
-        settingRow('清除浏览历史', '删除两类访问缓存、导入作业、自动线索、提示记录与内部恢复前快照；保留任务、确认断点、手工关联和资料库。', button('清除历史', 'clear-history', {}, 'small danger')),
+        settingRow('清除浏览历史', '删除两类访问缓存、运行日志、导入作业、自动线索、提示记录与内部恢复前快照；保留任务、确认断点、手工关联和资料库。', button('清除历史', 'clear-history', {}, 'small danger')),
         settingRow('清除关联记忆', '清除全部任务的相关和不相关判断，保留任务、断点及保存的页面。无法撤销。', button('清除关联记忆', 'clear-relations', {}, 'small danger')),
         settingRow('清除全部数据', '删除扩展访问记录、任务、资料库和临时选文并重置设置。不会关闭浏览器页面。这个操作无法撤销。', button('清除全部', 'clear-all', {}, 'small danger'))))
   ];
@@ -1163,7 +1166,7 @@ async function handleAction(action, target) {
       }); break;
     case 'export': await operation('export', exportData); break;
     case 'clear-history':
-      confirmDialog('清除浏览历史？', '删除自记录访问、浏览器历史缓存及导入作业、自动线索、查找行为、提示记录及内部恢复前快照。保留任务、确认断点、手工关联与资料库，不删除 Chrome 自身历史。扩展的访问证据将不可用，此操作无法撤销。', '清除历史', async () => { await request('CLEAR_HISTORY'); await backupUI.reload(); ui.selectedTag = ''; toast('两类访问缓存及内部恢复点已清除，任务、材料与手工记忆仍保留。'); });
+      confirmDialog('清除浏览历史？', '删除自记录访问、浏览器历史缓存及导入作业、运行日志、自动线索、查找行为、提示记录及内部恢复前快照。保留任务、确认断点、手工关联与资料库，不删除 Chrome 自身历史。扩展的访问证据将不可用，此操作无法撤销。', '清除历史', async () => { const result=await request('CLEAR_HISTORY');await backupUI.reload();diagnosticsUI.reset();ui.selectedTag='';toast(result.diagnosticsCleared===false?'浏览记录已清理；运行日志暂未清理，请在运行与记录中重试。':'两类访问缓存、运行日志及内部恢复点已清除，任务、材料与手工记忆仍保留。',result.diagnosticsCleared===false); });
       break;
     case 'clear-relations':
       confirmDialog('清除全部关联记忆？', '清除所有任务的相关和不相关判断。任务目标、断点与保存页面仍保留；此操作无法撤销。', '清除关联记忆', async () => {
@@ -1171,8 +1174,8 @@ async function handleAction(action, target) {
       });
       break;
     case 'clear-all':
-      confirmDialog('清除全部本机数据？', '这将删除扩展访问记录、任务、资料库原文与笔记、临时选文和恢复点，并重置设置。不会删除 Chrome 自身历史或关闭网页。此操作无法撤销。', '清除全部', async () => {
-        await request('CLEAR_ALL'); aiSettings.reset(); ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false; toast('全部本机数据已清除。');
+      confirmDialog('清除全部本机数据？', '这将删除扩展访问记录、任务、资料库原文与笔记、临时选文、运行日志和恢复点，并重置设置。不会删除 Chrome 自身历史或关闭网页。此操作无法撤销。', '清除全部', async () => {
+        const result=await request('CLEAR_ALL');aiSettings.reset();diagnosticsUI.reset();ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false;toast(result.diagnosticsCleared===false?'主要数据已清理；运行日志暂未清理，请在运行与记录中重试。':'全部本机数据与运行日志已清除。',result.diagnosticsCleared===false);
       }, true);
       break;
     case 'close-dialog': closeDialog(); break;

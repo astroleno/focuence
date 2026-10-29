@@ -1,0 +1,128 @@
+{
+  "environment": "Isolated Chrome for Testing, actual MV3, native IndexedDB and UI. Synthetic metadata only. No API permission or credentials installed.",
+  "checks": [
+    {
+      "name": "Capture reasons distinguish foreground, exclusion and pause; repeated state reads are sampled; paused browsing suppresses behavior logs",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual prediction display and successful open are distinct, and reading diagnostics does not create visits or log events",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Completion adoption is separate from save; edited text and discarded drafts are not counted as candidate saves",
+      "status": "passed",
+      "detail": {
+        "nextStep": {
+          "shown": 3,
+          "acted": 3,
+          "saved": 1,
+          "actionRate": 1,
+          "saveRate": 0.3333333333333333,
+          "unmatched": 0,
+          "renderLatency": {
+            "samples": 3,
+            "p50": 6,
+            "p95": 16
+          }
+        }
+      }
+    },
+    {
+      "name": "Grouping preview, actual apply and actual undo are logged; an empty undo is not counted as an action",
+      "status": "passed",
+      "detail": {
+        "previews": 1,
+        "applied": 1,
+        "undone": 1,
+        "errors": 0
+      }
+    },
+    {
+      "name": "Focus selection, pause and real continuation are logged after successful actions",
+      "status": "passed",
+      "detail": {
+        "checkpoints": 2,
+        "continued": 1,
+        "selected": 1,
+        "paused": 1
+      }
+    },
+    {
+      "name": "Logs persist independently, exclude content and credentials, stay out of task backups, and keep unknown API usage unknown",
+      "status": "passed",
+      "detail": {
+        "retained": 25
+      }
+    },
+    {
+      "name": "Native log database enforces seven-day expiry, 5,000 rows, durable disable and safe clear/reset",
+      "status": "passed",
+      "detail": {
+        "retained": 5000,
+        "appendSamples": 20,
+        "appendP50Ms": 0.5,
+        "appendP95Ms": 0.6000000014901161,
+        "read5000Ms": 20.59999999962747
+      }
+    },
+    {
+      "name": "Settings export downloads a real content-free JSON artifact",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Diagnostics UI 320px remains readable and has no overflow or duplicate IDs",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "headingVisible": true,
+        "duplicateIds": [],
+        "width": 320
+      }
+    },
+    {
+      "name": "Diagnostics UI 360px remains readable and has no overflow or duplicate IDs",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "headingVisible": true,
+        "duplicateIds": [],
+        "width": 360
+      }
+    },
+    {
+      "name": "Diagnostics UI 1440px remains readable and has no overflow or duplicate IDs",
+      "status": "passed",
+      "detail": {
+        "overflow": false,
+        "headingVisible": true,
+        "duplicateIds": [],
+        "width": 1440
+      }
+    },
+    {
+      "name": "Settings toggle stops new writes; explicit log clear preserves tasks and AI configuration",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Clear history clears diagnostics; clear all restores the log default without resurrecting old events",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "An empty result is visible as an empty state, without a false candidate impression",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "No uncaught extension errors",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": []
+}

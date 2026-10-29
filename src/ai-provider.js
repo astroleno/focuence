@@ -1,3 +1,4 @@
+import {diagnosticUsage,diagnosticCode,diagnosticScope,emitDiagnostic} from './diagnostics.js';
 /** Optional text generation. Credentials never enter ordinary state or backups. */
 export const AI_PRESETS = Object.freeze({
   opencode: {baseUrl:'https://opencode.ai/zen/go/v1', protocol:'openai', model:'deepseek-v4.1-flash'},
@@ -54,7 +55,7 @@ async function boundedJSON(response) {
   try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw error('AI_RESPONSE','服务没有返回有效内容，已改用本机线索。');}
 }
 
-export function createAIService({storage, permissions, fetchImpl=globalThis.fetch, timeoutMs=20000}) {
+export function createAIService({storage, permissions, fetchImpl=globalThis.fetch, timeoutMs=20000,telemetry}) {
   let config={...EMPTY}, version=0;
   const sessionId=crypto.randomUUID();
   const requests=new Set();
@@ -76,7 +77,7 @@ export function createAIService({storage, permissions, fetchImpl=globalThis.fetc
     },
     async clear() {await storage.remove('focuenceAI');cancel();config={...EMPTY};return view();},
     cancel,
-    async generate(system, input, {isCurrent=()=>true,maxTokens=1000}={}) {
+    async generate(system, input, {isCurrent=()=>true,maxTokens=1000,traceId,field}={}) {
       const selected={...config}, expected=version;
       const current=()=>version===expected&&isCurrent();
       if(!selected.enabled)throw error('AI_DISABLED','AI 服务未启用，使用本机线索。');
@@ -84,6 +85,8 @@ export function createAIService({storage, permissions, fetchImpl=globalThis.fetc
       if(!await permissions.contains({origins:[endpoint.origin]}))throw error('AI_PERMISSION','AI 服务未获站点授权，使用本机线索。');
       if(!current())throw error('AI_STALE','内容已改变，请重新获取候选。');
       const controller=new AbortController();requests.add(controller);
+      const log=diagnosticScope(telemetry),started=performance.now();
+      let metrics={traceId,field,protocol:selected.protocol,provider:new URL(selected.baseUrl).hostname==='api.deepseek.com'?'deepseek':new URL(selected.baseUrl).hostname==='opencode.ai'?'opencode':'custom',usageReported:false};
       let timedOut=false;
       const timer=setTimeout(()=>{timedOut=true;controller.abort();},timeoutMs);
       try {
@@ -93,16 +96,19 @@ export function createAIService({storage, permissions, fetchImpl=globalThis.fetc
         const response=await fetchImpl(endpoint.url,{method:'POST',redirect:'error',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal,
           headers:{'Content-Type':'application/json',...(new URL(selected.baseUrl).hostname==='opencode.ai'?{'x-opencode-session':sessionId}:{}),
             ...(anthropic?{'x-api-key':selected.apiKey,'anthropic-version':'2023-06-01'}:{Authorization:'Bearer '+selected.apiKey})},body:JSON.stringify(body)});
+        metrics.httpStatus=response.status;
         if(!response.ok)throw error('AI_HTTP',response.status===401||response.status===403?'AI 服务未通过鉴权，使用本机线索。':response.status===429?'AI 服务繁忙或额度受限，使用本机线索。':'AI 服务暂时不可用，使用本机线索。');
         const result=await boundedJSON(response);
+        Object.assign(metrics,diagnosticUsage(result,selected.protocol));
         if(!current())throw error('AI_STALE','内容已改变，请重新获取候选。');
         const text=anthropic?(result.content||[]).filter(item=>item.type==='text').map(item=>item.text).join('\n'):result.choices?.[0]?.message?.content;
-        return parseAIObject(text);
+        const parsed=parseAIObject(text);metrics.outcome='success';return parsed;
       } catch(caught) {
+        metrics.outcome=!current()?'cancelled':'error';metrics.errorCode=!current()?'AI_STALE':timedOut?'AI_TIMEOUT':caught.code?.startsWith('AI_')?diagnosticCode(caught):'AI_NETWORK';
         if(!current())throw error('AI_STALE','内容已改变，请重新获取候选。');
         if(caught.code?.startsWith('AI_'))throw caught;
         throw error(timedOut?'AI_TIMEOUT':'AI_NETWORK',timedOut?'AI 服务响应超时，使用本机线索。':'AI 服务连接失败，使用本机线索。');
-      } finally {clearTimeout(timer);requests.delete(controller);}
+      } finally {clearTimeout(timer);requests.delete(controller);emitDiagnostic(log,'ai.request',{...metrics,elapsedMs:performance.now()-started});}
     },
   };
 }

@@ -9,13 +9,15 @@ const basisLabel=candidate=>({checkpoint:'已确认的继续页',saved:'当前�
 
 /** Candidates stay separate from confirmed text, task intent and observed map edges. */
 export function createPredictionUI({getState,request,getWindowId,showTask,notify,demo=false}) {
-  const clientId='prediction-'+crypto.randomUUID(), completions=new Map();
+  const clientId='prediction-'+crypto.randomUUID(), completions=new Map(),proofs=new Map(),shown=new Set();
   let next={pending:false,result:null,notice:'',serial:0,host:null,key:''};
   const stateKey=(taskId)=>{
     const state=getState(),task=state?.tasks.find(item=>item.id===(taskId||state.work?.current.taskId));
     return JSON.stringify([state?.work?.epoch,state?.work?.current.taskId,state?.work?.current.revision,task?.id,task?.revision,state?.ai]);
   };
   const visible=host=>host?.isConnected&&(!host.closest('dialog')||host.closest('dialog').open);
+  const feedback=(result,action,extra={})=>{if(!demo&&result?.token)request('PREDICTION_FEEDBACK',{windowId:getWindowId(),token:result.token,action,...extra}).catch(()=>{});};
+  function shownResult(result,host,started){if(result?.token&&result.candidates?.length&&visible(host)&&!shown.has(result.token)){shown.add(result.token);if(shown.size>40)shown.delete(shown.values().next().value);feedback(result,'shown',{elapsedMs:Math.max(0,performance.now()-(started||performance.now()))});}}
   const explanation=()=>demo?'示例使用本机线索，不连接 AI 服务。':getState()?.ai?.enabled?'点击时会把当前任务与有限候选标题发给已配置的 AI 服务。':'AI 未启用，按当前目标筛选本机断点、保存资料和关联线索。';
 
   function nextView() {
@@ -39,14 +41,15 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
         try{
           if(next.key!==stateKey())throw Error('当前聚焦已改变，请重新获取建议。');
           const response=await request('OPEN_NEXT_SUGGESTION',{windowId:getWindowId(),token:result.token,id:candidate.id});
-          if(response.taskId){const task=getState()?.tasks.find(item=>item.id===response.taskId);if(task)showTask(task);}
+          if(response.taskId){const task=getState()?.tasks.find(item=>item.id===response.taskId);if(task){showTask(task);feedback(result,'opened',{choice:result.candidates.indexOf(candidate)});}}
         }catch(error){notify(error.message,true);}finally{if(trigger.isConnected)trigger.disabled=false;}
       });
       host.append(el('article',{class:'prediction-row'},el('div',{},el('h3',{},candidate.title),caption(basisLabel(candidate)),caption(candidate.reason)),trigger));
     }
+    shownResult(result,host,next.started);
   }
   async function loadNext() {
-    const serial=++next.serial,key=stateKey();next.pending=true;next.notice='';drawNext();
+    const serial=++next.serial,key=stateKey();next.pending=true;next.notice='';next.started=performance.now();drawNext();
     try{
       const result=await request('PREDICT_NEXT',{windowId:getWindowId(),clientId});
       if(serial!==next.serial||key!==stateKey()||!visible(next.host))return;
@@ -58,7 +61,7 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
   function completion({inputId,field,task}) {
     const id='completion-'+inputId,key=stateKey(task?.id);
     let state=completions.get(inputId);
-    if(!state||state.key!==key||(state.host?.closest('dialog')&&!state.host.closest('dialog').open)){state={serial:(state?.serial||0)+1,pending:false,result:null,notice:'',key,taskId:task?.id};completions.set(inputId,state);}
+    if(!state||state.key!==key||(state.host?.closest('dialog')&&!state.host.closest('dialog').open)){proofs.delete(inputId);state={serial:(state?.serial||0)+1,pending:false,result:null,notice:'',key,taskId:task?.id};completions.set(inputId,state);}
     state.host=el('div',{id,class:'text-completion','aria-label':field==='search'?'查找文字补全':'下一步文字补全'});
     state.field=field;state.revision=task?.revision;
     drawCompletion(inputId,state);return state.host;
@@ -68,7 +71,7 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
     host.replaceChildren(button(state.pending?'正在补全…':'补全文字','complete-'+inputId,async()=>{
       if(state.pending||!input())return;
       const serial=++state.serial,original=input().value,key=stateKey(state.taskId);
-      state.pending=true;state.result=null;state.notice='';drawCompletion(inputId,state);
+      proofs.delete(inputId);state.pending=true;state.result=null;state.notice='';state.started=performance.now();drawCompletion(inputId,state);
       try{
         const result=await request('COMPLETE_TEXT',{windowId:getWindowId(),clientId:clientId+':'+inputId,field:state.field,text:original,
           ...(state.taskId?{taskId:state.taskId,revision:state.revision}:{})});
@@ -85,15 +88,19 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
       const accept=button('采用','complete-accept-'+inputId+'-'+index,()=>{
         const node=input();
         if(!node||node.value!==state.original||state.key!==stateKey(state.taskId)){state.result=null;state.notice='输入或任务已改变，请重新补全。';drawCompletion(inputId,state);return;}
-        node.value=text;node.dispatchEvent(new Event('input',{bubbles:true}));node.focus();
+        const result=state.result;node.value=text;node.dispatchEvent(new Event('input',{bubbles:true}));
+        if(result?.token){proofs.set(inputId,{token:result.token,choice:index,value:text,key:state.key});feedback(result,'adopted',{choice:index});}node.focus();
       });
       host.append(el('div',{class:'completion-choice'},el('p',{},text),accept));
     });
     host.append(button('忽略候选','complete-dismiss-'+inputId,()=>{state.serial++;state.result=null;state.notice='';drawCompletion(inputId,state);input()?.focus();}));
+    shownResult(state.result,host,state.started);
   }
   document.addEventListener('input',event=>{
+    proofs.delete(event.target.id);
     const state=completions.get(event.target.id);if(!state)return;
     state.serial++;state.pending=false;state.result=null;state.notice='';drawCompletion(event.target.id,state);
   });
-  return {nextView,completion};
+  return {nextView,completion,completionProof(inputId){const proof=proofs.get(inputId),state=completions.get(inputId),input=document.getElementById(inputId);
+    return proof&&state&&visible(state.host)&&proof.key===stateKey(state.taskId)&&input?.value===proof.value?{token:proof.token,choice:proof.choice}:undefined;}};
 }

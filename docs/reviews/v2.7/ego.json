@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-29T16:43:51.905Z",
+  "spaceId": 40,
+  "page": "p2",
+  "extensionId": "khoenjnibaaoaoamgpohmabopflppemg",
+  "version": "2.7.0",
+  "demo": false,
+  "tracking": true,
+  "semantic": true,
+  "aiEnabled": false,
+  "aiHasKey": false,
+  "diagnostics": {
+    "enabled": true,
+    "health": {
+      "available": true,
+      "dropped": 0,
+      "lastWriteAt": 1793292207036,
+      "pending": 0
+    },
+    "retained": 5,
+    "retentionDays": 7,
+    "limit": 5000,
+    "captureSamples": 5,
+    "latestCapture": {
+      "status": "active",
+      "reason": "multiple-focused-windows",
+      "focusedWindows": 7
+    },
+    "apiCalls": 0,
+    "usageSamples": 0,
+    "inputTokens": null
+  },
+  "publicDeployment": false,
+  "taskFinished": true,
+  "keptPage": "p2",
+  "notes": [
+    "Runtime reloaded through extension manager. No AI request or synthetic task. Normal foreground reconciliation ran; no user history, tasks or settings were cleared.",
+    "Existing Ego cross-page foreground-to-map limitation is unchanged."
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "environment": "Isolated Chrome for Testing; real MV3, bundled BGE, native tabs/groups/IndexedDB. Foreground means the browser API state in this isolated test, not an Ego OS-focus acceptance.",
+  "checks": [
+    {
+      "name": "Real BGE association reaches local next prediction before manual confirmation, with no unrelated padding or persistent edits",
+      "status": "passed",
+      "detail": {
+        "elapsedMs": 28,
+        "associationScore": 0.6798754384015723,
+        "candidates": [
+          {
+            "title": "ESP32 I2S 麦克风音频采集指南",
+            "method": "checkpoint",
+            "inferred": false
+          },
+          {
+            "title": "ESP32 I2S 扬声器音频播放与错误处理",
+            "method": "semantic",
+            "inferred": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prediction UI distinguishes the confirmed continuation page from an inferred semantic relation",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Actual tab activation and elapsed time produce foreground visits and an observed topic transition",
+      "status": "passed",
+      "detail": {
+        "visits": [
+          {
+            "title": "ESP32 I2S 麦克风音频采集指南",
+            "foregroundMs": 1632
+          },
+          {
+            "title": "Chrome extension 标签页分组与键盘焦点管理 API",
+            "foregroundMs": 1611
+          }
+        ],
+        "edge": {
+          "from": "ESP32",
+          "to": "浏览器扩展",
+          "count": 1
+        }
+      }
+    },
+    {
+      "name": "Map → real page/time evidence → path → selected map relation → current focus preserves intent",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Navigation after a semantic prediction blocks its old open action",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "No uncaught extension errors",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": []
+}

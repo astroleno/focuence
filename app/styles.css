@@ -482,3 +482,22 @@ dialog::backdrop { background: #18233660; }
   .toast:has(.toast-action) { animation: none; }
   @keyframes toast-arrive { from { clip-path: inset(100% 0 0); } to { clip-path: inset(0); } }
 }
+.diagnostics-section { grid-column: 1 / -1; min-width: 0; scroll-margin-top: 120px; }
+.diagnostics-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; }
+.diagnostics-controls label { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.diagnostics-controls .standard-select { min-height: 36px; }
+.diagnostics-status { min-height: 22px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.diagnostics-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 20px 0; }
+.diagnostics-metric { min-width: 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.diagnostics-metric dt { font-size: 13px; color: var(--muted); }
+.diagnostics-metric dd { margin: 6px 0; font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.diagnostics-metric p, .diagnostics-flow p { margin-top: 6px; overflow-wrap: anywhere; }
+.diagnostics-flow { padding: 16px 0; border-top: 1px solid var(--line); }
+.diagnostics-flow h3 { font-size: 14px; }
+.diagnostics-recent { padding: 14px 0; border-top: 1px solid var(--line); }
+.diagnostics-recent summary { cursor: pointer; min-height: 32px; font-size: 13px; }
+.diagnostics-row { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 14px; padding: 12px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+.diagnostics-row time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.diagnostics-confirm { padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+@media (max-width: 400px) { .diagnostics-metrics { grid-template-columns: minmax(0, 1fr); } .diagnostics-row { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+@media (max-width: 600px) { .diagnostics-section { scroll-margin-top: 180px; } }

@@ -327,13 +327,13 @@ export function createWorkspace(deps) {
       if (prepared.signature !== job.signature) throw failure('STALE_SUGGESTION', '检索范围内的资料已变化，请重新查找或分析。');
       if (!job.queryVector) {
         const item = job.kind === 'association' ? prepared.goal : semanticItem(job.id, QUERY_INSTRUCTION + job.query, 'query');
-        const result = await deps.embed([item], { isCurrent: valid, cache: job.kind === 'association' });
+        const result = await deps.embed([item], { isCurrent: valid, cache: job.kind === 'association',purpose:job.kind==='association'?'association':'search' });
         if (!valid()) throw failure('CANCELLED', '分析已取消。');
         job.queryVector = result.vectors.get(item.id);
       }
       const batch = prepared.documents.slice(job.completed, job.completed + 24);
       if (batch.length) {
-        const result = await deps.embed(batch.map(item => item.item), { isCurrent: valid });
+        const result = await deps.embed(batch.map(item => item.item), { isCurrent: valid,purpose:job.kind==='association'?'association':'search' });
         if (!valid()) throw failure('CANCELLED', '分析已取消。');
         if (job.kind === 'search') job.scores = accumulateSearchScores(job.scores, batch, result.vectors, job.queryVector);
       }

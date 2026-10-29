@@ -111,7 +111,8 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
       working = true; form.querySelectorAll('button,input,select,textarea').forEach(node => node.disabled = true);
       try {
         await request(switchTo ? 'SET_CURRENT_TASK' : pause ? 'PAUSE_TASK' : 'SAVE_CHECKPOINT', {
-          ...expected, ...(switchTo ? {id: switchTo.id, previousTaskId: task.id, previousRevision: expected.revision} : {}), checkpoint: data });
+          ...expected, ...(switchTo ? {id: switchTo.id, previousTaskId: task.id, previousRevision: expected.revision} : {}), checkpoint: data,
+          completionRef:predictions.completionProof('checkpoint-nextStep') });
         await refresh(); working = false; close({force: true}); notify(switchTo ? '断点已保存，已切换此窗口的当前聚焦。' : pause ? '断点已保存，已暂停此窗口的聚焦；任务状态和记录开关保持不变。' : '断点已保存。');
       } catch (error) {
         form.querySelector('.memory-form-error').textContent = error.message;

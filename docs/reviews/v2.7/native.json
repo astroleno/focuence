@@ -1,0 +1,117 @@
+{
+  "environment": "Isolated Chrome for Testing, actual MV3 service worker, native tabs/groups/IndexedDB, synthetic pages only. No optional AI host permission is silently granted.",
+  "checks": [
+    {
+      "name": "Find → open → checkpoint/state → sources → open another result, tracking false",
+      "status": "passed",
+      "detail": {
+        "total": 3,
+        "sourceEpoch": 4
+      }
+    },
+    {
+      "name": "Find → open → checkpoint/state → sources → open another result, tracking true",
+      "status": "passed",
+      "detail": {
+        "total": 3,
+        "sourceEpoch": 5
+      }
+    },
+    {
+      "name": "Native unrelated tab creation and activity leave captured search scope and pagination intact",
+      "status": "passed",
+      "detail": {
+        "total": 6,
+        "lastPage": 2
+      }
+    },
+    {
+      "name": "A disappeared original window document rejects its old search result",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native grouping supports member selection, apply and undo",
+      "status": "passed",
+      "detail": {
+        "members": 2
+      }
+    },
+    {
+      "name": "Native grouping still rejects a member changed after preview",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Unconfigured AI returns real local next resources and prefix completions without editing a task",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "An actual missing optional host permission blocks enabling API requests",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native checkpoint completion waits for explicit acceptance and still requires explicit save",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "A delayed completion does not replace newer typed text",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Closing and reopening a checkpoint drops the previous request and leaves completion usable",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native AI settings save locally, clear the password field and exclude credentials from state/backups; clear history preserves configuration",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native UI 320px keeps focus/grouping/prediction accessible",
+      "status": "passed",
+      "detail": {
+        "width": 320,
+        "overflow": false,
+        "duplicates": [],
+        "grouping": true
+      }
+    },
+    {
+      "name": "The focus page grouping shortcut opens the real grouping area with keyboard focus",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Native UI 360px keeps focus/grouping/prediction accessible",
+      "status": "passed",
+      "detail": {
+        "width": 360,
+        "overflow": false,
+        "duplicates": [],
+        "grouping": true
+      }
+    },
+    {
+      "name": "Native UI 1440px keeps focus/grouping/prediction accessible",
+      "status": "passed",
+      "detail": {
+        "width": 1440,
+        "overflow": false,
+        "duplicates": [],
+        "grouping": true
+      }
+    },
+    {
+      "name": "No uncaught extension errors",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "errors": []
+}

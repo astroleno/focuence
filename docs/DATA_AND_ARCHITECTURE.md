@@ -1,8 +1,8 @@
 # Focuence 2：数据与实现说明
 
-版本：2.6.0
+版本：2.7.0
 
-更新日期：2026 年 10 月 24 日
+更新日期：2026 年 10 月 30 日
 
 本版把分组、目标关联、断点、语义找回与浏览回顾放在浏览器本机执行。本地模型计算文本向量；断点文字由用户确认，分组名称、时长、提示与任务模式由确定性代码处理。2.6 新增可选、默认关闭的 AI 服务，仅在用户主动获取下一步或文字候选时发起有界请求；不会把推测写进已观察地图或确认字段。
 
@@ -48,6 +48,7 @@
 | [`src/browser-history.js`](../src/browser-history.js)、[`src/history-ui.js`](../src/history-ui.js) | 可选最近关闭和本设备历史来源；分窗枚举、实际访问核对、可恢复导入与按需权限 |
 | [`src/search-sources.js`](../src/search-sources.js) | 来源证据、日期解释及检索前筛选；完整结果与证据分别分页 |
 | [`src/library.js`](../src/library.js)、[`src/library-ui.js`](../src/library-ui.js) | 独立材料、修订、明确复用/追加、选文来源草稿与三端表单 |
+| [`src/diagnostics.js`](../src/diagnostics.js)、[`src/diagnostics-service.js`](../src/diagnostics-service.js)、[`src/diagnostics-store.js`](../src/diagnostics-store.js)、[`src/diagnostics-ui.js`](../src/diagnostics-ui.js) | 无内容日志白名单、写入隔离与有界队列、独立持久化、运行与使用统计 |
 
 界面通过 `chrome.runtime.sendMessage({target:'background', type, ...payload})` 调用后台，结果统一为 `{ok:true,data}` 或 `{ok:false,error,code?}`。过期建议用 `STALE_PROPOSAL` 触发重新读取与重新生成入口。读取当前浏览器上下文的函数本身不写历史；实际记录走活动队列，再由 `saveActivity` 在同一数据库事务中保存状态和片段。
 
@@ -250,6 +251,18 @@ IndexedDB 名称继续为 `focuence-local-v2`，结构版本为 5；保留关闭
 `ai-provider.js` 隔离配置/密钥和有界 HTTP 请求，支持 OpenAI Chat Completions / Anthropic Messages；`prediction.js` 管理有限候选、远程排序和本机回退。`PREDICT_NEXT`、`COMPLETE_TEXT` 仅由明确点击调用，旧任务、配置、窗口或替换请求不能接收迟到结果。模型只能从本机提供的候选编号中选择资料；打开时再次验证。文字必须保留输入前缀，采用仅填入草稿，仍需显式保存。没有候选时如实提示，不虚构本机生成。
 
 AI 配置独立存于 `chrome.storage.local.focuenceAI`，不进入 IndexedDB 交换/恢复备份；后台只提供脱敏视图。可选 host 权限只在保存启用时为精确服务来源申请。清除服务/全部删除密钥，服务撤权取消在途响应。默认无外部生成请求，示例始终使用本机分支。详情见 [隐私说明](../PRIVACY.md) 与 [实施方案](plans/2026-10-28-004-continuity-and-prediction.md)。
+
+## 2.7 本机运行日志
+
+日志使用独立的 `focuence-diagnostics-v1` 数据库，结构版本 1，含 `meta` 与 `events` 两个表；任务数据库仍为版本 5。默认开启，保留最近 7 天、最多 5,000 条；启动、写入及每小时清理，读取/导出也排除过期项。内存待写队列上限 100 条，过载或写入失败计入本次后台运行的丢弃数量；数据库打开与事务有 2 秒超时，产品操作不等待日志写入。
+
+事件只接收类型、时间、随机编号、枚举状态与错误码、数量、耗时和服务报告的 tokens。不持久化任务/页面身份、标题、网址、输入、生成文字、原始异常或密钥。采集指纹只在内存去重，同状态最多每 5 分钟采样一次；状态样本不能当作访问成功率或注意力时长。
+
+`GET_DIAGNOSTICS {range:'24h'|'7d'}`、`EXPORT_DIAGNOSTICS` 独立于主任务数据库初始化，读取不会触发访问记录。`SET_DIAGNOSTICS {enabled}` 与 `CLEAR_DIAGNOSTICS` 会使旧请求的日志作用域失效，防止清空或重新启用后补写旧结果。日志故障不使任务保存、分组或 API 结果失败。清除历史同时清空日志但保留开关；清除全部重置开关为开启，清理失败需明确反馈。普通备份不包含日志及其开关。
+
+API 只统计实际发出的请求，分别记录服务耗时、结果与用量覆盖率；无 usage 显示未知。Anthropic 普通输入加缓存读/写，OpenAI 的缓存输入是输入子集，不重复加总。生成结果与界面展示分别记录；反馈校验随机 token、窗口、数据代次、有效期及候选索引。原样保存需要在内存验证候选文本并等待断点提交成功；输入手改或放弃不计候选保存。
+
+展示、打开/采用、原样保存按同次请求去重；只有本期有展示记录的后续行为进入比例，跨期或缺失关联另列。查找补全与断点补全分开，关闭 AI 的本机模式不算故障回退。暂停浏览记录时停止行为事件，无内容的采集/生成/模型/服务诊断由独立日志开关控制。指标用于排错和观察实际采用，不宣称预测准确率、专注提升或节省时间。
 
 ## 10. 交付限制
 
