@@ -25,6 +25,13 @@ test('Chat Completions uses bounded input, bearer auth and rejects redirects',as
   assert.equal(request.redirect,'error');assert.equal(request.credentials,'omit');assert.equal(JSON.parse(request.body).messages.length,2);
 });
 
+test('generation can use a smaller output budget without exceeding the provider hard limit',async()=>{
+  const f=fixture();await f.save();
+  for(const [requested,expected]of [[400,400],[450,450],[2000,1000],[0,1],[NaN,1000]]){
+    await f.ai.generate('system',{}, {maxTokens:requested});assert.equal(JSON.parse(f.calls.at(-1).request.body).max_tokens,expected);
+  }
+});
+
 test('Anthropic uses Messages and supports bases with or without v1',async()=>{
   let actual;
   const f=fixture({fetchImpl:async(url,request)=>{actual={url,request};return new Response(JSON.stringify({content:[{type:'thinking',thinking:'hidden'},{type:'text',text:'{"suggestions":[]}'}]}));}});

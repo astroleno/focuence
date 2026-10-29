@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Focuence 智序 · 本机优先",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "minimum_chrome_version": "120",
   "description": "用注意力地图、当前聚焦与分组接续工作。本机记录与语义找回，可选自己的 AI 服务预测下一步并补全文字。",
   "permissions": ["storage", "tabs", "tabGroups", "idle", "alarms", "offscreen", "sidePanel"],

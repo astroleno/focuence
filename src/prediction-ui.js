@@ -5,6 +5,7 @@ const button=(label,id,callback,disabled=false)=>{
   node.addEventListener('click',callback);return node;
 };
 const caption=text=>el('p',{class:'memory-caption'},text);
+const basisLabel=candidate=>({checkpoint:'已确认的继续页',saved:'当前任务保存资料',confirmed:'你已确认相关',semantic:'语义关联 · 尚未确认',keywords:'关键词关联 · 尚未确认',task:'其他任务 · 推测相关',shared:'其他任务 · 共享确认资料',transition:'已观察转向 · 推测需要'}[candidate.basis||candidate.method]||'候选线索');
 
 /** Candidates stay separate from confirmed text, task intent and observed map edges. */
 export function createPredictionUI({getState,request,getWindowId,showTask,notify,demo=false}) {
@@ -15,7 +16,7 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
     return JSON.stringify([state?.work?.epoch,state?.work?.current.taskId,state?.work?.current.revision,task?.id,task?.revision,state?.ai]);
   };
   const visible=host=>host?.isConnected&&(!host.closest('dialog')||host.closest('dialog').open);
-  const explanation=()=>demo?'示例使用本机线索，不连接 AI 服务。':getState()?.ai?.enabled?'点击时会把当前任务与有限候选标题发给已配置的 AI 服务。':'AI 未启用，使用本机任务、断点与已观察线索。';
+  const explanation=()=>demo?'示例使用本机线索，不连接 AI 服务。':getState()?.ai?.enabled?'点击时会把当前任务与有限候选标题发给已配置的 AI 服务。':'AI 未启用，按当前目标筛选本机断点、保存资料和关联线索。';
 
   function nextView() {
     const key=stateKey();
@@ -26,12 +27,12 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
   function drawNext() {
     const host=next.host;if(!host)return;
     host.replaceChildren(el('div',{class:'memory-heading'},el('h2',{},'下一步可能需要'),button(next.pending?'正在找线索…':'建议下一步','predict-next',loadNext,next.pending)),
-      caption('结合当前目标与访问线索，按需查看可能需要的页面或任务。'),caption(explanation()));
+      caption('优先接上当前断点；其他关联仅作为候选，由你决定。'),caption(explanation()));
     if(next.notice)host.append(el('p',{class:'prediction-status',role:'status'},next.notice));
     const result=next.result;
     if(!result)return;
     host.append(caption(result.source==='api'?'AI 推测 · 尚未确认':'本机线索 · 按需选择'));
-    if(!result.candidates.length)host.append(caption('还没有可用候选。先写一个任务目标，或保存相关页面。'));
+    if(!result.candidates.length)host.append(caption('暂时没有足够相关的候选。可补充任务目标、保存资料或分析相关页面。'));
     for(const candidate of result.candidates){
       const trigger=button(candidate.kind==='task'?'查看任务':'打开页面','prediction-open-'+encodeURIComponent(candidate.id),async()=>{
         trigger.disabled=true;
@@ -41,7 +42,7 @@ export function createPredictionUI({getState,request,getWindowId,showTask,notify
           if(response.taskId){const task=getState()?.tasks.find(item=>item.id===response.taskId);if(task)showTask(task);}
         }catch(error){notify(error.message,true);}finally{if(trigger.isConnected)trigger.disabled=false;}
       });
-      host.append(el('article',{class:'prediction-row'},el('div',{},el('h3',{},candidate.title),caption(candidate.reason)),trigger));
+      host.append(el('article',{class:'prediction-row'},el('div',{},el('h3',{},candidate.title),caption(basisLabel(candidate)),caption(candidate.reason)),trigger));
     }
   }
   async function loadNext() {

@@ -1,0 +1,93 @@
+{
+  "environment": "Ego Lite, real unpacked 2.6.1, bundled BGE; own four synthetic pages and three tasks. No API credential or new service grant installed in this iteration.",
+  "version": "2.6.1",
+  "demo": false,
+  "association": [
+    {
+      "title": "ESP32 I2S 麦克风音频采集指南",
+      "method": "confirmed",
+      "score": 2,
+      "related": true
+    },
+    {
+      "title": "ESP32 I2S 扬声器音频播放与错误处理",
+      "method": "semantic",
+      "score": 0.682878935405817,
+      "related": false
+    }
+  ],
+  "localCandidates": [
+    {
+      "title": "ESP32 I2S 麦克风音频采集指南",
+      "method": "checkpoint",
+      "inferred": false,
+      "reason": "来自你确认的继续页面。"
+    },
+    {
+      "title": "ESP32 I2S 扬声器音频播放与错误处理",
+      "method": "semantic",
+      "inferred": true,
+      "reason": "与已确认资料的文字相近，尚未确认相关。"
+    }
+  ],
+  "trackingStatus": "unfocused",
+  "attentionNativeWindow": {
+    "windowFocused": false,
+    "lastFocusedMatches": true,
+    "firstStatus": "active",
+    "firstTrackedOwn": true,
+    "status": "unfocused",
+    "acceptance": "partial",
+    "trackedOwn": false,
+    "visits": [
+      {
+        "title": "localhost",
+        "status": "active",
+        "foregroundMs": 474,
+        "endReason": "metadata-change"
+      },
+      {
+        "title": "ESP32 I2S 麦克风音频采集指南",
+        "status": "active",
+        "foregroundMs": 1130,
+        "endReason": "focus-lost"
+      }
+    ],
+    "transitions": [],
+    "limitation": "A real native Ego window produced a foreground visit; focus was lost before the second page could form a transition. The SDK-space cross-page collection is not accepted."
+  },
+  "localUI": {
+    "elapsedMs": 179,
+    "rows": [
+      "ESP32 I2S 麦克风音频采集指南\n\n已确认的继续页\n\n来自你确认的继续页面。\n\n打开页面",
+      "ESP32 I2S 扬声器音频播放与错误处理\n\n语义关联 · 尚未确认\n\n与已确认资料的文字相近，尚未确认相关。\n\n打开页面"
+    ]
+  },
+  "ownMapNodes": [
+    {
+      "tag": "ESP32",
+      "visits": 1,
+      "foregroundMs": 565
+    }
+  ],
+  "ownTaskCount": 3,
+  "groupingShortcut": {
+    "passed": true,
+    "view": "#pages"
+  },
+  "cleanup": {
+    "nativeWindow": "closed",
+    "associationCancelled": true,
+    "tasksDeleted": 3,
+    "removed": {
+      "pages": 1,
+      "segments": 2,
+      "vectors": 4
+    },
+    "remainingTasks": 0,
+    "settingsUnchanged": true,
+    "aiEnabled": false,
+    "hasAIKey": false,
+    "servicePermissionAdded": false
+  }
+}

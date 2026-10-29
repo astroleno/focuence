@@ -1,0 +1,91 @@
+{
+  "scope": "Production prediction and provider modules, Node fetch, four synthetic requests to the authorized DeepSeek account. Not browser latency or host-permission evidence.",
+  "checks": [
+    {
+      "name": "clear goal with unrelated pages and tasks",
+      "passed": true,
+      "elapsedMs": 1827,
+      "httpMs": 1807,
+      "maxOutputTokens": 450,
+      "inputTokens": 314,
+      "outputTokens": 213,
+      "status": 200,
+      "candidates": [
+        {
+          "title": "ESP32 I2S 麦克风音频采集指南",
+          "reason": "对应麦克风采集失败路径核对，且来自已确认继续页面。",
+          "basis": "checkpoint"
+        },
+        {
+          "title": "ESP32 I2S 扬声器音频播放与错误处理",
+          "reason": "标题覆盖扬声器播放与错误处理，可用于核对播放输出；相关性尚未确认。",
+          "basis": "semantic"
+        }
+      ]
+    },
+    {
+      "name": "next-step completion",
+      "passed": true,
+      "elapsedMs": 2044,
+      "httpMs": 2034,
+      "maxOutputTokens": 400,
+      "inputTokens": 244,
+      "outputTokens": 200,
+      "status": 200,
+      "candidates": [
+        "核对 I2S 麦克风采集失败时的返回值与错误日志，确认异常路径能被正确捕获。",
+        "核对扬声器播放输出与音频缓冲长度，确认采样数据完整、无丢帧。"
+      ]
+    },
+    {
+      "name": "search completion",
+      "passed": true,
+      "elapsedMs": 1547,
+      "httpMs": 1546,
+      "maxOutputTokens": 400,
+      "inputTokens": 246,
+      "outputTokens": 166,
+      "status": 200,
+      "candidates": [
+        "I2S 麦克风采集失败返回值 ESP32",
+        "I2S 扬声器播放输出缓冲 ESP32"
+      ]
+    },
+    {
+      "name": "sparse goal: only an explicitly saved continuation page",
+      "passed": true,
+      "elapsedMs": 1298,
+      "httpMs": 1298,
+      "maxOutputTokens": 450,
+      "inputTokens": 206,
+      "outputTokens": 102,
+      "status": 200,
+      "candidates": [
+        {
+          "title": "ESP32 I2S 麦克风音频采集指南",
+          "reason": "该页来自已确认的继续页面，与当前任务直接衔接；任务字段为空，先从此页继续最稳妥。",
+          "basis": "checkpoint"
+        }
+      ]
+    },
+    {
+      "name": "disabled API uses only the saved continuation, without unrelated padding",
+      "passed": true,
+      "source": "local",
+      "candidates": [
+        {
+          "title": "ESP32 I2S 麦克风音频采集指南"
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "calls": 4,
+    "inputTokens": 1010,
+    "outputTokens": 681
+  },
+  "sourceHashes": {
+    "src/prediction.js": "c452f0752453dd9fe181a4b1c18a500ec38ef7ee9b29235ee6f57dc59dee9028",
+    "src/ai-provider.js": "39c80530a50889f15bd29a7c34d3287e930dac33d68152e94184d2292565ff20"
+  }
+}

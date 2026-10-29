@@ -1,0 +1,68 @@
+{
+  "version": "2.6.1",
+  "sourceBaseline": "8b9447e7e43924a4685ef462772e2e19f577581a",
+  "sourceHashes": {
+    "src/prediction.js": "c452f0752453dd9fe181a4b1c18a500ec38ef7ee9b29235ee6f57dc59dee9028",
+    "src/ai-provider.js": "39c80530a50889f15bd29a7c34d3287e930dac33d68152e94184d2292565ff20",
+    "src/prediction-ui.js": "517d55b0d41505fb163ee6e9019392a7239dfd4a9f4f5139adb1be8263a0f93a",
+    "manifest.json": "636bc7396aed126dc88c2dabdd83af9efc8fe01ab1356a284bea821b8333a09b",
+    "package.json": "623e3f4f70359217d3dfca5395d1d9c6748b7c41fc5dcc3f956cbff5ca0932d8",
+    "package-lock.json": "692cc6c9467a074c1d37cb22144c1d3ae3b88124fb8ef535b342399b5b789504"
+  },
+  "checks": [
+    {
+      "name": "npm test",
+      "status": "passed",
+      "tests": 176,
+      "failed": 0
+    },
+    {
+      "name": "native continuity, grouping and responsive UI",
+      "status": "passed",
+      "checks": 17,
+      "report": "native.json"
+    },
+    {
+      "name": "native BGE, prediction and observed map continuity",
+      "status": "passed",
+      "checks": 6,
+      "report": "prediction-native.json"
+    },
+    {
+      "name": "npm run build",
+      "status": "passed"
+    },
+    {
+      "name": "npm run build:website",
+      "status": "passed",
+      "candidate": "focuence-site-e08cf707cbe2",
+      "publicDeployment": false
+    },
+    {
+      "name": "DeepSeek synthetic API quality and usage",
+      "status": "passed",
+      "calls": 4,
+      "report": "prediction-live.json"
+    },
+    {
+      "name": "Ego synthetic fixtures and local prediction",
+      "status": "passed",
+      "report": "ego.json"
+    },
+    {
+      "name": "Ego cross-page foreground to map transition",
+      "status": "not_verified",
+      "report": "ego.json"
+    },
+    {
+      "name": "owned fixture server stopped",
+      "status": "passed"
+    },
+    {
+      "name": "changed source and evidence credential scan",
+      "status": "passed",
+      "filesScanned": 23,
+      "credentialMatches": 0
+    }
+  ]
+}

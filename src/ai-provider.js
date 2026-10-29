@@ -76,7 +76,7 @@ export function createAIService({storage, permissions, fetchImpl=globalThis.fetc
     },
     async clear() {await storage.remove('focuenceAI');cancel();config={...EMPTY};return view();},
     cancel,
-    async generate(system, input, {isCurrent=()=>true}={}) {
+    async generate(system, input, {isCurrent=()=>true,maxTokens=1000}={}) {
       const selected={...config}, expected=version;
       const current=()=>version===expected&&isCurrent();
       if(!selected.enabled)throw error('AI_DISABLED','AI 服务未启用，使用本机线索。');
@@ -88,7 +88,7 @@ export function createAIService({storage, permissions, fetchImpl=globalThis.fetc
       const timer=setTimeout(()=>{timedOut=true;controller.abort();},timeoutMs);
       try {
         const anthropic=selected.protocol==='anthropic';
-        const body={model:selected.model,max_tokens:1000,messages:[...(anthropic?[]:[{role:'system',content:system}]),{role:'user',content:JSON.stringify(input)}],stream:false};
+        const body={model:selected.model,max_tokens:Number.isInteger(maxTokens)?Math.max(1,Math.min(1000,maxTokens)):1000,messages:[...(anthropic?[]:[{role:'system',content:system}]),{role:'user',content:JSON.stringify(input)}],stream:false};
         if(anthropic)body.system=system;
         const response=await fetchImpl(endpoint.url,{method:'POST',redirect:'error',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal,
           headers:{'Content-Type':'application/json',...(new URL(selected.baseUrl).hostname==='opencode.ai'?{'x-opencode-session':sessionId}:{}),
