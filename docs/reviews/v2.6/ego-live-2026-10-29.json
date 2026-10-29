@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-29",
+  "sourceCommit": "86a1985205aa19273ac99dd1ac775d60517dc484",
+  "environment": {
+    "browser": "Ego Lite",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "extensionVersion": "2.6.0",
+    "demo": false,
+    "syntheticPages": 4,
+    "syntheticTasks": 3
+  },
+  "association": {
+    "status": "done",
+    "model": "BGE Small · 中文 · q8",
+    "completed": 4,
+    "total": 4,
+    "unconfirmedCandidate": "ESP32 I2S 扬声器音频播放与错误处理",
+    "method": "semantic",
+    "similarityScore": 0.6800419582735411,
+    "irrelevantBrowserAndPhotographyPagesReturned": false
+  },
+  "localNext": {
+    "elapsedMs": 7,
+    "rows": [
+      "ESP32 I2S 麦克风音频采集指南\n\n来自你确认的继续页面。\n\n打开页面",
+      "ESP32 I2S 扬声器音频播放与错误处理\n\n你已确认与当前聚焦相关。\n\n打开页面",
+      "产品摄影自然光与构图参考\n\n保存在「验收 · 产品摄影」，可用于恢复工作。\n\n打开页面",
+      "验收 · 浏览器分组\n\n来自你保存的进行中任务。\n\n查看任务"
+    ]
+  },
+  "apiNext": {
+    "elapsedMs": 1882,
+    "text": "下一步可能需要\n建议下一步\n\n结合当前目标与访问线索，按需查看可能需要的页面或任务。\n\n点击时会把当前任务与有限候选标题发给已配置的 AI 服务。\n\nAI 推测，采用前请核对。\n\nAI 推测 · 尚未确认\n\nESP32 I2S 麦克风音频采集指南\n\n对应核对 I2S 麦克风采集失败路径的下一步。\n\n打开页面\nESP32 I2S 扬声器音频播放与错误处理\n\n对应核对扬声器播放输出与错误处理的下一步。\n\n打开页面",
+    "rows": [
+      "ESP32 I2S 麦克风音频采集指南\n\n对应核对 I2S 麦克风采集失败路径的下一步。\n\n打开页面",
+      "ESP32 I2S 扬声器音频播放与错误处理\n\n对应核对扬声器播放输出与错误处理的下一步。\n\n打开页面"
+    ],
+    "provider": "DeepSeek",
+    "model": "deepseek-flash",
+    "protocol": "anthropic"
+  },
+  "completion": {
+    "elapsedMs": 1542,
+    "text": "补全文字\n\n点击后发送此输入及任务目标、确认断点；候选采用后才填入。\n\nAI 推测，采用前请核对。\n\nAI 文字候选\n\n核对 I2S 麦克风采集失败路径的返回值，并实测扬声器播放输出与音频缓冲是否正常。\n\n采用\n\n核对 I2S 麦克风采集失败时的返回值与错误码，再播放测试音频确认扬声器输出及缓冲无异常。\n\n采用\n\n核对麦克风采集失败返回值与扬声器播放输出，并检查音频缓冲是否存在溢出或断帧。\n\n采用\n忽略候选",
+    "choices": [
+      "核对 I2S 麦克风采集失败路径的返回值，并实测扬声器播放输出与音频缓冲是否正常。",
+      "核对 I2S 麦克风采集失败时的返回值与错误码，再播放测试音频确认扬声器输出及缓冲无异常。",
+      "核对麦克风采集失败返回值与扬声器播放输出，并检查音频缓冲是否存在溢出或断帧。"
+    ],
+    "typedPrefix": "核对",
+    "inputUnchangedBeforeAcceptance": true,
+    "acceptanceOnlyUpdatesDraft": true,
+    "confirmedCheckpointUnchanged": true,
+    "draftDiscarded": true
+  },
+  "tokenUsageRecorded": false,
+  "attentionCollection": {
+    "fixtureForegroundSegments": 0,
+    "status": "not_verified",
+    "reason": "The automation space did not remain a focused foreground browsing context."
+  },
+  "cleanup": {
+    "tasksDeleted": 3,
+    "vectors": 4,
+    "pages": 0,
+    "segments": 0,
+    "keyCleared": true,
+    "serviceGrantRemoved": true,
+    "fixturePagesClosed": 4,
+    "settingsRestored": true,
+    "remainingSyntheticTasks": 0,
+    "aiEnabled": false,
+    "hasKey": false,
+    "deepseekPermission": false
+  }
+}
