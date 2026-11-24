@@ -7,7 +7,7 @@ const {control,rpc,windowId,base,browser}=env;
 const report={environment:'Isolated Chrome for Testing; real MV3, bundled BGE, native tabs/groups/IndexedDB. Foreground means the browser API state in this isolated test, not an Ego OS-focus acceptance.',checks:[],errors:[]};
 const check=(name,detail={})=>{report.checks.push({name,status:'passed',detail});console.log(name);};
 try{
-  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{tracking:true,semantic:true}});
+  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{tracking:true,semantic:true,idleSeconds:3600}});
   const titles=['ESP32 I2S 麦克风音频采集指南','ESP32 I2S 扬声器音频播放与错误处理','Chrome extension 标签页分组与键盘焦点管理 API','产品摄影自然光与构图参考'];
   const ids=await control.eval(async({base,windowId,titles})=>{
     const result=[];for(const title of titles)result.push((await chrome.tabs.create({windowId,url:base+'/fixture/'+encodeURIComponent(title),active:false})).id);return result;
@@ -29,7 +29,9 @@ try{
   assert(prediction.candidates.some(item=>item.title===titles[1]&&item.method==='semantic'&&item.inferred));
   const after=await rpc('EXPORT_DATA');assert.deepEqual(after.tasks,before.tasks);assert.deepEqual(after.relations,before.relations);assert.deepEqual(after.segments,before.segments);
   check('Real BGE association reaches local next prediction before manual confirmation, with no unrelated padding or persistent edits',{elapsedMs:Date.now()-started,associationScore:inferred.score,candidates:prediction.candidates.map(({title,method,inferred})=>({title,method,inferred}))});
-  await control.send('Page.bringToFront');await control.click('#nav-tasks');await control.click('#predict-next');
+  await control.send('Page.bringToFront');await control.click('#nav-tasks');
+  await until(()=>control.eval(name=>document.querySelector('.memory-current h2')?.textContent===name,task.name),'current task visible');
+  await control.click('#predict-next');
   await until(()=>control.eval(()=>document.querySelectorAll('.prediction-row').length===2),'two focused predictions');
   assert((await control.eval(()=>document.querySelector('#next-prediction').innerText)).includes('语义关联 · 尚未确认'));
   await control.eval(()=>document.querySelector('#next-prediction').scrollIntoView({block:'start'}));

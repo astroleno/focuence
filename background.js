@@ -45,6 +45,32 @@ function persistSession() {
   return job;
 }
 
+async function loadMemoryJobs() {
+  const { focuenceMemoryJobs: saved } = await chrome.storage.session.get('focuenceMemoryJobs');
+  if (Array.isArray(saved)) return saved;
+  if (saved?.format !== 'gzip' || typeof saved.data !== 'string') return [];
+  try {
+    const bytes = Uint8Array.from(atob(saved.data), character => character.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const jobs = await new Response(stream).json();
+    return Array.isArray(jobs) ? jobs : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveMemoryJobs(jobs) {
+  // Each open search keeps its full result snapshot across service worker restarts.
+  // Compress it before writing so large histories can be searched from several views.
+  const stream = new Blob([JSON.stringify(jobs)]).stream().pipeThrough(new CompressionStream('gzip'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  const chunks = [];
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 32768)));
+  }
+  await chrome.storage.session.set({ focuenceMemoryJobs: { format: 'gzip', data: btoa(chunks.join('')) } });
+}
+
 function excluded(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -138,8 +164,8 @@ async function init() {
       historyRows:async()=>{if(!settings.historyEnabled)return[];if(!await chrome.permissions.contains({permissions:['history']})){await browserHistory.disconnect();return[];}return store.listBrowserHistory({since:historyRange(settings.historyDays).from});},
       activateTab: async (windowId, tabId) => { await chrome.windows.update(windowId, { focused: true }); await chrome.tabs.update(tabId, { active: true }); },
       focusResult:async(evidence,url)=>{const tab=await chrome.tabs.get(evidence.tabId).catch(()=>null);if(!tab||tab.incognito||normalizeUrl(tab.url)!==url||excluded(tab.url))throw Object.assign(new Error('原来的标签页已经变化，请重新查找。'),{code:'STALE_SUGGESTION'});await chrome.windows.update(tab.windowId,{focused:true});await chrome.tabs.update(tab.id,{active:true});return{focused:true,tabId:tab.id,windowId:tab.windowId};},
-      loadJobs: async () => { const saved = (await chrome.storage.session.get('focuenceMemoryJobs')).focuenceMemoryJobs; return Array.isArray(saved) ? saved : []; },
-      saveJobs: values => chrome.storage.session.set({ focuenceMemoryJobs: values }),
+      loadJobs: loadMemoryJobs,
+      saveJobs: saveMemoryJobs,
       embed: (items, options = {}) => {
         const epoch = dataEpoch,queuedAt=performance.now(),log=diagnostics.scope();
         return queueSemantic(async()=>{const started=performance.now();
