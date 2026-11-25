@@ -147,6 +147,7 @@ test('paged evidence keeps matching visits and original order with newly added s
   assert.equal(job.results[0].title,'其他标题');
   assert.equal(job.results[0].snippet,'实际匹配标题');
   const before=await memory.searchResults({jobId:job.id,entryId,offset:25},true);
+  assert.equal(before.firstMatchedIndex,1);
   visits=[{id:'new',url,title:'实际匹配标题',visitedAt:at+10},...visits.toReversed()];
   const after=await memory.searchResults({jobId:job.id,entryId,offset:25},true);
   assert.deepEqual(after,before);
@@ -154,6 +155,31 @@ test('paged evidence keeps matching visits and original order with newly added s
   assert.deepEqual(after.items.map(item=>[item.id,item.matched]),[25,26,27,28,29].map(i=>['visit:'+i,Boolean(i%2)]));
   visits=visits.filter(visit=>visit.id!=='visit:0');
   await assert.rejects(memory.searchResults({jobId:job.id,entryId,offset:25},true),{code:'STALE_SUGGESTION'});
+});
+
+test('evidence points to the first original match beyond the page and rejects loss of access', async () => {
+  const f = fixture(), at = 1700000000000, url = 'https://matches.test/page', query = '唯一次匹配标题';
+  const visits = Array.from({length: 53}, (_, i) => ({id: `visit:${i}`, url,
+    title: i === 50 ? query : '普通标题', visitedAt: at - i}));
+  let allowed = true;
+  const memory = createWorkspace({...f.deps, allowed: () => allowed, historyRows: async () => visits});
+  await memory.initialize();
+  const job = await memory.createJob({query, scope: 'browser'}), entryId = job.results[0].id;
+  const first = await memory.searchResults({jobId: job.id, entryId}, true);
+  const match = await memory.searchResults({jobId: job.id, entryId, offset: 50}, true);
+  const located = await memory.searchResults({jobId: job.id, entryId, offset: 25, locateMatch: true}, true);
+  assert.deepEqual([first.total, first.items.length, first.firstMatchedIndex], [53, 25, 50]);
+  assert(first.items.every(item => !item.matched));
+  assert.deepEqual(match.items.map(item => [item.id, item.matched]), [['visit:50', true], ['visit:51', false], ['visit:52', false]]);
+  assert.equal(match.firstMatchedIndex, 50);
+  assert.deepEqual(located, match);
+  const browse = await memory.createJob({scope: 'browser', clientId: 'browse'});
+  const unmatched = await memory.searchResults({jobId: browse.id, entryId, offset: 25, locateMatch: true}, true);
+  assert.equal(unmatched.offset, 25);
+  assert(!Object.hasOwn(unmatched, 'firstMatchedIndex'));
+  assert(!Object.hasOwn(unmatched, 'match'));
+  allowed = false;
+  await assert.rejects(memory.searchResults({jobId: job.id, entryId}, true), {code: 'STALE_SUGGESTION'});
 });
 
 test('search explains the original evidence that contributed the winning passage',async()=>{

@@ -516,8 +516,11 @@ export function createWorkspace(deps) {
       if(!entry)throw failure('STALE_SUGGESTION','这条资料已不可用。');
       const ranked=rankMemory([entry],job.query,job.scores,1,true,true).results[0];
       const matched=new Set(ranked?.matchedEvidenceKeys||[]);
-      const items=entry.evidence.slice(offset,offset+limit).map(item=>({...item,matched:matched.has(evidenceKey(item))}));
-      return{entryId:entry.id,title:entry.title,items,total:entry.evidence.length,offset,limit,
+      const firstMatchedIndex=matched.size ? entry.evidence.findIndex(item=>matched.has(evidenceKey(item))) : -1;
+      const evidenceOffset=message.locateMatch === true && firstMatchedIndex >= 0 ? Math.floor(firstMatchedIndex/limit)*limit : offset;
+      const items=entry.evidence.slice(evidenceOffset,evidenceOffset+limit).map(item=>({...item,matched:matched.has(evidenceKey(item))}));
+      return{entryId:entry.id,title:entry.title,items,total:entry.evidence.length,offset:evidenceOffset,limit,
+        ...(firstMatchedIndex >= 0 ? {firstMatchedIndex} : {}),
         ...(matched.size ? {match:{method:ranked.method,field:ranked.snippetField,snippet:ranked.snippet,sources:ranked.matchedSources}} : {})};
     }
     const ranked=rankMemory(prepared.entries,job.query,job.scores,Infinity,true),results=ranked.results.slice(offset,offset+limit);

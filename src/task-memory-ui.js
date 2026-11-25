@@ -13,6 +13,7 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   let working = false, dialog = null, returnFocus = '', beforeClose = null, searchJob = null, searchEpoch = null, expanded = false;
   let query = '', scope = 'all', searchSerial = 0, associationSerial = 0, pollingAssociation = '';
   let searchNodes, searchStart = Promise.resolve(), searchComposing = false, paginationSerial = 0, openingResult = false;
+  let evidenceSerial = 0;
   let associationJob, associationNodes;
   let currentDetailOpen = false, supportOpen = false;
   const shownPrompts = new Set();
@@ -47,10 +48,10 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     if (working || (!force && beforeClose?.() === false)) return;
     dialog?.close();
   }
-  function modal(title, description) {
+  function modal(title, description, triggerId = document.activeElement?.id || '') {
     // A nested editor and a refreshed manager belong to the same dialog flow.
     // Capture the outside trigger before removing any element from that flow.
-    if (!dialog?.open) returnFocus = document.activeElement?.id || '';
+    if (!dialog?.open) returnFocus = triggerId;
     dialog?.remove(); beforeClose = null;
     const frame = el('dialog', {class: 'memory-dialog', 'aria-labelledby': 'memory-dialog-title'},
       el('div', {class: 'memory-heading'}, el('h2', {id: 'memory-dialog-title'}, title), action('关闭', 'close')),
@@ -492,18 +493,45 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
     if (focusId && document.activeElement !== focused) (document.getElementById(focusId) || nodes.root.querySelector('#memory-search-submit'))?.focus({preventScroll: true});
     if (scroller && scroller.scrollTop !== scrollTop) scroller.scrollTop = scrollTop;
   }
-  async function resultEvidence(data){
-    const result=await request('GET_MEMORY_EVIDENCE',{jobId:data.jobId,entryId:data.entryId,offset:Number(data.offset)||0});
-    const frame=modal(result.title,'来源时间分别表示访问、保存或修改；浏览器标题是当前元数据。');
+  async function resultEvidence(target){
+    const {jobId,entryId,offset:pageOffset}=target.dataset;
+    const locateMatch=target.dataset.action==='memory-locate-matched-evidence';
+    const nodes=searchNodes, search=searchSerial, triggerDialog=dialog, wasOpen=Boolean(dialog?.open);
+    if (jobId !== searchJob?.id || !nodes?.root.isConnected ||
+      !(wasOpen ? triggerDialog.contains(target) : nodes.root.contains(target))) return;
+    const serial=++evidenceSerial;
+    const resultPage=paginationSerial, resultOffset=offset;
+    const isCurrent=()=>serial===evidenceSerial && search===searchSerial && searchJob?.id===jobId &&
+      resultPage===paginationSerial && resultOffset===offset &&
+      !(searchEpoch != null && work().epoch > searchEpoch) && searchNodes===nodes && nodes.root.isConnected &&
+      triggerDialog===dialog && wasOpen===Boolean(dialog?.open);
+    let result;
+    try { result=await request('GET_MEMORY_EVIDENCE',{jobId,entryId,offset:Number(pageOffset)||0,...(locateMatch ? {locateMatch} : {})}); }
+    catch(error) { if (isCurrent()) notify(error.message,true); return; }
+    if (!isCurrent()) return;
+    const frame=modal(result.title,'来源时间分别表示访问、保存或修改；浏览器标题是当前元数据。',target.id);
+    const page={jobId,entryId};
+    const first=result.firstMatchedIndex;
     if(result.match)frame.append(el('section',{class:'memory-record'},
       el('h3',{},matchLabel(result.match.method,result.match.field,result.match.sources)),
-      el('p',{class:'memory-snippet'},result.match.snippet)));
-    frame.append(...result.items.map((item,index)=>el('article',{class:'memory-record'},el('h3',{},SOURCE_LABELS[item.source]||item.source),small(item.timeType+' · '+(stamp(item.at)||'时间未知')+(item.endAt?' — '+stamp(item.endAt):'')),
-      item.title&&small(item.title),item.matched&&small('含匹配片段'),
+      el('p',{class:'memory-snippet'},result.match.snippet),
+      Number.isInteger(first)&&(first<result.offset||first>=result.offset+result.limit)&&
+        action('定位匹配记录','locate-matched-evidence',{...page,offset:result.offset})));
+    let focusRow;
+    frame.append(...result.items.map((item,index)=>{
+      const row = el('article',{class:'memory-record memory-evidence-row',tabindex:item.matched ? -1 : undefined,
+        'aria-labelledby':item.matched ? `memory-evidence-source-${index}` : undefined,
+        'aria-describedby':item.matched ? `memory-evidence-match-${index}` : undefined},
+      el('h3',{id:item.matched ? `memory-evidence-source-${index}` : undefined},SOURCE_LABELS[item.source]||item.source),small(item.timeType+' · '+(stamp(item.at)||'时间未知')+(item.endAt?' — '+stamp(item.endAt):'')),
+      item.title&&small(item.title),item.matched&&el('p',{class:'memory-caption',id:`memory-evidence-match-${index}`},'含匹配片段'),
       item.windowId!=null&&small('窗口 '+item.windowId),item.source==='history'&&small('当时任务：'+(taskById(item.observedTaskId)?.name||'未指定或已删除')),
       (item.taskIds||[]).length>0&&small('目前关联：'+item.taskIds.map(id=>taskById(id)?.name||'已删除任务').join('、')),item.url&&small(item.url),
-      item.segmentId&&showEvidence&&action('定位访问片段','evidence',{segmentId:item.segmentId,slot:index}),item.taskId&&taskById(item.taskId)&&action('查看任务','result-task',{id:item.taskId,slot:index}))));
-    frame.append(el('div',{class:'memory-actions'},result.offset>0&&action('上一页','result-evidence',{...data,offset:Math.max(0,result.offset-result.limit)}),small((result.offset+1)+'—'+Math.min(result.offset+result.limit,result.total)+' / '+result.total),result.offset+result.limit<result.total&&action('下一页','result-evidence',{...data,offset:result.offset+result.limit})));
+      item.segmentId&&showEvidence&&action('定位访问片段','evidence',{segmentId:item.segmentId,slot:index}),item.taskId&&taskById(item.taskId)&&action('查看任务','result-task',{id:item.taskId,slot:index}));
+      if (locateMatch && item.matched && result.offset+index===first) focusRow=row;
+      return row;
+    }));
+    frame.append(el('div',{class:'memory-actions'},result.offset>0&&action('上一页','result-evidence',{...page,offset:Math.max(0,result.offset-result.limit)}),small((result.offset+1)+'—'+Math.min(result.offset+result.limit,result.total)+' / '+result.total),result.offset+result.limit<result.total&&action('下一页','result-evidence',{...page,offset:result.offset+result.limit})));
+    focusRow?.focus();
   }
   function patterns() {
     const data = work().patterns;
@@ -527,13 +555,14 @@ export function createTaskMemoryUI({ getState, request, refresh, render, notify,
   async function handle(name, target) {
     const data = target.dataset, task = taskById(data.id);
     if (name === 'direct-transition' && beforeClose?.(() => handle(name, target).catch(error => notify(error.message, true))) === false) return;
+    if (['result-library', 'result-page', 'result-task', 'evidence'].includes(name)) evidenceSerial++;
     if (name === 'close') return close();
     if (name === 'checkpoint') return task && checkpoint(task);
     if (name === 'pause') return task && checkpoint(task, {pause: true});
     if (name === 'manage') return task && manager(task);
     if (name === 'result-task') return task && taskDetail(task);
     if (name === 'evidence') return showEvidence?.(data.segmentId);
-    if (name === 'result-evidence') return resultEvidence(data);
+    if (name === 'result-evidence' || name === 'locate-matched-evidence') return resultEvidence(target);
     if (name === 'result-library') return showLibrary?.(data.id);
     if (name === 'clear-filters') {
       filters = {from: '', until: '', domain: '', taskId: '', taskMode: 'associated'};
