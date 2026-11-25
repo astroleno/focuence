@@ -20,11 +20,29 @@ function evidenceRows(entry) {
   });
 }
 
-function indexSearchDocuments(entries) {
+function buildSearchDocuments(entries) {
   const documents = searchDocuments(entries);
-  const byEntry = new Map(entries.map(entry => [entry.id, entry.searchDocuments = []]));
+  const byEntry = new Map(entries.map(entry => [entry.id, []]));
   for (const document of documents) byEntry.get(document.entryId).push(document);
-  return documents;
+  const inputs = entries.map(({id,searchParts,searchVariants}) => ({id,searchParts,searchVariants}));
+  const signature = stableHash(JSON.stringify(documents.map(({item}) => [item.id,item.textHash])));
+  return { documents, byEntry, inputs, signature };
+}
+
+function sameDocumentInputs(inputs, entries) {
+  return inputs.length === entries.length && entries.every(({id,searchParts,searchVariants},index) => {
+    const previous = inputs[index];
+    if (id !== previous.id || searchVariants.length !== previous.searchVariants.length) return false;
+    if (!searchVariants.every(({text,evidenceKeys},i) => {
+      const variant = previous.searchVariants[i];
+      return text === variant.text && evidenceKeys.length === variant.evidenceKeys.length &&
+        evidenceKeys.every((key,j) => key === variant.evidenceKeys[j]);
+    })) return false;
+    // The combined evidence text can match even when library fields or their boundaries differ.
+    if (!searchParts || !previous.searchParts) return searchParts === previous.searchParts;
+    return searchParts.length === previous.searchParts.length && searchParts.every(({field,text},i) =>
+      field === previous.searchParts[i].field && text === previous.searchParts[i].text);
+  });
 }
 
 /** One background-owned coordinator. Mutations run in the activity queue. */
@@ -32,7 +50,7 @@ export function createWorkspace(deps) {
   const { store } = deps;
   const now = deps.now || Date.now;
   let state;
-  const jobs = new Map(), running = new Set();
+  const jobs = new Map(), running = new Set(), searchDocumentCache = new Map();
   let writes = Promise.resolve();
 
   const clone = value => structuredClone(value);
@@ -101,6 +119,7 @@ export function createWorkspace(deps) {
   }
 
   function markStale(job, error) {
+    searchDocumentCache.delete(job.id);
     job.status = 'stale'; job.error = error;
     job.results = []; job.candidates = []; job.scores = {}; job.queryVector = null;
     for (const key of ['documents','snapshots','seenResults','rankingTimes','textHashes','evidenceSnapshot']) delete job[key];
@@ -307,7 +326,9 @@ export function createWorkspace(deps) {
       taskId: task?.id, taskRevision: task?.revision, contextRevision: current.revision, scores: {}, queryVector: null, results: [], candidates: [], error: '' };
     const prepared = await prepareJob(job, data);
     if (job.epoch !== deps.epoch()) throw failure('STALE_SUGGESTION', '资料已经变化，请重新查找或分析。');
-    job.signature = prepared.signature; job.total = prepared.documents.length;
+    const searchIndex = task ? null : buildSearchDocuments(prepared.entries);
+    const {signature,documents} = searchIndex || prepared;
+    job.signature = signature; job.total = documents.length;
     if (!task) job.evidenceSnapshot = Object.fromEntries(prepared.entries.map(entry => [entry.id,
       evidenceRows(entry).map(({key,evidence,hash}) => evidence.tabId == null ? [key,hash] : [key,hash,evidence.at])]));
     job.snapshots = kind === 'association' ? prepared.tabs.map(candidateSnapshot) : [];
@@ -315,9 +336,12 @@ export function createWorkspace(deps) {
     else { const ranked=rankMemory(prepared.entries,query,{},50,true);job.results=ranked.results;job.resultTotal=ranked.total;job.seenResults=ranked.results.map(item=>item.id); }
     for (const [id, old] of jobs) if ((old.kind === kind && old.windowId === windowId && old.clientId === job.clientId) || now() - old.at > 3600000) {
       old.status = 'cancelled'; old.error = '这次分析已由新请求替代或已过期。'; old.results = []; old.candidates = []; old.queryVector = null;
+      searchDocumentCache.delete(id);
       jobs.delete(id);
     }
-    jobs.set(job.id, job); await persistJobs(); return publicJob(job);
+    jobs.set(job.id, job);
+    if (searchIndex && job.status === 'queued') searchDocumentCache.set(job.id, searchIndex);
+    await persistJobs(); return publicJob(job);
   }
 
   async function prepareJob(job, known) {
@@ -354,8 +378,7 @@ export function createWorkspace(deps) {
     });
     const entries = searchCorpus({ tabs, ...data, segments,browserVisits,library,currentWindowId:job.windowId,
       scope: job.scope,filters:job.filters,allowed:deps.allowed,evidenceKeys });
-    const documents = job.evidenceSnapshot ? [] : indexSearchDocuments(entries);
-    return { ...data, tabs, documents, entries, signature: stableHash(JSON.stringify(documents.map(item => [item.item.id, item.item.textHash]))) };
+    return { ...data, tabs, entries };
   }
 
   async function advanceJob(message) {
@@ -400,7 +423,11 @@ export function createWorkspace(deps) {
         if (['CANCELLED', 'STALE_SUGGESTION'].includes(error.code)) markStale(job,error.message);
         else { job.status = 'failed'; job.error = error.message; }
       }
-    } finally { running.delete(job.id); await persistJobs(); }
+    } finally {
+      running.delete(job.id);
+      if (job.status !== 'queued') searchDocumentCache.delete(job.id);
+      await persistJobs();
+    }
     return publicJob(job);
   }
 
@@ -428,9 +455,12 @@ export function createWorkspace(deps) {
         taskIds:[...new Set(evidence.flatMap(item => item.taskIds))],evidence,searchVariants,searchTexts,text:searchTexts.join('\n'),
         visitedAt:latest?.at || 0,timeType:latest?.timeType || '时间未知'};
     });
-    const documents = indexSearchDocuments(entries);
-    return { ...prepared, documents, entries,
-      signature: stableHash(JSON.stringify(documents.map(item => [item.item.id, item.item.textHash]))) };
+    const cached = searchDocumentCache.get(job.id);
+    const index = cached && sameDocumentInputs(cached.inputs, entries) ? cached : buildSearchDocuments(entries);
+    if (index.signature === job.signature && jobs.get(job.id) === job && job.epoch === deps.epoch() &&
+      ['queued', 'running'].includes(job.status)) searchDocumentCache.set(job.id, index);
+    for (const entry of entries) entry.searchDocuments = index.byEntry.get(entry.id);
+    return { ...prepared, documents: index.documents, entries, signature: index.signature };
   }
 
   async function currentSearch(job) {
@@ -452,7 +482,10 @@ export function createWorkspace(deps) {
 
   async function cancelJob(message) {
     const job = jobs.get(message.jobId);
-    if (job) { job.status = 'cancelled'; job.error = '已停止本次分析，保留已找到的结果。'; await persistJobs(); }
+    if (job) {
+      searchDocumentCache.delete(job.id);
+      job.status = 'cancelled'; job.error = '已停止本次分析，保留已找到的结果。'; await persistJobs();
+    }
     return job ? publicJob(job) : { status: 'cancelled' };
   }
 

@@ -178,6 +178,94 @@ test('search explains the original evidence that contributed the winning passage
   assert.deepEqual([result.results[0].method,result.results[0].snippetField,result.results[0].matchedSources],['semantic','note',['library']]);
 });
 
+test('search processes all 1100 documents in snapshot order across a worker reload', async () => {
+  const f = fixture(), at = 1700000000000, query = '完整搜索范围';
+  let visits = Array.from({length: 1100}, (_, i) => ({id: `visit:${i}`, url: `https://bulk.test/${i}`, title: query, visitedAt: at - i}));
+  visits.push({...visits[0], id: 'visit:duplicate'});
+  let reads = 0;
+  const deps = {...f.deps, historyRows: async () => {reads++; return structuredClone(visits);}};
+  let memory = createWorkspace(deps);
+  await memory.initialize();
+  const job = await memory.createJob({query, scope: 'browser'});
+  assert.equal(job.total, 1100);
+  const initial = await memory.searchResults({jobId: job.id, offset: 1050, limit: 50});
+  const detail = await memory.searchResults({jobId: job.id, entryId: job.results[0].id}, true);
+  const batches = [];
+  let queries = 0;
+  f.infer(async items => {
+    if (items[0].id.startsWith('mem:query:')) queries++;
+    else batches.push(items.map(item => item.id));
+    return {vectors: new Map(items.map(item => [item.id, [1, 0]]))};
+  });
+  reads = 0;
+  assert.equal((await memory.advanceJob({jobId: job.id})).completed, 24);
+  const [persisted] = await deps.loadJobs();
+  for (const key of ['documents', 'entries', 'inputs', 'byEntry']) assert(!Object.hasOwn(persisted, key));
+  visits.reverse();
+  memory = createWorkspace(deps);
+  await memory.initialize();
+  let result;
+  for (let i = 1; i < 46; i++) result = await memory.advanceJob({jobId: job.id});
+  assert.equal(reads, 92);
+  assert.equal(queries, 1);
+  assert.deepEqual(batches.map(batch => batch.length), [...Array(45).fill(24), 20]);
+  const expectedOrder = visits.filter(visit => visit.id !== 'visit:duplicate')
+    .map(visit => pageIdForUrl(visit.url)).sort((a, b) => a.localeCompare(b));
+  assert.deepEqual(batches.flat().map(id => id.split(':')[2]), expectedOrder);
+  assert.deepEqual([result.status, result.completed, result.resultTotal], ['done', 1100, 1100]);
+  assert.deepEqual((await memory.searchResults({jobId: job.id, offset: 1050, limit: 50})).results, initial.results);
+  assert.deepEqual(await memory.searchResults({jobId: job.id, entryId: job.results[0].id}, true), detail);
+});
+
+test('search rejects changed library passage boundaries before and during inference', async () => {
+  for (const duringInference of [false, true]) {
+    const f = fixture(), at = 1700000000000, delimiter = '\n自己的笔记：\n';
+    const item = {id: 'material', url: 'https://material.test/page', title: '材料标题', kind: 'excerpt',
+      quote: `摘录${delimiter}第一段`, note: '第二段', createdAt: at, updatedAt: at, taskIds: []};
+    f.store.getLibraryItems = async () => [item];
+    const changeBoundaries = () => {
+      item.quote = '摘录';
+      item.note = `第一段${delimiter}第二段`;
+    };
+    let embedded = 0;
+    f.infer(async items => {
+      embedded++;
+      if (!items[0].id.startsWith('mem:query:')) changeBoundaries();
+      return {vectors: new Map(items.map(entry => [entry.id, [1, 0]]))};
+    });
+    await f.memory.initialize();
+    const job = await f.memory.createJob({query: '摘录', scope: 'library'});
+    if (!duringInference) changeBoundaries();
+    const result = await f.memory.advanceJob({jobId: job.id});
+    assert.deepEqual([result.status, result.completed, result.results], ['stale', 0, []]);
+    assert.equal(embedded, duringInference ? 2 : 0);
+  }
+});
+
+test('cancelling one in-flight search preserves another client’s search', async () => {
+  const f = fixture();
+  await f.memory.initialize();
+  const first = await f.memory.createJob({query: '浏览器', scope: 'window', clientId: 'first'});
+  const second = await f.memory.createJob({query: '第二个任务', scope: 'tasks', clientId: 'second'});
+  let started, finish;
+  const ready = new Promise(resolve => {started = resolve;});
+  f.infer(async items => {
+    const result = {vectors: new Map(items.map(item => [item.id, [1, 0]]))};
+    if (items[0].id === `mem:query:${first.id}`) {
+      await new Promise(resolve => {finish = resolve; started();});
+    }
+    return result;
+  });
+  const pending = f.memory.advanceJob({jobId: first.id});
+  await ready;
+  await f.memory.cancelJob({jobId: first.id});
+  const result = await f.memory.advanceJob({jobId: second.id});
+  finish();
+  assert.equal((await pending).status, 'cancelled');
+  assert.equal(result.status, 'done');
+  assert.equal(result.results[0].id, 'task:b');
+});
+
 test('task text remains searchable without exposing its excluded checkpoint URL',async()=>{
   const f=fixture(), url=f.tabs[0].url;
   await f.memory.initialize();
