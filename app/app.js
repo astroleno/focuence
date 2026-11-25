@@ -5,7 +5,7 @@ import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
 import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
-import { createTaskMemoryUI } from '../src/task-memory-ui.js';
+import { createTaskMemoryUI, paintTaskMemoryView } from '../src/task-memory-ui.js';
 import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 import { createBackupUI } from '../src/backup-ui.js';
@@ -46,7 +46,7 @@ function colorOf(value) { return palette[value] || (/^#[0-9a-f]{6}$/i.test(value
 function tagsOf(item) { return Array.isArray(item?.tags) ? item.tags.filter((tag) => typeof tag === 'string') : []; }
 function normalizeState(value) {
   return {
-    version: value?.version || '2.7.0',
+    version: value?.version || globalThis.chrome?.runtime?.getManifest?.().version || '',
     demo: value?.demo === true,
     proposalNotice: value?.proposalNotice || '',
     attention: value?.attention || {nodes: [], daily: [], summary: {}, range: {key: 'week', label: '最近 7 天'}},
@@ -148,6 +148,7 @@ async function operation(id, callback) {
   }
 }
 let refreshEpoch = 0;
+let focusWindowToolsOpen = false;
 async function refresh({quiet = false, range = ui.range, rangeTransition = false} = {}) {
   if (busy('range') && !rangeTransition) { ui.refreshAfterRange = true; return false; }
   const epoch = ++refreshEpoch;
@@ -219,7 +220,7 @@ function buildShell() {
   const sidebar = el('aside', {class: 'sidebar', 'aria-label': '主要导航'},
     el('a', {class: 'brand', href: '#tasks', 'aria-label': 'Focuence · 当前聚焦'}, el('img', {src: '../icons/icon-48.png', width: 28, height: 28, alt: ''}), el('strong', {class: 'brand-name'}, 'Focuence')),
     el('nav', {class: 'nav-list', id: 'navigation', 'aria-label': '工作空间'}),
-    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version'}, 'Focuence 2.7')));
+    el('div', {class: 'sidebar-bottom'}, el('div', {id: 'sidebar-tracking'}), el('div', {class: 'local-note'}, icon('shield'), '本机保存'), el('div', {class: 'version', id: 'workspace-version'})));
   const workspace = el('div', {class: 'workspace'},
     el('header', {class: 'topbar'},
       el('span', {id: 'breadcrumb', class: 'sr-only'}, viewNames[ui.view]),
@@ -383,19 +384,26 @@ function taskCard(task, {featured = false} = {}) {
 function renderTasks() {
   const query = ui.queries.tasks.trim().toLocaleLowerCase();
   const tasks = memory.filterTasks(ui.state.tasks).filter(task => !query || [task.name, task.goal, task.notes, ...(task.pages || []).map(page => page.title)].join(' ').toLocaleLowerCase().includes(query));
-  return [
-    heading('当前聚焦', '选择眼前要推进的任务，留断点，从一页继续。', [
-      button('新建任务', 'new-task', {id: 'task-create'}, isPanel ? 'small' : '', 'plus'),
+  const current = ui.state.tasks.some(task => task.id === ui.state.work?.current.taskId);
+  const create = () => button('新建任务', 'new-task', {id: 'task-create'}, 'small', 'plus');
+  const header = heading('当前聚焦', '', current ? [create()] : []);
+  header.classList.add('focus-header');
+  const tools = el('details', {class: 'focus-window-tools', 'data-focus-disclosure': true, open: focusWindowToolsOpen},
+    el('summary', {id: 'focus-window-tools-summary'}, '窗口操作'),
+    el('div', {class: 'memory-actions'},
       button('整理分组', 'show-grouping', {id:'task-grouping'}, 'small', 'layers'),
-      button(isPanel ? '保存窗口' : '保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, isPanel ? 'small' : '', 'plus')]),
-    memory.current({support: isPanel}),
-    memory.predictionView(),
-    el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
-    tasks.length ? el('section', {class: 'task-grid', 'aria-label': '已保存任务'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
-      emptyState(query ? '没有匹配的任务' : memory.taskFilterEmpty()?.title || '先给眼前的事一个目标', query ? '当前搜索或状态筛选没有匹配。可查看全部任务后继续。' : memory.taskFilterEmpty()?.description || '可以先写目标，再关联资料；不需要先打开或选择页面。', query || memory.taskFilterEmpty() ? 'clear-task-filters' : 'new-task', query || memory.taskFilterEmpty() ? '查看全部任务' : '新建任务', false, 'folder'),
-    !isPanel && continuationSuggestions(),
-    el('p', {class: 'list-footnote'}, '任务是你决定推进的事，主题描述浏览内容。修改目标不改变地图主题，关联资料也不会自动移动浏览器分组。每个任务最多保存 30 页。')
-  ];
+      button('保存当前窗口', 'save-window', {id: 'task-save-window', disabled: !ui.state.tabs.length}, 'small', 'plus')));
+  tools.addEventListener('toggle', () => { if (tools.isConnected) focusWindowToolsOpen = tools.open; });
+  return [header, el('div', {class: 'focus-layout'},
+    memory.current({newTask: !current && create()}),
+    el('aside', {class: 'focus-secondary', 'aria-label': '任务与窗口辅助操作'},
+      memory.focusExtras({support: isPanel}), memory.predictionView(), tools),
+    el('section', {class: 'focus-list', 'aria-labelledby': 'focus-list-title'},
+      el('h2', {id: 'focus-list-title'}, '已保存任务'),
+      el('div', {class: 'list-tools tasks-tools'}, searchBox('tasks', '搜索任务或页面'), memory.taskFilter(), el('span', {class: 'subtle-label'}, tasks.length + ' 个任务')),
+      tasks.length ? el('div', {class: 'task-grid'}, tasks.map((task, index) => taskCard(task, {featured: index === 0}))) :
+        emptyState(query ? '没有匹配的任务' : memory.taskFilterEmpty()?.title || '还没有保存任务', query ? '修改关键词或查看全部任务。' : memory.taskFilterEmpty()?.description, query || memory.taskFilterEmpty() ? 'clear-task-filters' : null, '查看全部任务', false, 'folder'),
+      !isPanel && continuationSuggestions()))];
 }
 function rangeControl(id) {
   return el('select', {id, class: 'standard-select', 'aria-label': '时间范围', 'data-range-control': 'true', disabled: busy('range')},
@@ -776,7 +784,9 @@ function render() {
     content.push(...renderers[ui.view]());
   }
   mapResizeObserver?.disconnect();
-  main.replaceChildren(...content.filter(item => item !== null && item !== undefined && item !== false));
+  paintTaskMemoryView(main, content.filter(Boolean), ui.view);
+  const version = document.getElementById('workspace-version');
+  if (version) version.textContent = ui.state?.version ? 'Focuence ' + ui.state.version : '';
   if (ui.view === 'settings' && busy('settings')) for (const control of main.querySelectorAll('input[id^="setting-"],select[id^="setting-"],textarea[id^="setting-"]')) control.disabled = true;
   if (ui.state && !ui.pendingRange) {
     const url = new URL(location.href);
@@ -795,6 +805,7 @@ function render() {
   const toastAction = document.getElementById('toast-action');
   if (toastAction) toastAction.disabled = toastAction.dataset.action === 'undo-group' ? !ui.canUndo || busy('undo') : busy('rules') || busy('semantic');
   for (const [id, scroll] of memberScroll) if (document.getElementById(id)) document.getElementById(id).scrollTop = scroll;
+  if (focused?.isConnected && focused === document.activeElement) return;
   if (focusId && document.getElementById(focusId) && !document.getElementById(focusId).disabled) {
     const target = document.getElementById(focusId);
     target.focus({preventScroll: true});

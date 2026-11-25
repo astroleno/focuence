@@ -144,6 +144,30 @@ button.tag:hover { color: var(--accent); background: var(--accent-soft); }
 .model-error { margin-top: 8px; color: var(--danger); }
 .tasks-tools { max-width: 740px; margin-bottom: 5px; }
 .tasks-tools .subtle-label { white-space: nowrap; }
+.page-header.focus-header { margin-bottom: 16px; }
+.focus-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(216px, .42fr);
+  grid-template-rows: min-content 1fr;
+  grid-template-areas: "current secondary" "tasks secondary";
+  align-items: start;
+  gap: 20px 24px;
+}
+.focus-layout > .memory-current { grid-area: current; }
+.focus-list { grid-area: tasks; min-width: 0; }
+.focus-list > h2 { margin-bottom: 10px; }
+.focus-secondary { grid-area: secondary; display: grid; gap: 8px; min-width: 0; }
+.focus-secondary > details { min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 0 10px; }
+.focus-secondary > details[open] { padding-bottom: 10px; }
+.focus-secondary > details > summary { min-height: 34px; padding: 7px 0; font-size: 13px; cursor: pointer; overflow-wrap: anywhere; }
+.focus-secondary .memory-return { grid-column: 1 / -1; }
+.focus-secondary .memory-checkbox { margin-top: 4px; }
+.focus-secondary .memory-actions > button { white-space: normal; }
+@media (max-width: 1000px) {
+  .focus-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "current" "secondary" "tasks"; gap: 12px; }
+  .focus-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .focus-secondary > details[open] { grid-column: 1 / -1; }
+}
 .task-grid { max-width: 980px; }
 .task-card { min-width: 0; padding: 22px 0; border-bottom: 1px solid var(--line); }
 .task-card:last-child { border-bottom: 0; }
@@ -352,14 +376,16 @@ dialog::backdrop { background: #18233660; }
 .panel-shell .main { padding: 20px 16px 24px; width: 100%; min-height: 0; flex: 1; overflow-y: auto; }
 .panel-shell .demo-banner { margin: -7px 0 13px; }
 .panel-shell .page-header { gap: 10px; align-items: center; margin-bottom: 17px; }
+.panel-shell .page-header.focus-header { margin-bottom: 8px; }
 .panel-shell .page-heading h1 { font-size: 20px; letter-spacing: -.025em; line-height: 1.4; }
 .panel-shell .header-actions { gap: 5px; }
 .panel-shell .page-header:has(.header-actions > .btn + .btn) { flex-direction: column; align-items: stretch; }
 .panel-shell .page-header:has(.header-actions > .btn + .btn) .header-actions { justify-content: flex-start; flex-wrap: wrap; }
 .panel-shell .header-actions .btn { font-size: 13px; min-height: 32px; padding: 5px 9px; }
-.panel-shell .tasks-tools { gap: 10px; margin-bottom: 0; }
+.panel-shell .tasks-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-bottom: 0; }
 .panel-shell .search-box { padding: 7px 9px; }
 .panel-shell .tasks-tools .subtle-label { font-size: 12px; }
+.panel-shell .tasks-tools .subtle-label { grid-column: 1 / -1; }
 .panel-shell .task-card { padding: 17px 0 18px; }
 .panel-shell .task-name { font-size: 16px; padding-top: 2px; }
 .panel-shell .task-card-head { gap: 8px; }

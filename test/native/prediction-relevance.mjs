@@ -31,6 +31,18 @@ try{
   check('Real BGE association reaches local next prediction before manual confirmation, with no unrelated padding or persistent edits',{elapsedMs:Date.now()-started,associationScore:inferred.score,candidates:prediction.candidates.map(({title,method,inferred})=>({title,method,inferred}))});
   await control.send('Page.bringToFront');await control.click('#nav-tasks');
   await until(()=>control.eval(name=>document.querySelector('.memory-current h2')?.textContent===name,task.name),'current task visible');
+  await control.click('#memory-association-summary');
+  const associationUI=await control.eval(()=>{const details=document.querySelector('.memory-association');return{titles:[...details.querySelectorAll('article h3')].map(node=>node.textContent),actions:[...details.querySelectorAll('article button')].filter(node=>!node.disabled).length,text:details.innerText};});
+  assert(titles.slice(0,2).every(title=>associationUI.titles.includes(title)));
+  assert(associationUI.actions>=2);
+  assert(!/\b(?:false|undefined)\b|\[object HTMLElement\]/.test(associationUI.text));
+  await control.click('.memory-association [data-action="memory-associate"]');
+  await until(()=>control.eval(()=>{
+    const button=document.querySelector('.memory-association [data-action="memory-associate"]');
+    return button?.textContent==='分析关联'&&!button.disabled&&Array.from(document.querySelectorAll('.memory-association article button')).some(node=>!node.disabled);
+  }),'association actions remain available after analysis');
+  await control.click('#memory-association-summary');
+  await control.click('#next-prediction-summary');
   await control.click('#predict-next');
   await until(()=>control.eval(()=>document.querySelectorAll('.prediction-row').length===2),'two focused predictions');
   assert((await control.eval(()=>document.querySelector('#next-prediction').innerText)).includes('语义关联 · 尚未确认'));

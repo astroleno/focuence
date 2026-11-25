@@ -33,7 +33,7 @@ export function createHistoryUI({request,render,refresh,notify,demo=false,getSta
     if((!state||lastReadEpoch!==epoch)&&!loading&&!demo){lastReadEpoch=epoch;loading=true;queueMicrotask(()=>read().then(value=>{if(pending(value?.job))poll(++serial);}));}
     const job=state?.job,coverage=state?.coverage;
     const node=el(compact?'details':'section',{class:'memory-history',...(compact?{open}:{} )},
-      compact?el('summary',{},'浏览器历史 · '+(state?.enabled?'已连接':'按需启用')):el('h2',{},'浏览器历史'),
+      compact?el('summary',{id:'history-summary'},'浏览器历史 · '+(state?.enabled?'已连接':'按需启用')):el('h2',{},'浏览器历史'),
       el('p',{class:'memory-caption'},'主动导入本设备访问。与前台记录分别管理；暂停记录期间不会自动补采。标题使用浏览器当前元数据，不提供停留时长。'),
       demo?el('p',{class:'memory-caption'},'请在真实扩展中启用；示例页面不会读取浏览器历史。'):el('div',{},
         el('label',{class:'history-range'},'导入并保留',el('select',{id:'history-days','aria-label':'历史导入及缓存范围'},[7,30,90].map(value=>el('option',{value,selected:days===value},'最近 '+value+' 天')))),

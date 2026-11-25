@@ -35,6 +35,7 @@ try{
 
   await rpc('UPDATE_SETTINGS',{patch:{tracking:true}});await control.send('Page.bringToFront');await control.send('Page.reload');
   await until(()=>control.eval(()=>!!document.querySelector('#predict-next')),'focus UI');await rpc('CLEAR_DIAGNOSTICS');
+  await control.click('#next-prediction-summary');
   await control.click('#predict-next');await until(()=>control.eval(()=>document.querySelectorAll('.prediction-row').length===2),'local predictions');
   await until(async()=>(await diag()).summary.prediction.shown===1,'actual display acknowledgement');
   await control.click('.prediction-row button');await until(async()=>(await diag()).summary.prediction.acted===1,'successful open logged');
@@ -126,7 +127,7 @@ try{
   await rpc('SET_DIAGNOSTICS',{enabled:false});await rpc('CLEAR_ALL');assert.equal((await diag()).enabled,true);assert.equal((await diag()).retained,0);
   check('Clear history clears diagnostics; clear all restores the log default without resurrecting old events');
   await control.send('Page.reload');await until(()=>control.eval(()=>!!document.querySelector('#nav-tasks')),'empty workspace loaded');await control.click('#nav-tasks');
-  await rpc('CLEAR_DIAGNOSTICS');await control.click('#predict-next');await until(async()=>(await diag()).summary.generation.requests===1,'empty result generated');
+  await rpc('CLEAR_DIAGNOSTICS');await control.click('#next-prediction-summary');await control.click('#predict-next');await until(async()=>(await diag()).summary.generation.requests===1,'empty result generated');
   assert.equal((await diag()).summary.prediction.shown,0);assert.equal(await control.eval(()=>document.querySelectorAll('.prediction-row').length),0);
   check('An empty result is visible as an empty state, without a false candidate impression');
   const errors=browser.events.filter(item=>item.method==='Runtime.exceptionThrown'&&item.params?.exceptionDetails?.url?.startsWith('chrome-extension://'+env.extensionId));assert.deepEqual(errors,[]);

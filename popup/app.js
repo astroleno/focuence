@@ -4,7 +4,7 @@ import { uniqueTaskPages } from '../src/tasks.js';
 import { taskNotes } from '../src/task-notes.js';
 import { taskPages } from '../src/task-pages.js';
 import { proposalMembers, selectedProposal } from '../src/proposals.js';
-import { createTaskMemoryUI } from '../src/task-memory-ui.js';
+import { createTaskMemoryUI, paintTaskMemoryView } from '../src/task-memory-ui.js';
 import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 import {createLibraryUI} from '../src/library-ui.js';
@@ -116,15 +116,17 @@ function paint(...content) {
   const selection = focused && 'selectionStart' in focused ? [focused.selectionStart, focused.selectionEnd] : null;
   const hadFocus = byId('popup-main').contains(focused);
   const memberScroll = [...document.querySelectorAll('.task-pages')].map(list => [list.id, list.scrollTop]);
-  byId('popup-main').replaceChildren(...content);
+  paintTaskMemoryView(byId('popup-main'), content, ui.view);
   fitPopup();
   const replacement = id && byId(id);
-  if (replacement && !replacement.disabled) {
+  if (replacement && !replacement.disabled && replacement !== document.activeElement) {
     replacement.focus({ preventScroll: true });
     if (selection && replacement.setSelectionRange && replacement.type !== 'checkbox') {
       try { replacement.setSelectionRange(...selection); } catch { /* Not every input supports a text range. */ }
     }
-  } else if (hadFocus) byId('popup-main').focus({preventScroll: true});
+  } else if ((!replacement || replacement.disabled) && hadFocus && (!focused.isConnected || focused !== document.activeElement)) {
+    byId('popup-main').focus({preventScroll: true});
+  }
   for (const [listId, scroll] of memberScroll) if (byId(listId)) byId(listId).scrollTop = scroll;
 }
 function render() {
@@ -172,13 +174,15 @@ function render() {
   } else if(ui.view==='library'){
     content.push(libraryUI.view());
   } else {
-    content.push(el('h1', {class: 'focus-view-title'}, '当前聚焦'));
-    content.push(memory.current({compact: true}));
-    content.push(action('新建任务', 'new-task', {}, false, 'plus'));
-    content.push(el('div', { class: 'section-heading' }, el('h1', {}, '从上次继续'), el('span', { class: 'secondary' }, state.tasks.length + ' 个任务')));
-    content.push(memory.taskFilter());
-    content.push(memory.filterTasks(state.tasks).length ? el('section', { class: 'task-list', 'aria-label': '最近保存或访问的任务' }, memory.filterTasks(state.tasks).slice(0, 3).map(taskCard)) :
-      el('div', { class: 'empty' }, icon('folder'), el('p', {}, memory.taskFilterEmpty()?.title || '给正在做的事留个位置'), el('p', { class: 'secondary' }, memory.taskFilterEmpty()?.description || '保存相关页面，再写一句下次要做什么。'), memory.taskFilterEmpty() && action('查看全部任务', 'clear-task-filters')));
+    const current = state.tasks.some(task => task.id === state.work?.current.taskId);
+    const create = () => action('新建任务', 'new-task', {}, false, 'plus');
+    const tasks = memory.filterTasks(state.tasks);
+    content.push(el('div', {class: 'popup-focus-heading'}, el('h1', {class: 'focus-view-title'}, '当前聚焦'), current && create()));
+    content.push(memory.current({newTask: !current && create()}));
+    content.push(el('section', {class: 'popup-focus-list', 'aria-labelledby': 'popup-focus-list-title'},
+      el('div', {class: 'section-heading'}, el('h2', {id: 'popup-focus-list-title'}, '最近任务'), memory.taskFilter()),
+      tasks.length ? el('div', {class: 'task-list'}, tasks.slice(0, 3).map(taskCard)) :
+        el('div', {class: 'empty'}, el('p', {}, memory.taskFilterEmpty()?.title || '还没有保存任务'), memory.taskFilterEmpty() && action('查看全部任务', 'clear-task-filters'))));
     content.push(action('保存当前窗口 · ' + tabs.length + ' 页', 'save-window', { class: 'button full', disabled: Boolean(ui.working) || !tabs.length }));
   }
   paint(...content.filter(item => item != null && item !== false));

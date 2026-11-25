@@ -57,6 +57,7 @@ try{
   check('An actual missing optional host permission blocks enabling API requests');
   await control.send('Page.bringToFront');await control.eval(()=>location.hash='tasks');await control.send('Page.reload');await until(()=>control.eval(()=>!!document.querySelector('#predict-next')),'next UI');
   console.log('Native prediction UI ready');
+  await control.click('#next-prediction-summary');
   await control.click('#predict-next');await until(()=>control.eval(()=>!!document.querySelector('.prediction-row')),'local next candidates');
   await control.screenshot(env.out+'/screenshots/native-next.png');
   await control.click('[data-action="memory-checkpoint"][data-id="'+task.id+'"]');
@@ -106,6 +107,7 @@ try{
     assert(!audit.overflow);assert.deepEqual(audit.duplicates,[]);assert(audit.grouping);check('Native UI '+width+'px keeps focus/grouping/prediction accessible',audit);
     await page.screenshot(env.out+'/screenshots/native-focus-'+width+'.png');
     if(width===320){
+      await page.click('#focus-window-tools-summary');
       await page.click('#task-grouping');
       try{await until(()=>page.eval(()=>document.activeElement?.id==='grouping-title'),'grouping handoff focus');}
       catch(error){console.log('GROUPING_DIAGNOSTIC',await page.eval(()=>({url:location.href,active:document.activeElement?.outerHTML,group:document.querySelector('#grouping-title')?.outerHTML,mode:document.querySelector('#pages-mode-groups')?.getAttribute('aria-pressed'),toast:document.querySelector('#toast-region')?.innerText})));throw error;}

@@ -92,6 +92,143 @@ test('window search keeps pagination stable after visits but rejects removed or 
   tabs=tabs.filter(item=>item.id!==100);await assert.rejects(memory.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId:job.results[0].id}),{code:'STALE_SUGGESTION'});
 });
 
+test('search reads only selected sources while preserving library task ownership',async()=>{
+  const f=fixture(), reads={window:0,windows:0,history:0,browser:0,library:0};
+  const url='https://owned.test/page', at=1700000000000, title='归属验证';
+  const rows={browser:[{id:'visit',url,title,visitedAt:at}],
+    history:[{id:'segment',url,title,startedAt:at,endedAt:at+1,status:'active',taskId:'b'}],
+    library:[{id:'material',url,title,kind:'link',createdAt:at,updatedAt:at,taskIds:['a']}]};
+  f.store.listSegments=async()=>{reads.history++;return rows.history;};
+  f.store.getLibraryItems=async()=>{reads.library++;return rows.library;};
+  const memory=createWorkspace({...f.deps,
+    tabs:async()=>{reads.window++;return [{id:1,windowId:1,url,title}];},
+    allTabs:async()=>{reads.windows++;return [{id:2,windowId:2,url,title}];},
+    historyRows:async()=>{reads.browser++;return rows.browser;},
+  });
+  await memory.initialize();
+  const check=async (scope,filters,source,expected)=>{
+    Object.keys(reads).forEach(key=>{reads[key]=0;});
+    const job=await memory.createJob({query:title,scope,filters});
+    assert.equal(job.resultTotal,1);
+    assert.deepEqual(job.results[0].sources,[source]);
+    assert.deepEqual(reads,{window:0,windows:0,history:0,browser:0,library:0,...expected});
+    return job.results[0];
+  };
+  await check('all',{sources:['browser'],taskId:'a'},'browser',{browser:1,library:1});
+  const observed=await check('history',{taskId:'b',taskMode:'observed'},'history',{history:1,library:1});
+  assert.deepEqual(observed.taskIds,['a']);
+  assert.deepEqual([observed.sourceEvidence[0].observedTaskId,observed.sourceEvidence[0].taskIds],['b',['a']]);
+  await check('all',{sources:['window']},'window',{window:1,library:1});
+  await check('windows',{sources:['other-window']},'other-window',{windows:1,library:1});
+  await check('library',{},'library',{library:1});
+});
+
+test('same URL and title cannot replace original evidence, including across a worker reload',async()=>{
+  const f=fixture(), url='https://identity.test/page', title='同名页面', at=1700000000000;
+  let tabs=[1,2].map(id=>({id,windowId:1,url,title,lastAccessed:at}));
+  const deps={...f.deps,tabs:async()=>structuredClone(tabs)};
+  const memory=createWorkspace(deps);await memory.initialize();
+  const job=await memory.createJob({query:title,scope:'window',filters:{until:at}}), entryId=job.results[0].id;
+  tabs=[{...tabs[1],lastAccessed:at+100},tabs[0],{id:3,windowId:1,url,title,lastAccessed:at}];
+  const reloaded=createWorkspace(deps);await reloaded.initialize();
+  const first=await reloaded.searchResults({jobId:job.id,entryId,limit:1},true);
+  const next=await reloaded.searchResults({jobId:job.id,entryId,offset:1,limit:1},true);
+  assert.deepEqual([first.total,first.items[0].id,next.items[0].id,next.items[0].at],[2,'tab:1','tab:2',at]);
+  tabs=tabs.filter(tab=>tab.id!==1);
+  await assert.rejects(reloaded.searchResults({jobId:job.id,entryId},true),{code:'STALE_SUGGESTION'});
+  await assert.rejects(reloaded.mutate({type:'OPEN_MEMORY_RESULT',jobId:job.id,entryId}),{code:'STALE_SUGGESTION'});
+});
+
+test('paged evidence keeps matching visits and original order with newly added same-title visits',async()=>{
+  const f=fixture(), url='https://visits.test/page', at=1700000000000;
+  let visits=Array.from({length:30},(_,i)=>({id:'visit:'+i,url,title:i%2?'实际匹配标题':'其他标题',visitedAt:at-i}));
+  const memory=createWorkspace({...f.deps,historyRows:async()=>structuredClone(visits)});await memory.initialize();
+  const job=await memory.createJob({query:'实际匹配标题',scope:'browser'}), entryId=job.results[0].id;
+  assert.equal(job.results[0].title,'其他标题');
+  assert.equal(job.results[0].snippet,'实际匹配标题');
+  const before=await memory.searchResults({jobId:job.id,entryId,offset:25},true);
+  visits=[{id:'new',url,title:'实际匹配标题',visitedAt:at+10},...visits.toReversed()];
+  const after=await memory.searchResults({jobId:job.id,entryId,offset:25},true);
+  assert.deepEqual(after,before);
+  assert.equal(after.total,30);
+  assert.deepEqual(after.items.map(item=>[item.id,item.matched]),[25,26,27,28,29].map(i=>['visit:'+i,Boolean(i%2)]));
+  visits=visits.filter(visit=>visit.id!=='visit:0');
+  await assert.rejects(memory.searchResults({jobId:job.id,entryId,offset:25},true),{code:'STALE_SUGGESTION'});
+});
+
+test('search explains the original evidence that contributed the winning passage',async()=>{
+  const f=fixture(), url='https://material.test/page', at=1700000000000;
+  f.store.getLibraryItems=async()=>[{id:'material',url,title:'材料标题',kind:'excerpt',quote:'逐字摘录检索',note:'本人笔记线索',
+    createdAt:at-100,updatedAt:at,taskIds:[]}];
+  const memory=createWorkspace({...f.deps,historyRows:async()=>[{id:'visit',url,title:'历史记录标题',visitedAt:at}],
+    tabs:async()=>[{id:1,windowId:1,url,title:'当前标签标题'}]});await memory.initialize();
+  for(const [query,scope,field,source] of [['材料标题','library','title','library'],['逐字摘录检索','library','quote','library'],
+    ['本人笔记线索','library','note','library'],['历史记录标题','all','title','browser']]){
+    const job=await memory.createJob({query,scope});
+    const item=job.results.find(item=>item.url===url&&item.snippet.includes(query));
+    assert.deepEqual([item.method,item.snippetField,item.matchedSources],['keywords',field,[source]]);
+    const detail=await memory.searchResults({jobId:job.id,entryId:item.id},true);
+    assert.deepEqual(detail.match,{method:'keywords',field,snippet:query,sources:[source]});
+    assert(detail.items.every(row=>row.matched===(row.source===source)));
+  }
+  f.infer(async items=>({vectors:new Map(items.map(item=>[item.id,item.text.includes('本人笔记线索')||item.id.startsWith('mem:query:') ? [1,0] : [0,1]]))}));
+  const job=await memory.createJob({query:'自己的想法写在哪里',scope:'library'});
+  const result=await memory.advanceJob({jobId:job.id});
+  assert.equal(result.status,'done');
+  assert.deepEqual([result.results[0].method,result.results[0].snippetField,result.results[0].matchedSources],['semantic','note',['library']]);
+});
+
+test('task text remains searchable without exposing its excluded checkpoint URL',async()=>{
+  const f=fixture(), url=f.tabs[0].url;
+  await f.memory.initialize();
+  await f.message('SAVE_CHECKPOINT','a',{checkpoint:{progress:'独立任务进度',pageId:f.tabs[0].pageId}});
+  let excluded=false;
+  const memory=createWorkspace({...f.deps,allowed:value=>Boolean(value)&&(!excluded||value!==url)});
+  await memory.initialize();
+  const message={query:'独立任务进度',scope:'tasks',filters:{sources:['task']}};
+  const original=await memory.createJob(message);
+  assert.equal(original.results[0].sourceEvidence[0].url,url);
+  excluded=true;
+  await assert.rejects(memory.searchResults({jobId:original.id,entryId:'task:a'},true),{code:'STALE_SUGGESTION'});
+  const job=await memory.createJob(message);
+  const result=job.results[0], detail=await memory.searchResults({jobId:job.id,entryId:result.id},true);
+  assert.equal(result.id,'task:a');
+  assert.equal(result.url,null);
+  assert.equal(result.sourceEvidence[0].url,null);
+  assert.equal(detail.items[0].url,null);
+  const filtered=await memory.createJob({...message,filters:{...message.filters,domain:'example.com'}});
+  assert.equal(filtered.resultTotal,0);
+});
+
+test('library evidence keeps an allowed frame without exposing its excluded parent URL',async()=>{
+  const f=fixture(), url='https://frame.test/source', parentUrl='https://excluded.test/parent', at=1700000000000;
+  f.store.getLibraryItems=async()=>[{id:'frame',kind:'excerpt',url,parentUrl,title:'框架选文',quote:'可以显示的摘录',note:'',
+    taskIds:[],createdAt:at,updatedAt:at+100}];
+  const memory=createWorkspace({...f.deps,allowed:value=>Boolean(value)&&value!==parentUrl});
+  await memory.initialize();
+  const job=await memory.createJob({query:'可以显示的摘录',scope:'library'});
+  const result=job.results[0], detail=await memory.searchResults({jobId:job.id,entryId:result.id},true);
+  assert.equal(result.url,url);
+  assert.equal(result.evidenceCount,2);
+  for(const row of [...result.sourceEvidence,...detail.items]) assert.deepEqual([row.url,row.parentUrl],[url,null]);
+  for(const key of ['searchVariants','searchDocuments']) assert(!Object.hasOwn(result,key));
+});
+
+test('association view handles same-epoch stale jobs after tab navigation',async()=>{
+  const f=fixture();await f.memory.initialize();
+  await f.message('SET_CURRENT_TASK');
+  const task=await f.store.getTask('a');
+  const job=await f.memory.createJob({id:task.id,revision:task.revision,windowId:1,contextRevision:1},'association');
+  f.infer(async items=>{
+    f.tabs[0].title='导航后的标题';
+    return {vectors:new Map(items.map(item=>[item.id,[1,0]]))};
+  });
+  assert.equal((await f.memory.advanceJob({jobId:job.id})).status,'stale');
+  const view=await f.memory.view({windowId:1,tasks:await f.store.getTasks(),tabs:f.tabs,segments:[]});
+  assert.equal(view.association.status,'ready');
+  assert.match(view.association.error,/重新分析/);
+});
+
 test('a search snapshot preserves full literal phrases across semantic chunk boundaries',async()=>{
   const f=fixture();await f.memory.initialize();const query='核对连续文字'.repeat(25);
   await f.message('UPDATE_TASK','a',{notes:query});

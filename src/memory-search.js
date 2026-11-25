@@ -33,24 +33,42 @@ export function memoryCorpus({ tabs = [], tasks = [], pages = [], relations = []
 export function searchDocuments(entries) {
   return entries.flatMap(entry => {
     const occurrences = new Map();
-    return (entry.searchParts?entry.searchParts.flatMap(part=>textChunks(part.text).map(text=>({text,field:part.field}))):(entry.searchTexts?entry.searchTexts.flatMap(text=>textChunks(text)):entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map(text=>({text}))).map(({text,field}) => {
+    const passages = entry.searchParts
+      ? entry.searchParts.flatMap(part => textChunks(part.text).map(text => ({text,field:part.field,variant:entry.searchVariants?.[0]})))
+      : entry.searchVariants
+        ? entry.searchVariants.flatMap(variant => textChunks(variant.text).map(text => ({text,variant})))
+        : (entry.searchTexts ? entry.searchTexts.flatMap(text => textChunks(text)) : entry.kind === 'task' ? textChunks(entry.text) : [entry.text]).map(text => ({text}));
+    return passages.map(({text,field,variant}) => {
       // New sources must not renumber the documents of an existing search.
       const key = `${field || 'text'}:${stableHash(text)}`, occurrence = occurrences.get(key) || 0;
       occurrences.set(key, occurrence + 1);
       const item = semanticItem(`${entry.kind === 'task' ? `${entry.taskId}:` : entry.kind==='library'?`${entry.libraryId}:`:`${entry.pageId}:`}${key}:${occurrence}`, text, entry.kind === 'task' ? 'task' : entry.kind==='library'?'library':'search-page');
-      return {entryId:entry.id, field, item};
+      return {entryId:entry.id, field, item, variant};
     });
   });
 }
 
 export function snippetFor(query, text) {
-  const lower = text.toLowerCase();
-  const match = [...words(query)].map(word => lower.indexOf(word)).filter(index => index >= 0).sort((a, b) => a - b)[0] || 0;
+  const lower = text.toLocaleLowerCase(), phrase = query.trim().toLocaleLowerCase();
+  const exact = phrase ? lower.indexOf(phrase) : -1;
+  const match = exact >= 0 ? exact : [...words(query)].map(word => lower.indexOf(word)).filter(index => index >= 0).sort((a, b) => a - b)[0] || 0;
   const start = Math.max(0, match - 28);
   return (start ? '…' : '') + text.slice(start, start + 180) + (text.length > start + 180 ? '…' : '');
 }
 
-export function rankMemory(entries, query, semanticScores = {}, limit = 50, browse = false) {
+function lexicalPassage(entry, query, normalized) {
+  let winner, best = 0;
+  for (const variant of entry.searchVariants || []) {
+    // Prefer a named field to the whole passage when both contain the same literal match.
+    for (const part of [...variant.fields, variant]) {
+      const score = part.text.toLocaleLowerCase().includes(normalized) ? 2 : lexicalAffinity(query, part.text);
+      if (score > best) { best = score; winner = {...part, variant}; }
+    }
+  }
+  return winner;
+}
+
+export function rankMemory(entries, query, semanticScores = {}, limit = 50, browse = false, includeEvidenceKeys = false) {
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return browse?{results:[...entries].sort((a,b)=>b.visitedAt-a.visitedAt||a.id.localeCompare(b.id)).slice(0,limit).map(entry=>({...compactMemoryResult(entry),method:'filtered',snippet:(entry.text||'').slice(0,180)})),total:entries.length}:{ results: [], total: 0 };
   const ranked = entries.flatMap(entry => {
@@ -61,8 +79,15 @@ export function rankMemory(entries, query, semanticScores = {}, limit = 50, brow
     if (!exact && lexical < .1 && (semantic === null || semantic < .46)) return [];
     const method = exact || lexical >= .45 ? 'keywords' : semantic !== null && semantic >= .46 ? 'semantic' : 'keywords';
     const score = exact ? 1.5 + lexical : Math.max(lexical, semantic || 0) + lexical * .12;
-    const part=entry.searchParts?.find(part=>part.text.toLocaleLowerCase().includes(normalized))||entry.searchParts?.toSorted((a,b)=>lexicalAffinity(query,b.text)-lexicalAffinity(query,a.text))[0];
-    return [{ ...compactMemoryResult(entry), score, method,snippetField:method==='semantic'?match?.field:part?.field, snippet: snippetFor(query, method === 'semantic' && match?.text ? match.text : part?.text||entry.text) }];
+    const document=method==='semantic'&&match?.documentId ? entry.searchDocuments?.find(doc=>doc.item.id===match.documentId) : null;
+    const passage=method==='semantic'
+      ? document ? {text:document.item.text,field:document.field,variant:document.variant} : {text:match?.text,field:match?.field}
+      : lexicalPassage(entry,query,normalized);
+    const keys=passage?.variant?.evidenceKeys;
+    const matchedSources=keys ? [...new Set(keys.map(key=>key.slice(0,key.indexOf(':'))))] : [];
+    return [{ ...compactMemoryResult(entry), score, method,snippetField:passage?.field,
+      snippet:snippetFor(query,passage?.text||entry.text), matchedSources,
+      ...(includeEvidenceKeys&&keys ? {matchedEvidenceKeys:keys} : {}) }];
   }).sort((a, b) => b.score - a.score || b.visitedAt - a.visitedAt || a.id.localeCompare(b.id));
   return { results: ranked.slice(0, limit), total: ranked.length };
 }
@@ -73,7 +98,9 @@ export function accumulateSearchScores(previous, documents, vectors, queryVector
     const score = cosineSimilarity(queryVector, vectors.get(document.item.id));
     const previous = scores[document.entryId];
     const previousScore = typeof previous === 'number' ? previous : previous?.score ?? -1;
-    if (score !== null && score > previousScore) scores[document.entryId] = { score, text: document.item.text,field:document.field };
+    if (score !== null && score > previousScore) scores[document.entryId] = document.variant
+      ? {score,documentId:document.item.id}
+      : {score,text:document.item.text,field:document.field};
   }
   return scores;
 }
