@@ -42,6 +42,11 @@ export class Page{
   async screenshot(path){const result=await this.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});writeFileSync(path,Buffer.from(result.data,'base64'));}
   async close(){await this.browser.send('Target.closeTarget',{targetId:this.targetId});}
 }
+export async function acceptTracking(page, trigger = '#tracking-toggle') {
+  await page.click(trigger);
+  await page.click('#tracking-consent-accept');
+  await until(() => page.eval(() => !document.querySelector('#tracking-consent')), 'tracking disclosure closed');
+}
 export async function setup({headed=false,out='docs/reviews/v2.3',extensionPath=repo,startWorkspace=true,isolatedNetwork=false,profilePath}={}){
   const config=process.argv.find(value=>value.startsWith('--chrome-config='))?.split('=').slice(1).join('=');
   const binary=process.env.CHROME_PATH||(config?JSON.parse(readFileSync(config,'utf8')).binary:null);

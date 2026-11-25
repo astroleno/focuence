@@ -9,6 +9,7 @@ import { taskText } from '../src/task-context.js';
 import { createTabWorkspaceUI } from '../src/tab-workspace-ui.js';
 import {createLibraryUI} from '../src/library-ui.js';
 import {createDraftGuard} from '../src/draft-guard.js';
+import {saveTrackingSettings, trackingAction, trackingStatus} from '../src/tracking-consent-ui.js';
 
 const isDemo = new URLSearchParams(location.search).get('demo') === '1';
 const byId = id => document.getElementById(id);
@@ -142,8 +143,9 @@ function render() {
     if (ui.readError) paint(el('div', {class: 'empty'}, icon('info'), el('h1', {}, '暂时无法读取窗口'), el('p', {class: 'secondary'}, '可以在这里重试，恢复后继续整理页面。'), action(ui.working ? '正在重试…' : '重新读取', 'retry-read', {id: 'retry-read', disabled: Boolean(ui.working)}, true, 'refresh')));
     return;
   }
-  byId('toggle-tracking').textContent = state.settings.tracking ? '暂停记录' : '恢复记录';
+  byId('toggle-tracking').textContent = trackingAction(state.settings);
   byId('tracking-status').hidden = state.settings.tracking;
+  byId('tracking-status').textContent = trackingStatus(state.settings);
   const main = byId('popup-main');
   main.setAttribute('aria-busy', String(Boolean(ui.working)));
   if (ui.form) { paint(saveForm()); return; }
@@ -355,8 +357,9 @@ byId('workspace').addEventListener('click', () => {
 });
 byId('toggle-tracking').addEventListener('click', () => operation('tracking', async () => {
   const tracking = !ui.state.settings.tracking;
-  await request('UPDATE_SETTINGS', { patch: { tracking } }); await refresh();
-  feedback(tracking ? '浏览记录已恢复。' : '浏览记录已暂停，已保存任务仍可继续。');
+  if (!await saveTrackingSettings(request, ui.state.settings, {tracking})) return;
+  await refresh();
+  feedback(tracking ? '浏览记录已开启。' : '浏览记录已暂停，已保存任务仍可继续。');
 }));
 if (!isDemo && globalThis.chrome?.tabs) {
   let timer, pending = false;

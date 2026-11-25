@@ -14,6 +14,7 @@ import {createDraftGuard, editorSnapshot} from '../src/draft-guard.js';
 import {resolveRelationEvidence} from '../src/map-evidence.js';
 import {createAISettingsUI} from '../src/ai-settings-ui.js';
 import {createDiagnosticsUI} from '../src/diagnostics-ui.js';
+import {saveTrackingSettings, trackingAction, trackingStatus} from '../src/tracking-consent-ui.js';
 
 const params = new URLSearchParams(location.search);
 const isPanel = document.body.dataset.surface === 'panel';
@@ -53,7 +54,7 @@ function normalizeState(value) {
     undoAvailable: Boolean(value?.undoAvailable),
     work: value?.work,
     timelineTruncated: Boolean(value?.timelineTruncated),
-    settings: {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: [], ...value?.settings},
+    settings: {tracking: false, trackingConsentGranted: false, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: [], ...value?.settings},
     ai:value?.ai||{enabled:false,hasKey:false,baseUrl:'',protocol:'openai',model:''},
     tabs: Array.isArray(value?.tabs) ? value.tabs : [], tasks: Array.isArray(value?.tasks) ? value.tasks : [],
     segments: Array.isArray(value?.segments) ? value.segments : [], groups: Array.isArray(value?.groups) ? value.groups : [],
@@ -237,13 +238,15 @@ function renderNavigation() {
     'data-action': 'navigate', 'data-view': view, 'aria-label': view === 'tasks' ? '当前聚焦' : view === 'map' ? '注意力地图' : viewNames[view], 'aria-current': ui.view === view ? 'page' : undefined
   }, icon(viewIcons[view]), viewNames[view], !isPanel && view === 'tasks' && count > 0 && el('span', {class: 'nav-count'}, count))));
   document.getElementById('breadcrumb').textContent = viewNames[ui.view];
-  const tracking = ui.state?.settings.tracking !== false;
+  const settings = ui.state?.settings;
+  const tracking = settings?.tracking === true;
+  const label = trackingAction(settings);
   document.getElementById('sidebar-tracking').replaceChildren(isPanel
-    ? iconButton(tracking ? '暂停浏览记录' : '恢复浏览记录', 'toggle-tracking', tracking ? 'pause' : 'play', {id: 'tracking-toggle', disabled: !ui.state || busy('tracking'), 'aria-pressed': !tracking})
-    : el('button', {id: 'tracking-toggle', type: 'button', class: 'pause-button', 'data-action': 'toggle-tracking', disabled: !ui.state || busy('tracking')}, icon(tracking ? 'pause' : 'play'), tracking ? '暂停记录' : '恢复记录'));
+    ? iconButton(label.replace('记录', '浏览记录'), 'toggle-tracking', tracking ? 'pause' : 'play', {id: 'tracking-toggle', disabled: !ui.state || busy('tracking')})
+    : el('button', {id: 'tracking-toggle', type: 'button', class: 'pause-button', 'data-action': 'toggle-tracking', disabled: !ui.state || busy('tracking')}, icon(tracking ? 'pause' : 'play'), label));
   const status = document.getElementById('top-status');
   status.className = isPanel && tracking ? 'sr-only' : 'local-status';
-  status.replaceChildren(el('span', {class: 'status-dot' + (tracking ? '' : ' paused')}), !tracking ? '记录已暂停' : isDemo ? '示例模式' : '本机记录中');
+  status.replaceChildren(el('span', {class: 'status-dot' + (tracking ? '' : ' paused')}), isDemo && tracking ? '示例模式' : trackingStatus(settings));
   if (isPanel && ui.state) {
     const active = ui.state.tabs.find(tab => tab.active);
     const label = active ? active.title : '当前窗口 · ' + ui.state.tabs.length + ' 个页面';
@@ -519,7 +522,7 @@ function renderTimeline() {
     : ui.state.segments.length && (ui.timelineTag || ui.timelineStatus !== 'all')
     ? emptyState('没有符合筛选的记录', '这个范围内有其他记录，可以清除主题和状态筛选后查看。', 'clear-timeline-filters', '查看全部记录', false, 'clock')
     : !ui.state.settings.tracking
-      ? emptyState('浏览记录已暂停', isPanel ? '点击顶部的恢复按钮，或在这里恢复记录。已有任务仍可继续。' : '恢复后会继续记录前台浏览，已有历史仍会保留。', 'toggle-tracking', '恢复记录', false, 'clock')
+      ? emptyState(trackingStatus(ui.state.settings), '开启后会记录前台浏览，已有任务仍可继续。', 'toggle-tracking', trackingAction(ui.state.settings), false, 'clock')
       : emptyState('这段时间还没有记录', '正常浏览网页后，返回这里刷新。暂离与未知时段会单独显示。', null, null, false, 'clock');
   return [
     header,
@@ -703,7 +706,9 @@ function renderMap() {
       el('div', {class: 'filter-row', 'aria-label': '地图显示范围'}, [['related', '选中主题'], ['all', '全部关系']].map(([scope, label]) => el('button', {id: 'map-scope-' + scope, type: 'button', class: 'filter-button' + (ui.mapScope === scope ? ' active' : ''), 'data-action': 'map-scope', 'data-scope': scope, 'aria-pressed': ui.mapScope === scope}, label))),
       el('span', {}, ui.mapScope === 'all' ? '显示全部 ' + edges.length + ' 条连线' : '显示 ' + relatedCount + ' 条直接关联，全部主题位置保持不变')),
     el('div', {class: 'map-layout'}, el('section', {class: 'map-panel', 'aria-label': '主题切换关系'},
-      entries.length ? graph(entries, edges) : emptyState('从一次浏览开始', '正常浏览网页后，再回来查看访问关系。', null, null, false, 'nodes'),
+      entries.length ? graph(entries, edges)
+        : ui.state.settings.tracking ? emptyState('从一次浏览开始', '正常浏览网页后，再回来查看访问关系。', null, null, false, 'nodes')
+        : emptyState(trackingStatus(ui.state.settings), '开启后可以在这里查看前台访问与切换。', 'toggle-tracking', trackingAction(ui.state.settings), false, 'nodes'),
       el('p', {class: 'map-footnote'}, isPanel ? '箭头向下表示访问先后；次数来自实际记录。' : '左列为先访问、右列为接着访问，按该方向的切换次数排序。线宽表示次数，位置不表示语义距离，主题大小不编码时长。完整关系始终保留在下表。')),
       mapDetail(entries, edges)),
     !isPanel && el('section', {class: 'transition-section'}, el('div', {class: 'section-heading'}, el('h2', {}, '完整关系'), el('span', {}, edges.length + ' 条关系')),
@@ -718,13 +723,13 @@ function toggle(id, checked, label, attributes = {}) {
   return el('label', {class: 'toggle'}, el('input', {type: 'checkbox', id, checked, 'aria-label': label, ...attributes}), el('span', {class: 'toggle-track', 'aria-hidden': 'true'}));
 }
 function recordingSettingStatus() {
-  const current = ui.state.settings.tracking ? '正在记录' : '已暂停记录';
+  const current = trackingStatus(ui.state.settings);
   if (!ui.settingsDirty) return '当前生效：' + current + '。修改开关后需保存设置。';
-  if (ui.settingsDraft.tracking !== ui.state.settings.tracking) return '当前生效：' + current + '。开关更改尚未保存；保存后' + (ui.settingsDraft.tracking ? '恢复记录。' : '暂停记录。');
+  if (ui.settingsDraft.tracking !== ui.state.settings.tracking) return '当前生效：' + current + '。开关更改尚未保存；' + (ui.settingsDraft.tracking && !ui.state.settings.trackingConsentGranted ? '首次保存时需确认。' : '保存后' + trackingAction(ui.state.settings) + '。');
   return '当前生效：' + current + '。其他设置更改待保存。';
 }
 function settingsSaveStatus() {
-  return (busy('settings') ? '正在保存' : ui.settingsDirty ? '更改待保存' : '已保存') + ' · 当前生效：' + (ui.state.settings.tracking ? '正在记录。' : '已暂停记录。');
+  return (busy('settings') ? '正在保存' : ui.settingsDirty ? '更改待保存' : '已保存') + ' · 当前生效：' + trackingStatus(ui.state.settings) + '。';
 }
 function selectOptions(id, value, options, label) {
   return el('select', {id, class: 'standard-select', 'aria-label': label}, options.map(([key, text]) => el('option', {value: key, selected: String(key) === String(value)}, text)));
@@ -1140,9 +1145,10 @@ async function handleAction(action, target) {
     case 'toggle-tracking':
       await operation('tracking', async () => {
         const tracking = !ui.state.settings.tracking;
-        await request('UPDATE_SETTINGS', {patch: {tracking}});
+        const result = await saveTrackingSettings(request, ui.state.settings, {tracking});
+        if (!result) return;
         if (ui.settingsDraft) ui.settingsDraft.tracking = tracking;
-        await refresh({quiet: true}); toast(tracking ? '已恢复浏览记录。' : '已暂停浏览记录。');
+        await refresh({quiet: true}); toast(tracking ? '浏览记录已开启。' : '浏览记录已暂停。');
       }); break;
     case 'timeline-status': ui.timelineRelation = null; ui.timelineStatus = target.dataset.status; ui.timelineLimit = 60; render(); announceResults(); break;
     case 'timeline-more': ui.timelineLimit += 60; render(); break;
@@ -1166,8 +1172,9 @@ async function handleAction(action, target) {
       captureSettings();
       await operation('settings', async () => {
         const patch = {...ui.settingsDraft, excludedDomains: cleanDomains(ui.settingsDraft.excludedDomains)};
-        await request('UPDATE_SETTINGS', {patch});
-        ui.state.settings = {...ui.state.settings, ...patch}; ui.settingsDraft = {...ui.state.settings, excludedDomains: [...patch.excludedDomains]}; ui.settingsDirty = false;
+        const result = await saveTrackingSettings(request, ui.state.settings, patch);
+        if (!result) return;
+        ui.state.settings = result; ui.settingsDraft = {...result, excludedDomains: [...result.excludedDomains]}; ui.settingsDirty = false;
         await refresh({quiet: true}); toast('设置已保存。');
       }); break;
     case 'warmup':
@@ -1185,7 +1192,7 @@ async function handleAction(action, target) {
       });
       break;
     case 'clear-all':
-      confirmDialog('清除全部本机数据？', '这将删除扩展访问记录、任务、资料库原文与笔记、临时选文、运行日志和恢复点，并重置设置。不会删除 Chrome 自身历史或关闭网页。此操作无法撤销。', '清除全部', async () => {
+      confirmDialog('清除全部本机数据？', '这将删除扩展访问记录、任务、资料库原文与笔记、临时选文、运行日志和恢复点，并重置设置。前台浏览记录会关闭，重新开启需再次同意。Chrome 自身历史和打开的网页会保留。此操作无法撤销。', '清除全部', async () => {
         const result=await request('CLEAR_ALL');aiSettings.reset();diagnosticsUI.reset();ui.settingsDirty = false; ui.selected.clear(); ui.selectedTag = ''; ui.applied.clear(); ui.canUndo = false;toast(result.diagnosticsCleared===false?'主要数据已清理；运行日志暂未清理，请在运行与记录中重试。':'全部本机数据与运行日志已清除。',result.diagnosticsCleared===false);
       }, true);
       break;

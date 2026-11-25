@@ -1,4 +1,4 @@
-import {setup,until,sleep} from './cdp.mjs';
+import {setup,until,sleep,acceptTracking} from './cdp.mjs';
 import assert from 'node:assert/strict';
 import {writeFileSync,readFileSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -13,7 +13,9 @@ const taskFrom=async id=>(await rpc('GET_STATE')).tasks.find(task=>task.id===id)
 try{
   // Physical device idle time is shared with headless Chrome. Use the supported
   // one-hour threshold so this foreground fixture is independent of short breaks.
-  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{tracking:true,semantic:false,idleSeconds:3600}});
+  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{semantic:false,idleSeconds:3600}});
+  await acceptTracking(control);
+  await until(async () => (await rpc('GET_STATE')).settings.tracking, 'tracking enabled');
   const ids=await control.eval(async({base,windowId})=>{const ids=[];for(const name of ['ESP32-I2S-microphone','ESP32-I2S-playback'])ids.push((await chrome.tabs.create({windowId,url:base+'/fixture/'+name,active:false})).id);return ids;},{base,windowId});
   await until(async()=>{const tabs=(await rpc('GET_STATE')).tabs;return tabs.length===2&&tabs.every(tab=>['ESP32-I2S-microphone','ESP32-I2S-playback'].includes(tab.title));},'fixture titles');
   let task=await rpc('SAVE_TASK',{name:'合成接口验收',goal:'核对接口返回值',notes:'CANARY_PRIVATE_NOTES',tabIds:ids});

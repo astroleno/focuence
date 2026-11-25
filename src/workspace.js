@@ -99,19 +99,17 @@ export function createWorkspace(deps) {
 
   async function commit(change, nextState = state, { observe = true, tasks, relations } = {}) {
     let activity = deps.getActivity(), segments = [];
-    if (observe) {
-      const raw = deps.settings().tracking ? await deps.rawContext() : null;
+    if (observe && deps.settings().tracking) {
+      const raw = await deps.rawContext();
       const context = await contextFor(raw, nextState.context, { tasks, relations });
-      const result = reduceActivity(activity, { type: 'context', at: now(), context, tracking: deps.settings().tracking, idleState: await deps.idleState() });
+      const result = reduceActivity(activity, { type: 'context', at: now(), context, tracking: true, idleState: await deps.idleState() });
       activity = result.state; segments = result.segments;
-      if (deps.settings().tracking) {
-        const drafts = { ...nextState.drafts };
-        for (const taskId of new Set(segments.map(item => item.taskId).filter(Boolean))) {
-          const draft = observedDraft(drafts[taskId], segments, taskId, now());
-          if (draft && !(change.deleteTasks || []).includes(taskId)) drafts[taskId] = draft;
-        }
-        nextState = { ...nextState, drafts };
+      const drafts = { ...nextState.drafts };
+      for (const taskId of new Set(segments.map(item => item.taskId).filter(Boolean))) {
+        const draft = observedDraft(drafts[taskId], segments, taskId, now());
+        if (draft && !(change.deleteTasks || []).includes(taskId)) drafts[taskId] = draft;
       }
+      nextState = { ...nextState, drafts };
     }
     const output = await store.commitWorkspace({ ...change, workspace: nextState, activity, segments });
     state = nextState; deps.setActivity(activity);

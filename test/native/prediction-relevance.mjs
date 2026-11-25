@@ -1,4 +1,4 @@
-import {setup,until,sleep} from './cdp.mjs';
+import {setup,until,sleep,acceptTracking} from './cdp.mjs';
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
 
@@ -7,7 +7,9 @@ const {control,rpc,windowId,base,browser}=env;
 const report={environment:'Isolated Chrome for Testing; real MV3, bundled BGE, native tabs/groups/IndexedDB. Foreground means the browser API state in this isolated test, not an Ego OS-focus acceptance.',checks:[],errors:[]};
 const check=(name,detail={})=>{report.checks.push({name,status:'passed',detail});console.log(name);};
 try{
-  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{tracking:true,semantic:true,idleSeconds:3600}});
+  await rpc('CLEAR_ALL');await rpc('UPDATE_SETTINGS',{patch:{semantic:true,idleSeconds:3600}});
+  await acceptTracking(control);
+  await until(async () => (await rpc('GET_STATE')).settings.tracking, 'tracking enabled');
   const titles=['ESP32 I2S 麦克风音频采集指南','ESP32 I2S 扬声器音频播放与错误处理','Chrome extension 标签页分组与键盘焦点管理 API','产品摄影自然光与构图参考'];
   const ids=await control.eval(async({base,windowId,titles})=>{
     const result=[];for(const title of titles)result.push((await chrome.tabs.create({windowId,url:base+'/fixture/'+encodeURIComponent(title),active:false})).id);return result;

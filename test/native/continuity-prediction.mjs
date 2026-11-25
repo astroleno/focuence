@@ -1,4 +1,4 @@
-import {setup,until,sleep} from './cdp.mjs';
+import {setup,until,sleep,acceptTracking} from './cdp.mjs';
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
 const env=await setup({out:process.argv.find(value=>value.startsWith('--out='))?.slice(6)||'docs/reviews/v2.6'});
@@ -15,7 +15,11 @@ try{
   const task=await rpc('SAVE_TASK',{tabIds:ids.slice(0,2),name:'ESP32 接口核对',goal:'核对接口失败路径'});
   await control.eval(ids=>chrome.tabs.remove(ids),ids.slice(0,2));
   for(const tracking of [false,true]){
-    await rpc('UPDATE_SETTINGS',{patch:{tracking}});
+    if (tracking) {
+      await control.send('Page.bringToFront');
+      await acceptTracking(control);
+      await until(async () => (await rpc('GET_STATE')).settings.tracking, 'tracking enabled');
+    }
     const job=await rpc('SEARCH_MEMORY',{query:'',scope:'tasks',clientId:'continuity'});
     const pages=job.results.filter(item=>item.kind==='page');assert.equal(pages.length,2);
     await rpc('OPEN_MEMORY_RESULT',{jobId:job.id,entryId:pages[0].id});

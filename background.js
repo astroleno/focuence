@@ -1,5 +1,5 @@
 import { createActivityState, reduceActivity, previewActivity } from './src/activity.js';
-import { openStore, taskFrom, relationFrom, pageFrom, segmentFrom, settingsFrom,libraryFrom } from './src/store.js';
+import { DEFAULT_SETTINGS, openStore, taskFrom, relationFrom, pageFrom, segmentFrom, settingsFrom,libraryFrom } from './src/store.js';
 import { computeAnalytics, computeReview, calendarRange } from './src/analytics.js';
 import { planTaskRestore, taskViews } from './src/tasks.js';
 import { pageFromTab, normalizeUrl, embeddingText, stableHash } from './src/text.js';
@@ -109,7 +109,7 @@ async function foregroundObservation() {
   if(!page){const status=tab.incognito?'incognito':pageFromTab(tab)&&excluded(tab.url||tab.pendingUrl)?'excluded':'unsupported';return{raw:null,focusedWindows,status,reason:status};}
   return{raw:{ tabId: tab.id, windowId: tab.windowId, pageId: page.id, url: page.url, title: page.title, tags: page.tags },focusedWindows,status:'active',reason:focusedWindows>1?'multiple-focused-windows':'foreground'};
 }
-async function rawContext(){return(await foregroundObservation()).raw;}
+async function rawContext(){return settings.tracking ? (await foregroundObservation()).raw : null;}
 
 async function currentContext() {
   const raw = await rawContext();
@@ -123,13 +123,17 @@ function queueSemantic(operation) {
 }
 
 async function recordCurrent() {
-  const observation=settings.tracking?await foregroundObservation():{raw:null,status:'paused',reason:'tracking-paused'};
+  if (!settings.tracking) {
+    diagnostics.capture('paused:tracking-paused', {status:'paused',reason:'tracking-paused'});
+    return;
+  }
+  const observation = await foregroundObservation();
   const context = observation.raw ? await workspace.contextFor(observation.raw) : null;
   const idleState = await chrome.idle.queryState(settings.idleSeconds);
   if (context) await store.putPages([{ id: context.pageId, url: context.url, title: context.title, tags: context.tags, lastSeen: Date.now() }]);
-  await applyActivity({ type: 'context', at: Date.now(), context, idleState, tracking: settings.tracking });
-  const status=!settings.tracking?'paused':idleState!=='active'?idleState:observation.status;
-  diagnostics.capture([status,observation.reason,context?.pageId,context?.windowId].join(':'),{status,reason:idleState!=='active'&&settings.tracking?idleState:observation.reason,focusedWindows:observation.focusedWindows});
+  await applyActivity({ type: 'context', at: Date.now(), context, idleState, tracking: true });
+  const status=idleState!=='active'?idleState:observation.status;
+  diagnostics.capture([status,observation.reason,context?.pageId,context?.windowId].join(':'),{status,reason:idleState!=='active'?idleState:observation.reason,focusedWindows:observation.focusedWindows});
 }
 
 async function diagnosticRun(kind,operation,fields={},describe=()=>({})) {
@@ -153,7 +157,15 @@ async function init() {
     for (const [id, groups] of session.focuenceProposals || []) proposals.set(id, groups);
     for (const [id, notice] of session.focuenceProposalNotices || []) proposalNotices.set(id, notice);
     activity = await store.getActivity();
-    if (!activity) activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
+    if (!settings.tracking) {
+      const previous = activity;
+      activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000, tracking: false });
+      if (previous) {
+        // Keep the sequence across worker wakes without extending an old observation.
+        if (previous.sessionId === browserSessionId) activity.sequence = previous.sequence;
+        await store.saveActivity(activity);
+      }
+    } else if (!activity) activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
     else if (activity.sessionId !== browserSessionId) await applyActivity({ type: 'restart', at: Date.now(), sessionId: browserSessionId });
     workspace = createWorkspace({
       store, sessionId: browserSessionId, settings: () => settings, getActivity: () => activity, setActivity: value => { activity = value; },
@@ -186,12 +198,11 @@ async function init() {
         if(existing?.windowId===windowId)await chrome.tabs.group({tabIds:ids,groupId:existing.id});
         else{const groupId=await chrome.tabs.group({tabIds:ids,createProperties:{windowId}});await chrome.tabGroups.update(groupId,{title:info.title||'',color:info.color||'grey',collapsed:!!info.collapsed});}},
       invalidate:()=>workspace.invalidate()});
-    browserHistory=createBrowserHistory({store,api:chrome,settings:()=>settings,allowed:url=>!!normalizeUrl(url)&&!excluded(url),onSettings:async value=>{settings=value;},invalidate:()=>workspace.invalidate()});
+    browserHistory=createBrowserHistory({store,api:chrome,settings:()=>settings,allowed:url=>!!normalizeUrl(url)&&!excluded(url),onSettings:async value=>{settings={...settings,historyEnabled:value.historyEnabled,historyDays:value.historyDays};},invalidate:()=>workspace.invalidate()});
     library=createLibrary({store,allowed:url=>!!normalizeUrl(url)&&!excluded(url),invalidate:()=>workspace.invalidate()});
     await syncCaptureMenu();
     registerHistoryListener();
     if(settings.historyEnabled)await chrome.alarms.create('focuence-history-import',{periodInMinutes:.5});
-    if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
     chrome.idle.setDetectionInterval(settings.idleSeconds);
     await chrome.alarms.create('focuence-checkpoint', { periodInMinutes: .5 });
     await chrome.alarms.create('focuence-prune', { periodInMinutes: 60 });
@@ -243,7 +254,7 @@ async function applyImport(message) {
   dataEpoch++;
   const result=await store.applyImport(saved.plan);
   imports.clear();tabOperations.invalidate();proposals.clear();proposalNotices.clear();lastUndo=null;
-  settings=await store.getSettings();activity=createActivityState({now:Date.now(),sessionId:browserSessionId,maxGapMs:90000});
+  settings=await store.getSettings();activity=createActivityState({now:Date.now(),sessionId:browserSessionId,maxGapMs:90000,tracking:settings.tracking});
   await chrome.storage.session.remove(['focuenceLibraryDrafts','focuenceLibraryCaptureError']);await chrome.alarms.clear('focuence-library-drafts');await syncCaptureMenu();
   await workspace.reload();
   if((await chrome.runtime.getContexts({contextTypes:['OFFSCREEN_DOCUMENT']})).length)await chrome.offscreen.closeDocument();
@@ -347,11 +358,15 @@ async function getState(message) {
   ]);
   const segments = mergedSegments(saved, previewActivity(activity, now));
   const lastSegment = segments.at(-1);
-  const [activeTab] = await chrome.tabs.query({ windowId, active: true });
-  const focusedWindow = await chrome.windows.get(windowId);
-  const reviewingHere = focusedWindow.focused && activeTab?.url?.startsWith(chrome.runtime.getURL('app/'));
-  const reviewContext = reviewingHere && lastSegment?.status === 'active' && lastSegment.foregroundMs > 0 && now - lastSegment.endedAt < 15 * 60000 ? lastSegment : null;
-  const suggestionContext = activity.tracking && activity.idleState === 'active' && !activity.warning ? activity.context || reviewContext : null;
+  let suggestionContext = null;
+  if (settings.tracking && activity.idleState === 'active' && !activity.warning) {
+    suggestionContext = activity.context;
+    if (!suggestionContext && lastSegment?.status === 'active' && lastSegment.foregroundMs > 0 && now - lastSegment.endedAt < 15 * 60000) {
+      const [activeTab] = await chrome.tabs.query({ windowId, active: true });
+      const focusedWindow = await chrome.windows.get(windowId);
+      if (focusedWindow.focused && activeTab?.url?.startsWith(chrome.runtime.getURL('app/'))) suggestionContext = lastSegment;
+    }
+  }
   const analytics = computeAnalytics({ segments, tasks, pages, now, currentContext: suggestionContext });
   const pageVisits = new Map();
   for (const segment of segments) {
@@ -471,7 +486,7 @@ async function openPage(value, windowId) {
   await chrome.tabs.create({ windowId, url }); return { opened: true, reused: false };
 }
 
-async function updateSettings(patch = {}) {
+async function updateSettings(patch = {}, acceptTracking = false) {
   const clean = {};
   if (typeof patch.tracking === 'boolean') clean.tracking = patch.tracking;
   if (typeof patch.semantic === 'boolean') clean.semantic = patch.semantic;
@@ -483,7 +498,7 @@ async function updateSettings(patch = {}) {
     try { return new URL(raw.includes('://') ? raw : `https://${raw}`).hostname.toLowerCase(); } catch { return ''; }
   }).filter(Boolean))].slice(0, 200);
   const previous = settings;
-  settings = await store.setSettings(clean);
+  settings = acceptTracking ? await store.acceptTracking(clean) : await store.setSettings(clean);
   const inferenceChanged = previous.semantic !== settings.semantic || JSON.stringify(previous.excludedDomains) !== JSON.stringify(settings.excludedDomains);
   if(JSON.stringify(previous.excludedDomains)!==JSON.stringify(settings.excludedDomains))await store.cancelHistoryImport('站点排除设置已改变，请重新核对日期范围后继续。');
   if (inferenceChanged || previous.tracking !== settings.tracking || previous.retentionDays !== settings.retentionDays) workspace.invalidate();
@@ -492,7 +507,7 @@ async function updateSettings(patch = {}) {
     model = { status: 'idle', name: MODEL_NAME, progress: 0 };
   }
   chrome.idle.setDetectionInterval(settings.idleSeconds);
-  if (previous.tracking !== settings.tracking) await applyActivity({ type: settings.tracking ? 'resume' : 'pause', at: Date.now(), context: settings.tracking ? await currentContext() : null });
+  if (previous.tracking !== settings.tracking) await applyActivity({ type: settings.tracking ? 'resume' : 'pause', at: Date.now(), context: null });
   await recordCurrent();
   proposals.clear();
   await persistSession();
@@ -507,14 +522,15 @@ async function clearData(all) {
   imports.clear();tabOperations.invalidate();
   if ((await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length) await chrome.offscreen.closeDocument();
   model = { status: 'idle', name: MODEL_NAME, progress: 0 };
-  if (all) await store.clearAll(); else await store.clearHistory();
+  if (all) {
+    await store.clearAll();
+    settings = {...DEFAULT_SETTINGS, trackingConsentGranted: false};
+  } else await store.clearHistory();
+  activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000, tracking: settings.tracking });
   if(all)await ai.clear();
-  settings = await store.getSettings();
   if(all){await chrome.storage.session.remove(['focuenceLibraryDrafts','focuenceLibraryCaptureError']);await chrome.alarms.clear('focuence-library-drafts');await syncCaptureMenu();}
   await workspace.reload();
-  activity = createActivityState({ now: Date.now(), sessionId: browserSessionId, maxGapMs: 90000 });
-  if (!settings.tracking) await applyActivity({ type: 'pause', at: Date.now() });
-  else await store.saveActivity(activity);
+  if (settings.tracking) await store.saveActivity(activity);
   proposals.clear(); proposalNotices.clear(); lastUndo = null;
   await persistSession();
   let diagnosticsCleared=true;try{await diagnostics.clear({reset:all});}catch{diagnosticsCleared=false;}
@@ -600,6 +616,7 @@ async function handle(message) {
       return openPage(message.url, windowId);
     }
     case 'UPDATE_SETTINGS': return queueActivity(() => updateSettings(message.patch));
+    case 'ACCEPT_TRACKING': return queueActivity(() => updateSettings(message.patch, true));
     case 'FLUSH_ACTIVITY': await queueActivity(recordCurrent); return { saved: true };
     case 'EXPORT_DATA': await queueActivity(recordCurrent); return store.exportData();
     case 'CLEAR_HISTORY': return queueActivity(() => clearData(false));
@@ -617,6 +634,12 @@ async function handle(message) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.target !== 'background') return false;
   if (sender.id !== chrome.runtime.id) { sendResponse({ ok: false, error: '调用来源无效' }); return false; }
+  if (message.type === 'ACCEPT_TRACKING') {
+    const surface = sender.url?.split(/[?#]/, 1)[0];
+    if ((sender.frameId != null && sender.frameId !== 0) || !['app/index.html', 'panel/index.html', 'popup/index.html'].some(path => chrome.runtime.getURL(path) === surface)) {
+      sendResponse({ ok: false, error: '请在 Focuence 界面中确认浏览记录。' }); return false;
+    }
+  }
   if (message.type === 'MODEL_PROGRESS') {
     if (message.epoch !== dataEpoch) { sendResponse({ ok: true, data: model }); return false; }
     model = { status: message.status, name: MODEL_NAME, progress: message.progress || 0, ...(message.error ? { error: message.error } : {}) };
@@ -631,11 +654,15 @@ const reconcile = () => queueActivity(recordCurrent).catch(() => {});
 // before applying. Unrelated tab events must not discard either workflow.
 chrome.tabs.onCreated.addListener(reconcile);
 chrome.tabs.onActivated.addListener(reconcile);
-chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.title || change.status === 'complete')reconcile(); });
+chrome.tabs.onUpdated.addListener((_id, change) => { if (Object.hasOwn(change, 'url') || Object.hasOwn(change, 'title') || change.status === 'complete')reconcile(); });
 for(const event of [chrome.tabs.onRemoved,chrome.tabs.onReplaced,chrome.tabs.onAttached,chrome.tabs.onDetached])event.addListener(reconcile);
 chrome.windows.onFocusChanged.addListener(reconcile);
 chrome.windows.onRemoved.addListener(id => { proposals.delete(id); proposalNotices.delete(id); if (lastUndo?.windowId === id) lastUndo = null; persistSession().catch(() => {}); queueActivity(() => workspace.closeWindow(id)).catch(() => {}); });
-chrome.idle.onStateChanged.addListener(state => queueActivity(async () => { await applyActivity({ type: 'idle', at: Date.now(), idleState: state }); await recordCurrent(); }).catch(() => {}));
+chrome.idle.onStateChanged.addListener(state => queueActivity(async () => {
+  if (!settings.tracking) return;
+  await applyActivity({ type: 'idle', at: Date.now(), idleState: state });
+  await recordCurrent();
+}).catch(() => {}));
 chrome.alarms.onAlarm.addListener(alarm => {
   if(alarm.name==='focuence-library-drafts')queueActivity(pruneLibraryDrafts).catch(error=>console.warn('Focuence draft cleanup:',error.message));
   if(alarm.name==='focuence-history-import')init().then(()=>browserHistory.step()).catch(error=>console.warn('Focuence history:',error.message));

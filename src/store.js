@@ -8,7 +8,7 @@ import {libraryFrom,libraryKey} from './library.js';
 export {libraryFrom} from './library.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  tracking: true,
+  tracking: false,
   semantic: true,
   idleSeconds: 120,
   retentionDays: 30,
@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const DATABASE_NAME = 'focuence-local-v2';
+const TRACKING_CONSENT_KEY = 'foregroundTrackingConsent';
+const TRACKING_CONSENT_VERSION = 1;
 export const DATABASE_VERSION = 5;
 const STORES = ['meta', 'pages', 'tasks', 'segments', 'vectors', 'taskRelations', 'tabOperations', 'restorePoints', 'browserHistory', 'historyImports','libraryItems'];
 
@@ -72,6 +74,13 @@ export function settingsFrom(value = {}) {
     historyDays: [7,30,90].includes(value.historyDays) ? value.historyDays : 30,
     captureEnabled:value.captureEnabled===true,
   };
+}
+
+async function localSettings(meta) {
+  const [saved, consent] = await Promise.all([req(meta.get('settings')), req(meta.get(TRACKING_CONSENT_KEY))]);
+  const value = settingsFrom(saved?.value);
+  const trackingConsentGranted = consent?.value === TRACKING_CONSENT_VERSION;
+  return { ...value, tracking: trackingConsentGranted && value.tracking, trackingConsentGranted };
 }
 
 export function pageFrom(value) {
@@ -257,12 +266,12 @@ export async function openStore(options = {}) {
 
   async function exportSnapshot(stores) {
     const [settings, pages, tasks, segments, taskRelations,libraryItems] = await Promise.all([
-      req(stores.meta.get('settings')), req(stores.pages.getAll()), req(stores.tasks.getAll()),
+      localSettings(stores.meta), req(stores.pages.getAll()), req(stores.tasks.getAll()),
       req(stores.segments.getAll()), req(stores.taskRelations.getAll()),
       req(stores.libraryItems.getAll()),
     ]);
     return {schemaVersion: 6, exportedAt: new Date().toISOString(), pages, tasks: tasks.map(taskFrom), taskRelations,libraryItems,
-      segments: segments.sort((a, b) => a.startedAt - b.startedAt), settings: settingsFrom(settings?.value)};
+      segments: segments.sort((a, b) => a.startedAt - b.startedAt), settings: settingsFrom(settings)};
   }
 
   const api = {
@@ -290,11 +299,11 @@ export async function openStore(options = {}) {
       const values=await req(browserHistory.index('visitedAt').getAll(keyRange?keyRange.lowerBound(Math.max(0,since)):undefined));return values.filter(row=>row.visitedAt<=until);
     });},
     beginHistoryImport(job){return transaction(['meta','historyImports'],'readwrite',async({meta,historyImports})=>{
-      const settings=settingsFrom({...((await req(meta.get('settings')))?.value||{}),historyEnabled:true,historyDays:job.range.days});
-      meta.put({key:'settings',value:settings});meta.put({key:'historyEpoch',value:job.generation});historyImports.put(job);return settings;
+      const settings={...await localSettings(meta),historyEnabled:true,historyDays:job.range.days};
+      meta.put({key:'settings',value:settingsFrom(settings)});meta.put({key:'historyEpoch',value:job.generation});historyImports.put(job);return settings;
     });},
     writeHistoryStep(job,records=[]){return transaction(['meta','historyImports','browserHistory'],'readwrite',async({meta,historyImports,browserHistory})=>{
-      const current=await req(historyImports.get('active')),settings=settingsFrom((await req(meta.get('settings')))?.value);
+      const current=await req(historyImports.get('active')),settings=await localSettings(meta);
       if(!settings.historyEnabled||!current||current.generation!==job.generation||current.revision!==job.revision||!['running','queued'].includes(current.status)
         ||(await req(meta.get('historyEpoch')))?.value!==job.generation)throw failure('STALE_HISTORY_IMPORT','历史导入已经停止或改变。');
       const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-settings.historyDays+1);
@@ -311,7 +320,7 @@ export async function openStore(options = {}) {
       if(job){const value={...job,generation,revision:job.revision+1,status:'cancelled',error:reason};historyImports.put(value);return value;}return null;
     });},
     disconnectBrowserHistory(){return transaction(['meta','historyImports','browserHistory','vectors'],'readwrite',async stores=>{
-      const settings=settingsFrom({...((await req(stores.meta.get('settings')))?.value||{}),historyEnabled:false});stores.meta.put({key:'settings',value:settings});
+      const settings={...await localSettings(stores.meta),historyEnabled:false};stores.meta.put({key:'settings',value:settingsFrom(settings)});
       stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});stores.meta.delete('historyCoverage');stores.historyImports.clear();stores.browserHistory.clear();stores.vectors.clear();return settings;
     });},
     removeBrowserHistory({all=false,sourceKeys=[]}={}){return transaction(['meta','historyImports','browserHistory','vectors'],'readwrite',async stores=>{
@@ -322,19 +331,31 @@ export async function openStore(options = {}) {
       return{generation,removed};
     });},
     reconcileHistorySources(generation,records){return transaction(['meta','browserHistory'],'readwrite',async({meta,browserHistory})=>{
-      const settings=settingsFrom((await req(meta.get('settings')))?.value);if(!settings.historyEnabled||(await req(meta.get('historyEpoch')))?.value!==generation)return false;
+      const settings=await localSettings(meta);if(!settings.historyEnabled||(await req(meta.get('historyEpoch')))?.value!==generation)return false;
       for(const row of records)browserHistory.put(browserVisitFrom(row));return true;
     });},
     getSettings() {
-      return transaction(['meta'], 'readonly', async ({ meta }) => settingsFrom((await req(meta.get('settings')))?.value));
+      return transaction(['meta'], 'readonly', ({ meta }) => localSettings(meta));
     },
 
     setSettings(patch) {
       return transaction(['meta'], 'readwrite', async ({ meta }) => {
-        const old = (await req(meta.get('settings')))?.value || {};
+        const old = await localSettings(meta);
+        if (patch?.tracking === true && !old.trackingConsentGranted) {
+          throw failure('TRACKING_CONSENT_REQUIRED', '请先阅读浏览记录说明并同意开始记录。');
+        }
         const value = settingsFrom({ ...old, ...(patch || {}) });
         meta.put({ key: 'settings', value });
-        return value;
+        return { ...value, trackingConsentGranted: old.trackingConsentGranted };
+      });
+    },
+
+    acceptTracking(patch) {
+      return transaction(['meta'], 'readwrite', async ({ meta }) => {
+        const value = settingsFrom({ ...await localSettings(meta), ...patch, tracking: true });
+        meta.put({ key: TRACKING_CONSENT_KEY, value: TRACKING_CONSENT_VERSION });
+        meta.put({ key: 'settings', value });
+        return { ...value, trackingConsentGranted: true };
       });
     },
 
@@ -544,7 +565,7 @@ export async function openStore(options = {}) {
         putRecords(stores.taskRelations, plan.data.taskRelations, relationFrom);
         putRecords(stores.segments, plan.data.segments, segmentFrom);
         putRecords(stores.libraryItems,plan.data.libraryItems,libraryFrom);
-        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom({...plan.data.settings,historyEnabled:false,captureEnabled:false})});
+        if (plan.adoptSettings || plan.mode === 'replace') stores.meta.put({key: 'settings', value: settingsFrom({...plan.data.settings,tracking:before.settings.tracking,historyEnabled:false,captureEnabled:false})});
         stores.browserHistory.clear();stores.historyImports.clear();stores.meta.delete('historyCoverage');stores.meta.put({key:'historyEpoch',value:crypto.randomUUID()});
         stores.meta.put({key: 'workspace', value: emptyWorkspace()});
         stores.meta.delete('activity'); stores.vectors.clear();

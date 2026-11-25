@@ -4,7 +4,7 @@ import {sealProposal, validateProposalSelection} from '../src/proposals.js';
 import { createWorkspace } from '../src/workspace.js';
 import {createLibrary,libraryFrom} from '../src/library.js';
 import { createActivityState } from '../src/activity.js';
-import { emptyWorkspace, taskFrom } from '../src/store.js';
+import { DEFAULT_SETTINGS, emptyWorkspace, settingsFrom, taskFrom } from '../src/store.js';
 import { assertRevision } from '../src/task-context.js';
 import { pageIdForUrl } from '../src/text.js';
 import {createPredictions} from '../src/prediction.js';
@@ -72,7 +72,8 @@ export function createDemoTransport() {
     startedAt: midnight - 86400000 + 15 * 3600000, endedAt: midnight - 86400000 + 15 * 3600000 + 17 * minute,
     foregroundMs: 17 * minute, status: 'active', endReason: 'window-blur'
   });
-  let settings = {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
+  const demoSettings = () => ({...DEFAULT_SETTINGS, tracking: true, trackingConsentGranted: true});
+  let settings = demoSettings();
   let model = {status: 'idle', name: 'BGE-small-zh-v1.5 · 本地', progress: 0};
   let groups = [];
   let lastApply = null;
@@ -206,12 +207,12 @@ export function createDemoTransport() {
         case 'OPEN_PAGE': result = {opened: true}; break;
         case 'UPDATE_SETTINGS': settings = {...settings, ...message.patch}; memory.invalidate(); result = settings; break;
         case 'FLUSH_ACTIVITY': result = {saved: true}; break;
-        case 'EXPORT_DATA': result = {schemaVersion: 6, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations,libraryItems, segments, settings}; break;
+        case 'EXPORT_DATA': result = {schemaVersion: 6, demo: true, exportedAt: Date.now(), pages, tasks, taskRelations: relations,libraryItems, segments, settings: settingsFrom(settings)}; break;
         case 'CLEAR_HISTORY':
           segments = []; workspaceData = {...emptyWorkspace(), context: workspaceData.context}; await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; }); result = {cleared: true}; break;
         case 'CLEAR_ALL':
           segments = []; tasks = []; groups = []; relations = [];libraryItems=[]; workspaceData = emptyWorkspace(); await memory.reload(); tabs.forEach((tab) => { tab.foregroundMs = 0; });
-          settings = {tracking: true, semantic: true, focusSupport: false, idleSeconds: 120, retentionDays: 30, excludedDomains: []};
+          settings = demoSettings();
           result = {cleared: true}; break;
         case 'MODEL_WARMUP':
           model = {status: 'loading', name: model.name, progress: .3};

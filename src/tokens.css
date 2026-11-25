@@ -61,4 +61,11 @@ button, a { touch-action: manipulation; }
 .task-pages small { color: var(--muted); font-size: 12px; }
 .proposal-notice { margin: 10px 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
 .tracking-banner { flex: 0 0 auto; padding: 7px 16px; background: var(--canvas); color: var(--muted); font-size: 13px; border-bottom: 1px solid var(--line); }
+.tracking-consent { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 24px); padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 56px #18233630; }
+.tracking-consent::backdrop { background: #18233660; }
+.tracking-consent h2 { font-size: 19px; }
+.tracking-consent p { margin-top: 10px; }
+.tracking-consent-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.tracking-consent-actions button { min-height: 40px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+#tracking-consent-accept { border-color: var(--action); background: var(--action); color: var(--surface); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
