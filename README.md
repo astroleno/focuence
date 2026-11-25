@@ -1,4 +1,8 @@
-# Focuence 智序 · 本机优先 2.7.0
+# Focuence 智序 · 本机优先 2.7.1
+
+[Chrome 网上应用店](https://chromewebstore.google.com/detail/alfcejiicdbndoijbcodgbgpdpnagphl) · [隐私与数据有限使用声明](PRIVACY.md)
+
+2.7.1 在本机分析期间持续显示已找到的线索并保留查找草稿。结果标出命中内容，来源明细保留本次查找的记录和时间。聚焦页优先显示当前任务、断点和继续操作。[性能对照与独立验收](docs/reviews/v2.7.1/README.md)
 
 2.6 修复“找回 → 打开 → 回来继续找”的连续性，保留分组预览、手选成员、应用与撤销。当前聚焦中可按需获取下一步页面/任务建议，查找框与断点的下一步支持文字补全。候选只有在用户采用后才生效，不会自动保存断点、改任务、移动分组或向地图加入推测关系。
 
@@ -46,7 +50,7 @@
 
 ## 体验当前版本
 
-本轮直接交付源码和截图，没有重新打包 ZIP。完成下方源码构建后，在 `chrome://extensions` 开启开发者模式，加载本仓库目录。已有离线 ZIP 属于此前快照，不包含这次重设计。
+体验仓库当前版本时，完成下方构建，在 `chrome://extensions` 开启开发者模式并加载本仓库目录。Chrome 网上应用店版本以条目显示为准，打包与更新说明见 [商店提交材料](CHROME_STORE_SUBMISSION.md)。
 
 ![任务目标与确认断点](docs/reviews/v2.2/screenshots/panel-task.png)
 

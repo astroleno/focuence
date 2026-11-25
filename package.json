@@ -1,6 +1,6 @@
 {
   "name": "focuence-local",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "private": true,
   "type": "module",
   "description": "Local-first tab grouping, task recovery and attention timeline for Chrome and Edge.",
@@ -9,7 +9,8 @@
     "build:website": "python3 scripts/build-website.py",
     "test": "node --test --test-concurrency=1 test/*.test.js",
     "models": "python3 scripts/download-model.py",
-    "package": "python3 scripts/package-release.py"
+    "package": "python3 scripts/package-release.py",
+    "package:store": "python3 scripts/package-release.py --store"
   },
   "dependencies": {
     "@huggingface/transformers": "3.8.1"
